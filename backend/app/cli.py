@@ -19,6 +19,7 @@ from app.core.context import RequestContext
 from app.core.models import Company, Department, Membership, User
 from app.core.security import hash_password, password_problems
 from app.core.services import identity, master_data, tasks
+from app.core.services.files import storage
 from app.db.session import SessionLocal, bind_tenant
 from app.modules.registry import available_module_codes, manifests
 
@@ -29,6 +30,10 @@ def bootstrap() -> None:
         roles = identity.sync_system_roles(s)
         s.commit()
         print(f"System roles synchronized: {', '.join(r.code for r in roles)}")
+    store = storage()
+    if hasattr(store, "ensure_bucket"):
+        store.ensure_bucket()
+        print(f"Object storage bucket ready: {store.bucket}")
 
 
 def create_admin(email: str, password: str, name: str) -> User:

@@ -28,7 +28,10 @@ celery.conf.update(
         "agent.commit": {"queue": "commit"},
         "agent.watchdog": {"queue": "default"},
     },
-    beat_schedule={"agent-watchdog": {"task": "agent.watchdog", "schedule": 300.0}},
+    beat_schedule={
+        "agent-watchdog": {"task": "agent.watchdog", "schedule": 300.0},
+        "agent-purge-ai-payloads": {"task": "agent.purge_ai_payloads", "schedule": 3600.0},
+    },
     broker_connection_retry_on_startup=True,
     task_ignore_result=True,
     timezone="UTC",

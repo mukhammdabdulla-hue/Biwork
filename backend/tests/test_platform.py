@@ -238,6 +238,24 @@ def test_prompt_injection_in_document_is_treated_as_data(client, world, owner_en
     assert owner_query(owner_engine, "SELECT count(*) FROM agent.approvals")[0][0] == 0  # nothing approved itself
 
 
+def test_stored_ai_payloads_follow_the_retention_policy(client, world, owner_engine):
+    from app.agent.pipeline.orchestrator import purge_ai_payloads
+
+    admin = world.login(client, "admin")
+    r = client.patch("/api/v1/company/settings", headers=admin, json={"settings": {"ai_policy": {"retain_ai_payloads_days": 30}}})
+    assert r.status_code == 200, r.text
+    submit_text(client, admin, UZ_TEXT)
+    stored = "SELECT count(*) FROM agent.ai_calls WHERE request_redacted IS NOT NULL"
+    assert owner_query(owner_engine, stored)[0][0] > 0
+
+    assert purge_ai_payloads() == 0  # still inside the retention period
+    with owner_engine.begin() as conn:
+        conn.exec_driver_sql("UPDATE agent.ai_calls SET created_at = now() - interval '31 days'")
+    assert purge_ai_payloads() > 0
+    assert owner_query(owner_engine, stored)[0][0] == 0
+    assert owner_query(owner_engine, "SELECT count(*) FROM agent.ai_calls")[0][0] > 0  # metadata is kept
+
+
 # --------------------------------------------------------------------------- other input formats
 
 

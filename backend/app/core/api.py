@@ -334,7 +334,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         s = get_settings()
         ip = request.client.host if request.client else "unknown"
         path = request.url.path
-        if path.startswith("/api/v1/auth/login") or path.startswith("/api/v1/auth/refresh"):
+        # The strict bucket covers endpoints that check a guessable secret. Session refresh presents an
+        # unguessable rotating token, and counting it here would sign out offices sharing one IP.
+        if path in ("/api/v1/auth/login", "/api/v1/auth/password", "/api/v1/auth/mfa/confirm"):
             limit, bucket = s.auth_rate_limit_per_minute, "auth"
         elif path.startswith("/api/v1/health") or path.startswith("/api/v1/events"):
             return await call_next(request)

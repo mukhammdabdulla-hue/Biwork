@@ -79,6 +79,11 @@ def watchdog() -> None:
         enqueue_process(company_id, job_id)
 
 
+@celery.task(name="agent.purge_ai_payloads")
+def purge_ai_payloads() -> None:
+    orchestrator.purge_ai_payloads()
+
+
 def enqueue_process(company_id: uuid.UUID, job_id: uuid.UUID) -> None:
     parse.apply_async(args=[str(company_id), str(job_id)])
 

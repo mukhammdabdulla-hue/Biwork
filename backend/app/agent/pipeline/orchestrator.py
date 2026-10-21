@@ -9,12 +9,12 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import select, text
+from sqlalchemy import null, or_, select, text, update
 
-from app.agent.models import ExtractedRecord, IngestionItem, IngestionJob, StageRun
+from app.agent.models import AICall, ExtractedRecord, IngestionItem, IngestionJob, StageRun
 from app.agent.pipeline import commit as commit_stage
 from app.agent.pipeline.context import StageError, fail_job, set_job, stage_run
 from app.agent.pipeline.interpret import interpret_item
@@ -34,6 +34,7 @@ from app.agent.pipeline.review import (
 from app.ai.providers.base import PermanentAIError
 from app.core import audit
 from app.core.errors import AppError
+from app.core.models import Company
 from app.db.session import SessionLocal, tenant_session
 from app.modules.registry import record_type
 
@@ -211,3 +212,24 @@ def watchdog(timeout_seconds: int) -> list[tuple[uuid.UUID, uuid.UUID]]:
                 job.error = {"stage": "commit", "message": "Commit interrupted (worker lost)", "retryable": True}
         log.warning("watchdog: job %s stuck in %s", job_id, stage)
     return resumed
+
+
+def purge_ai_payloads() -> int:
+    """Enforce each company's `ai_policy.retain_ai_payloads_days`: drop stored AI request/response
+    content older than the retention period (0 = keep none). Call metadata stays for cost and audit."""
+    cleared = 0
+    with SessionLocal() as s:
+        companies = s.execute(select(Company.id, Company.settings)).all()
+    for company_id, settings in companies:
+        days = int(((settings or {}).get("ai_policy") or {}).get("retain_ai_payloads_days", 0) or 0)
+        cutoff = datetime.now(UTC) - timedelta(days=days)
+        with tenant_session(company_id) as s:
+            result = s.execute(update(AICall).where(
+                AICall.company_id == company_id, AICall.created_at < cutoff,
+                or_(AICall.request_redacted.is_not(None), AICall.response.is_not(None)),
+            ).values(request_redacted=null(), response=null()))
+            cleared += result.rowcount or 0
+    if cleared:
+        log.info("purged stored AI payloads of %d call(s)", cleared)
+    return cleared
+

@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.agent.models import AICall, Approval, ExtractedRecord, ExtractionFeedback, IngestionJob, StageRun
 from app.core.context import RequestContext
 from app.core.models import AuditEvent, Company, Department, Product, Task, Unit, User
+from app.core.text import fmt_qty
 from app.modules.inventory.service import shortages
 from app.modules.production.models import ProductionOrder, ProductionReport
 from app.modules.production.service import plan_vs_actual
@@ -123,7 +124,7 @@ def overview(db: Session, ctx: RequestContext, days: int = 30) -> dict[str, Any]
     alerts: list[dict[str, Any]] = []
     for s in shortage_list[:5]:
         alerts.append({"severity": "warning", "kind": "shortage", "title": f"Low stock: {s['code']} {s['name']}",
-                       "detail": f"{s['on_hand']} {s['unit']} on hand, reorder level {s['reorder_level']}", "link": "/inventory?tab=shortages"})
+                       "detail": f"{fmt_qty(s['on_hand'])} {s['unit']} on hand, reorder level {fmt_qty(s['reorder_level'])}", "link": "/inventory?tab=shortages"})
     for o in pva:
         if o["planned_end"] and o["planned_end"] < today and o["status"] not in ("completed", "cancelled"):
             alerts.append({"severity": "danger", "kind": "order_late", "title": f"Order {o['number']} is past its deadline",
