@@ -7,6 +7,7 @@ normalizes, validates, matches, and a person approves before anything is written
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date
 from functools import lru_cache
@@ -109,15 +110,14 @@ class AIContext:
     reference_date: date | None = None
     provider: LLMProvider | None = None
     calls: list[dict[str, Any]] = field(default_factory=list)
+    # Persists one AI call record; supplied by the caller (the Agent writes agent.ai_calls).
+    log: Callable[[dict[str, Any]], None] | None = None
 
 
 def _log_call(ctx: AIContext, provider: LLMProvider, prompt: prompts.Prompt, model: str, status: str, *,
               result: LLMResult | None = None, error: str | None = None, categories: list[str],
               request: dict[str, Any] | None = None, schema_version: str | None = None) -> None:
-    """AI calls are logged in their own transaction so failed (and billed) attempts are never lost."""
-    from app.agent.models import AICall
-    from app.db.session import tenant_session
-
+    """Every attempt is reported to the caller's logger, including failed (and billed) ones."""
     cost = budget.estimate_cost(result.model if result else model, result.input_tokens if result else None,
                                 result.output_tokens if result else None)
     keep = ctx.policy.retain_ai_payloads_days > 0
@@ -131,8 +131,8 @@ def _log_call(ctx: AIContext, provider: LLMProvider, prompt: prompts.Prompt, mod
         response=result.parsed.model_dump(mode="json") if (keep and result) else None,
     )
     ctx.calls.append({k: row[k] for k in ("task", "provider", "model", "status", "input_tokens", "output_tokens", "cost_usd")})
-    with tenant_session(ctx.company_id) as session:
-        session.add(AICall(**row))
+    if ctx.log is not None:
+        ctx.log(row)
 
 
 def _call(ctx: AIContext, prompt: prompts.Prompt, model: str, instructions: str, content: list[ContentBlock],

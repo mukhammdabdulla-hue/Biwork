@@ -7,7 +7,7 @@ from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import Date, case, cast, func, select
+from sqlalchemy import Date, cast, func, select
 from sqlalchemy.orm import Session
 
 from app.agent.models import AICall, Approval, ExtractedRecord, ExtractionFeedback, IngestionJob, StageRun
@@ -199,9 +199,11 @@ def agent_stats(db: Session, ctx: RequestContext, days: int = 30) -> dict[str, A
                               .group_by(ExtractedRecord.status)).all())
     groups = dict(db.execute(select(ExtractedRecord.review_group, func.count()).where(
         ExtractedRecord.company_id == ctx.company_id, ExtractedRecord.status == "needs_review").group_by(ExtractedRecord.review_group)).all())
-    decisions = dict(db.execute(select(case((Approval.auto, "auto_approved"), else_=Approval.decision), func.count())
-                                .where(Approval.company_id == ctx.company_id, Approval.decided_at >= since)
-                                .group_by(case((Approval.auto, "auto_approved"), else_=Approval.decision))).all())
+    decisions: dict[str, int] = defaultdict(int)
+    for auto, decision, n in db.execute(select(Approval.auto, Approval.decision, func.count())
+                                        .where(Approval.company_id == ctx.company_id, Approval.decided_at >= since)
+                                        .group_by(Approval.auto, Approval.decision)).all():
+        decisions["auto_approved" if auto else decision] += n
     stage_times = db.execute(select(StageRun.stage, func.avg(StageRun.duration_ms), func.count().filter(StageRun.status == "failed"))
                              .where(StageRun.company_id == ctx.company_id, StageRun.started_at >= since)
                              .group_by(StageRun.stage)).all()
@@ -217,7 +219,7 @@ def agent_stats(db: Session, ctx: RequestContext, days: int = 30) -> dict[str, A
         "period_days": days, "jobs_total": len(jobs), "jobs_by_status": dict(by_status), "jobs_by_source": dict(by_kind),
         "success_rate": _pct(ok, ok + by_status.get("failed", 0)),
         "jobs_by_day": [{"date": d, **v} for d, v in sorted(by_day.items())],
-        "records_by_status": records, "review_queue": groups, "decisions": decisions,
+        "records_by_status": records, "review_queue": groups, "decisions": dict(decisions),
         "stages": [{"stage": s, "avg_ms": round(_f(a)), "failures": f} for s, a, f in stage_times],
         "ai_usage": [{"task": t, "model": m, "calls": c, "input_tokens": int(i), "output_tokens": int(o), "cost_usd": _f(cost),
                       "errors": e, "avg_latency_ms": round(_f(lat))} for t, m, c, i, o, cost, e, lat in ai],

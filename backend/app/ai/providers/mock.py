@@ -27,13 +27,14 @@ UNIT_WORDS = (
 _UNIT = r"(?:" + "|".join(sorted(map(re.escape, UNIT_WORDS), key=len, reverse=True)) + r")\.?"
 _QTY = r"\d[\d\s.,]*\d|\d"
 
-PRODUCED = r"ishlab\s+chiqarildi|ishlab\s+chiqarilgan|tayyorlandi|produced|manufactured|выпущено|произведено|изготовлено"
-ACCEPTED = r"sifat\s+nazoratidan\s+o['ʻ’`]?tdi|sifatdan\s+o['ʻ’`]?tdi|qabul\s+qilindi|accepted|passed(?:\s+qc)?|принято|годн\w*|прошл\w*\s+отк"
+# OCR often confuses q/g in Uzbek Latin text ("chigarildi"), so the verbs tolerate it.
+PRODUCED = r"ishlab\s+chi[qg]arildi|ishlab\s+chi[qg]arilgan|tayyorlandi|produced|manufactured|выпущено|произведено|изготовлено"
+ACCEPTED = r"sifat\s+nazoratidan\s+o['ʻ’`]?tdi|sifatdan\s+o['ʻ’`]?tdi|[qg]abul\s+[qg]ilindi|accepted|passed(?:\s+qc)?|принято|годн\w*|прошл\w*\s+отк"
 DEFECTIVE = r"brak|yaroqsiz|nuqsonli|defective|rejected|scrap|брак\w*|дефект\w*"
 WORKSHOP = r"sex|цех|workshop|uchastka|участок"
 
 _DOC_KEYWORDS = {
-    "production_report": ("ishlab chiqarildi", "produced", "выпущено", "произведено", "brak", "брак", "sifat", "отк", "accepted",
+    "production_report": ("ishlab chi", "produced", "выпущено", "произведено", "brak", "брак", "sifat", "отк", "accepted",
                           "defective", "смена", "smena"),
     "purchase_request": ("заявка", "zayavka", "ariza", "purchase request", "закуп", "xarid", "sotib olish", "поставщик",
                          "yetkazib", "supplier", "needed by", "срок поставки"),
@@ -42,6 +43,10 @@ _DOC_KEYWORDS = {
     "task": ("vazifa", "topshiriq", "задача", "поручение", "task", "please", "iltimos", "прошу", "kerak", "необходимо"),
     "product": ("yangi mahsulot", "new product", "новый товар", "артикул", "artikul", "номенклатура"),
 }
+
+
+# "ЗАЯВКА № ZK-2026-015", "Ariza No 15", "Request #A-17"
+_DOC_NUMBER = re.compile(r"(?:№|\bNo\.?|#)\s*([A-Za-zА-Яа-я0-9][\w\-/.]*\d[\w\-/]*)", re.UNICODE)
 
 
 def _fv(value: str | None, confidence: float = 0.9, quote: str | None = None) -> dict[str, Any]:
@@ -156,6 +161,8 @@ class MockProvider:
                 record[f["name"]] = _fv(span.group(0) if span else hit[0], 0.9 if span else 0.5, hit[1])
             elif hit:
                 record[f["name"]] = _fv(hit[0], 0.88, hit[1])
+            elif "№" in f.get("aliases", []) and (m := _DOC_NUMBER.search(text)):
+                record[f["name"]] = _fv(m.group(1), 0.85, m.group(0))
             else:
                 record[f["name"]] = _fv(None)
         return record

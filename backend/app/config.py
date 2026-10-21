@@ -112,7 +112,7 @@ class Settings(BaseSettings):
             if self.ai_provider == "anthropic" and not self.anthropic_api_key:
                 problems.append("ANTHROPIC_API_KEY is required when AI_PROVIDER=anthropic")
             if problems:
-                raise ValueError("Unsafe configuration for %s: %s" % (self.app_env, "; ".join(problems)))
+                raise ValueError(f"Unsafe configuration for {self.app_env}: {'; '.join(problems)}")
         return self
 
 

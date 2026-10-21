@@ -1,0 +1,52 @@
+# Dependency rules from docs/architecture.md §3.4, enforced in CI with `lint-imports`.
+[importlinter]
+root_package = app
+
+[importlinter:contract:core-is-foundation]
+name = Core depends on nothing above it
+type = forbidden
+source_modules =
+    app.core
+    app.db
+forbidden_modules =
+    app.agent
+    app.ai
+    app.modules
+    app.analytics
+    app.api
+    app.workers
+
+[importlinter:contract:ai-is-independent]
+name = The AI layer knows Core contracts only, not the Agent or modules
+type = forbidden
+source_modules =
+    app.ai
+forbidden_modules =
+    app.agent
+    app.modules
+    app.analytics
+    app.api
+    app.db
+
+[importlinter:contract:modules-below-agent]
+name = Product modules do not depend on the Agent, Analytics or the API layer
+type = forbidden
+source_modules =
+    app.modules
+forbidden_modules =
+    app.agent
+    app.analytics
+    app.api
+
+[importlinter:contract:modules-use-public-services]
+name = Modules call each other only through public services
+type = forbidden
+source_modules =
+    app.modules.production
+    app.modules.supply
+forbidden_modules =
+    app.modules.inventory.models
+    app.modules.inventory.router
+    app.modules.supply.models
+    app.modules.supply.router
+allow_indirect_imports = True

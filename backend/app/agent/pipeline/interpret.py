@@ -19,7 +19,7 @@ from typing import Any
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
-from app.agent.models import ColumnMapping, ExtractedRecord, IngestionItem, IngestionJob, MappingTemplate, ParsedSegment
+from app.agent.models import AICall, ColumnMapping, ExtractedRecord, IngestionItem, IngestionJob, MappingTemplate, ParsedSegment
 from app.agent.normalization import parse_date
 from app.agent.pipeline.context import StageError
 from app.agent.pipeline.ingest import enabled_modules
@@ -32,9 +32,13 @@ from app.core.manifest import FieldSpec, RecordTypeSpec
 from app.core.models import Company, StoredFile
 from app.core.services.files import read_bytes
 from app.core.text import normalize_key
+from app.db.session import tenant_session
 from app.modules.registry import record_type, record_types_for_modules
 
-RULE_EXACT, RULE_PARTIAL, TEMPLATE, USER = 0.95, 0.8, 0.97, 1.0
+RULE_EXACT, RULE_PARTIAL, TEMPLATE, USER = 0.95, 0.7, 0.97, 1.0
+# Columns mapped by AI are proposals until a person confirms the mapping: their cells stay below the
+# confidence threshold, so the rows need approval rather than being 'ready'.
+AI_MAPPING_CAP = 0.7
 MIN_CLASSIFY_CONFIDENCE = 0.5
 
 
@@ -121,7 +125,7 @@ def resolve_mapping(session: Session, ai_ctx: extraction.AIContext | None, compa
             for col in proposal["columns"]:
                 i, name = col["column_index"], col["field"]
                 if i in mapping and mapping[i][0] is None and name in valid and name not in used:
-                    mapping[i] = (name, float(col["confidence"]), "ai")
+                    mapping[i] = (name, min(float(col["confidence"]), AI_MAPPING_CAP), "ai")
                     used.add(name)
     return rt, mapping
 
@@ -291,6 +295,12 @@ def interpret_form(session: Session, job: IngestionJob, item: IngestionItem, seq
 # --------------------------------------------------------------------------- stage entry point
 
 
+def log_ai_call(row: dict[str, Any]) -> None:
+    """AI calls are written in their own transaction so failed (and billed) attempts are never lost."""
+    with tenant_session(row["company_id"]) as session:
+        session.add(AICall(**row))
+
+
 def _next_seq(session: Session, job_id) -> int:
     return (session.execute(select(func.max(ExtractedRecord.seq)).where(ExtractedRecord.job_id == job_id)).scalar() or 0) + 1
 
@@ -305,7 +315,7 @@ def interpret_item(session: Session, item: IngestionItem, provider=None) -> dict
     if job.target_record_type:
         candidates = [record_type(job.target_record_type)]
     ai_ctx = extraction.AIContext(company_id=item.company_id, job_id=job.id, item_id=item.id, policy=policy,
-                                  reference_date=job.created_at.date(), provider=provider)
+                                  reference_date=job.created_at.date(), provider=provider, log=log_ai_call)
     warnings = list(item.warnings or [])
     seq = _next_seq(session, job.id)
     segments = session.execute(select(ParsedSegment).where(ParsedSegment.item_id == item.id).order_by(ParsedSegment.seq)).scalars().all()

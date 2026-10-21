@@ -150,7 +150,7 @@ class AliasTableResolver:
             ids = {r[0] for r in rows}
             entities = {e.id: e for e in session.execute(self._base(company_id).where(self.model.id.in_(ids))).scalars()}
             sorted_key = " ".join(sorted(key.split()))
-            for entity_id, norm_alias, sim in rows:
+            for entity_id, norm_alias, _sim in rows:
                 entity = entities.get(entity_id)
                 if entity is None:
                     continue
