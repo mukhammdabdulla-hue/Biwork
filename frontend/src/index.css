@@ -1,0 +1,143 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Design tokens: navy / white / grey with restrained blue accents; BIWORK green as brand accent. */
+:root {
+  --bg: #f4f6f9;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --surface-3: #eef1f5;
+  --border: #e2e7ee;
+  --border-strong: #cfd6e0;
+  --text: #0f1b2d;
+  --text-muted: #5a6577;
+  --text-subtle: #8a94a4;
+  --primary: #1f5fd6;
+  --primary-hover: #1a52ba;
+  --primary-soft: #e8effc;
+  --brand: #17b67b;
+  --brand-soft: #e3f7ef;
+  --sidebar: #0c1a2e;
+  --sidebar-hover: #15263f;
+  --sidebar-active: #1c3253;
+  --sidebar-text: #c3cddb;
+  --success: #15803d;
+  --success-soft: #e7f6ec;
+  --warning: #b45309;
+  --warning-soft: #fdf3e2;
+  --danger: #c0262d;
+  --danger-soft: #fdecec;
+  --info: #1f5fd6;
+  --info-soft: #e8effc;
+  --violet: #6d4fd6;
+  --violet-soft: #f0ecfd;
+  --ring: rgb(31 95 214 / 0.35);
+  --shadow: 0 1px 2px rgb(15 27 45 / 0.06), 0 1px 1px rgb(15 27 45 / 0.03);
+  /* Chart series: categorical slots 1-3 (validated adjacent and all-pairs for colour-vision deficiency). */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --grid: #e8ecf1;
+  color-scheme: light;
+}
+
+.dark {
+  --bg: #0a111d;
+  --surface: #0f1928;
+  --surface-2: #121e30;
+  --surface-3: #18263b;
+  --border: #1e2c42;
+  --border-strong: #2a3b55;
+  --text: #e4eaf2;
+  --text-muted: #9aa6b8;
+  --text-subtle: #6f7c90;
+  --primary: #4d8bff;
+  --primary-hover: #6a9dff;
+  --primary-soft: #16264a;
+  --brand: #2fd195;
+  --brand-soft: #10302a;
+  --sidebar: #070d17;
+  --sidebar-hover: #101b2c;
+  --sidebar-active: #172742;
+  --sidebar-text: #aab6c8;
+  --success: #3fbf6f;
+  --success-soft: #0f2a1b;
+  --warning: #f0a446;
+  --warning-soft: #2f2210;
+  --danger: #f2686d;
+  --danger-soft: #331517;
+  --info: #6a9dff;
+  --info-soft: #16264a;
+  --violet: #a08bff;
+  --violet-soft: #231c43;
+  --ring: rgb(77 139 255 / 0.45);
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --grid: #1b293d;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-fg: var(--text);
+  --color-muted: var(--text-muted);
+  --color-subtle: var(--text-subtle);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-brand: var(--brand);
+  --color-brand-soft: var(--brand-soft);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-hover: var(--sidebar-hover);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-sidebar-text: var(--sidebar-text);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-violet: var(--violet);
+  --color-violet-soft: var(--violet-soft);
+  /* Compact type scale (spec: body 13–14px, tables 12–13px, headings 16–18px, titles 20–24px, KPIs 24–30px). */
+  --text-2xs: 11px;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 18px;
+  --text-2xl: 22px;
+  --text-3xl: 28px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --shadow-card: var(--shadow);
+}
+
+@layer base {
+  html, body, #root { height: 100%; }
+  body {
+    @apply bg-bg text-fg font-sans text-sm antialiased;
+    font-feature-settings: "cv11", "ss01";
+  }
+  ::selection { background: var(--primary-soft); }
+  *:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+  table { font-variant-numeric: tabular-nums; }
+}
+
+@layer components {
+  .tabular { font-variant-numeric: tabular-nums; }
+  .scrollbar-thin { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+}
