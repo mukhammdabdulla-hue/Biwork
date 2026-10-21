@@ -15,6 +15,7 @@ from decimal import Decimal
 
 from sqlalchemy import func, select
 
+from app.config import get_settings
 from app.core.context import RequestContext
 from app.core.models import Company, Department, Membership, User
 from app.core.security import hash_password, password_problems
@@ -196,6 +197,45 @@ def seed_demo(password: str) -> None:
         print("Users: " + ", ".join(u[0] for u in users.values()) + f" (password: {password})")
 
 
+def ai_models(provider: str | None) -> int:
+    """List the model ids each configured provider currently serves and check the configured ones
+    against that list (model ids are retired over time; this is the startup sanity check)."""
+    from app.ai import router
+
+    s = get_settings()
+    names = [provider] if provider else s.configured_ai_providers()
+    if not names:
+        print("No AI provider credentials are configured: the Agent runs in labelled demo mode.")
+        return 0
+    status = 0
+    for name in names:
+        try:
+            available = set(router.get_provider(name).list_models())
+        except Exception as exc:  # noqa: BLE001 - report and continue with the next provider
+            print(f"{name}: could not list models ({exc.__class__.__name__}: {exc})")
+            status = 1
+            continue
+        print(f"{name}: {len(available)} model(s) available")
+        for tier in router.TIERS:
+            model = router.model_for(name, tier)
+            if model:
+                ok = model in available
+                status |= 0 if ok else 1
+                print(f"  {tier:<8} {model:<40} {'ok' if ok else 'NOT AVAILABLE to this API key'}")
+    return status
+
+
+def ai_check() -> int:
+    """Print the effective routing; exit 1 when the configuration is unusable outside demo mode."""
+    import json
+
+    from app.ai import router
+
+    info = router.describe()
+    print(json.dumps(info, indent=2))
+    return 0 if info["mode"] == "demo" or info["provider_order"] else 1
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="python -m app.cli")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -206,6 +246,14 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--name", default="Platform Administrator")
     p = sub.add_parser("seed-demo")
     p.add_argument("--password", default="Biwork2026!demo")
+    p = sub.add_parser("ai-models", help="list provider models and verify the configured model ids")
+    p.add_argument("--provider", choices=["openai", "gemini", "anthropic"])
+    sub.add_parser("ai-check", help="print the effective AI routing configuration")
+    p = sub.add_parser("ai-eval", help="evaluate providers/models on the BIWORK evaluation dataset")
+    p.add_argument("--dataset", default=None, help="dataset directory (default: eval/dataset)")
+    p.add_argument("--provider", action="append", default=None,
+                   help="provider[:model] to evaluate; repeatable (default: every configured provider, or demo)")
+    p.add_argument("--out", default=None, help="write the JSON report here (a Markdown summary is written next to it)")
     args = parser.parse_args(argv)
     if args.cmd == "bootstrap":
         bootstrap()
@@ -213,6 +261,14 @@ def main(argv: list[str] | None = None) -> None:
         create_admin(args.email, args.password, args.name)
     elif args.cmd == "seed-demo":
         seed_demo(args.password)
+    elif args.cmd == "ai-models":
+        raise SystemExit(ai_models(args.provider))
+    elif args.cmd == "ai-check":
+        raise SystemExit(ai_check())
+    elif args.cmd == "ai-eval":
+        from app.agent.evaluation import main as eval_main
+
+        raise SystemExit(eval_main(args.dataset, args.provider, args.out))
 
 
 if __name__ == "__main__":

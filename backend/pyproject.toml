@@ -23,6 +23,8 @@ dependencies = [
     "filetype>=1.2",
     "rapidfuzz>=3.9",
     "python-dateutil>=2.9",
+    "openai>=3.30",
+    "google-genai>=2.30",
     "anthropic>=1.0",
     "celery[redis]>=5.4",
     "redis>=5.0",
@@ -49,6 +51,9 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["app*"]
+
+[tool.setuptools.package-data]
+app = ["ai/prompts/*/*.md", "ai/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

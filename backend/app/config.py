@@ -9,10 +9,10 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import Field, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, field_validator, model_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 _DEV_JWT_KEY = "dev-only-insecure-jwt-signing-key-change-me"
 
@@ -67,18 +67,56 @@ class Settings(BaseSettings):
     celery_always_eager: bool = False
     stage_timeout_seconds: int = 900
 
-    # AI layer
-    ai_provider: Literal["mock", "anthropic"] = "mock"
+    # AI layer (docs/ai-engine.md). Business logic never names a model: it asks the router for a
+    # task, and the router picks a provider + model from the settings below and the routing table.
+    # auto = use whichever providers have credentials (primary first); demo = labelled rule-based
+    # simulation, used automatically when no provider is configured. "mock" is an alias of demo.
+    ai_provider: Literal["auto", "openai", "gemini", "anthropic", "demo", "mock"] = "auto"
+    ai_primary_provider: Literal["openai", "gemini", "anthropic"] = "openai"
+    # Tried in this order after the selected provider (which is skipped here); comma-separated in the env.
+    ai_fallback_providers: Annotated[list[str], NoDecode] = ["openai", "gemini", "anthropic"]
+    ai_routing_enabled: bool = True
+    ai_fallback_enabled: bool = True
+    ai_review_required: bool = True
+    ai_routing_file: Path | None = None  # optional JSON overriding app/ai/routing.default.json
+
+    openai_api_key: str | None = None
+    openai_base_url: str | None = None
+    openai_organization: str | None = None
+    openai_model_default: str | None = None  # routine extraction (structured output)
+    openai_model_complex: str | None = None  # escalation for ambiguous / conflicting / low-confidence input
+    openai_model_economy: str | None = None  # classification, column mapping (defaults to OPENAI_MODEL_DEFAULT)
+    openai_model_vision: str | None = None  # images and scans (defaults to OPENAI_MODEL_DEFAULT)
+
+    gemini_api_key: str | None = None
+    gemini_base_url: str | None = None
+    gemini_model_default: str | None = None
+    gemini_model_complex: str | None = None
+    gemini_model_economy: str | None = None
+    gemini_model_vision: str | None = None
+
     anthropic_api_key: str | None = None
     anthropic_base_url: str | None = None
-    ai_model_extract: str = "claude-opus-5-5"
-    ai_model_classify: str = "claude-haiku-5-5"
+    anthropic_model_default: str | None = "claude-sonnet-5-5"
+    anthropic_model_complex: str | None = "claude-opus-5-5"
+    anthropic_model_economy: str | None = "claude-haiku-5-5"
+    anthropic_model_vision: str | None = None
     ai_effort: Literal["low", "medium", "high", "xhigh", "max"] = "medium"
-    ai_timeout_s: float = 60.0
-    ai_max_retries: int = 3
     ai_refusal_fallback: bool = True
+
+    ai_timeout_s: float = 60.0
+    ai_max_retries: int = 2  # in-call retries per provider for transient errors (then fallback / job retry)
+    ai_retry_base_delay_s: float = 1.0
+    ai_retry_max_delay_s: float = 20.0
     ai_max_calls_per_minute: int = 60
     ai_max_input_chars: int = 120_000
+    ai_max_input_tokens: int = 40_000  # estimated (chars / 4); larger inputs must be split
+    ai_max_output_tokens: int = 16_000
+    ai_escalation_confidence: float = 0.6  # mean field confidence below this escalates to the complex tier
+    ai_cache_ttl_s: int = 86_400  # company-scoped cache of classification / column-mapping results; 0 disables
+    ai_health_failure_threshold: int = 3  # consecutive failures before a provider is marked down
+    ai_health_cooldown_s: int = 120
+    ai_pricing_json: str | None = None  # {"model-id": [input_usd_per_mtok, output_usd_per_mtok], ...}
 
     # OCR
     ocr_enabled: bool = True
@@ -97,6 +135,44 @@ class Settings(BaseSettings):
     def broker_url(self) -> str:
         return self.celery_broker_url or self.redis_url or "memory://"
 
+    @field_validator("ai_fallback_providers", mode="before")
+    @classmethod
+    def _split_providers(cls, value):
+        if isinstance(value, str):
+            return [p.strip().lower() for p in value.split(",") if p.strip()]
+        return value
+
+    def configured_ai_providers(self) -> list[str]:
+        """Providers with credentials, primary first, then the fallback order."""
+        keys = {"openai": self.openai_api_key, "gemini": self.gemini_api_key, "anthropic": self.anthropic_api_key}
+        order = [self.ai_primary_provider, *self.ai_fallback_providers, "openai", "gemini", "anthropic"]
+        return [p for p in dict.fromkeys(order) if keys.get(p)]
+
+    def provider_model(self, provider: str, tier: str) -> str | None:
+        """Model id for a provider and routing tier; economy and vision fall back to the default model."""
+        value = getattr(self, f"{provider}_model_{tier}", None)
+        if not value and tier in ("economy", "vision"):
+            value = getattr(self, f"{provider}_model_default", None)
+        return value or None
+
+    @model_validator(mode="after")
+    def _check_ai_settings(self) -> Settings:
+        problems = []
+        if self.ai_provider in ("openai", "gemini", "anthropic") and not getattr(self, f"{self.ai_provider}_api_key"):
+            problems.append(f"{self.ai_provider.upper()}_API_KEY is required when AI_PROVIDER={self.ai_provider}")
+        for provider in self.configured_ai_providers():
+            if not self.provider_model(provider, "default"):
+                problems.append(f"{provider.upper()}_MODEL_DEFAULT must be set when {provider.upper()}_API_KEY is set "
+                                "(use a model id your account can access; `python -m app.cli ai-models` lists them)")
+        unknown = set(self.ai_fallback_providers) - {"openai", "gemini", "anthropic"}
+        if unknown:
+            problems.append(f"AI_FALLBACK_PROVIDERS contains unknown provider(s): {', '.join(sorted(unknown))}")
+        if not 0 <= self.ai_escalation_confidence <= 1:
+            problems.append("AI_ESCALATION_CONFIDENCE must be between 0 and 1")
+        if problems:
+            raise ValueError(f"Invalid AI configuration: {'; '.join(problems)}")
+        return self
+
     @model_validator(mode="after")
     def _check_production_safety(self) -> Settings:
         if self.app_env in ("staging", "prod"):
@@ -109,8 +185,9 @@ class Settings(BaseSettings):
                 problems.append("FIELD_ENCRYPTION_KEY must be set")
             if self.celery_always_eager:
                 problems.append("CELERY_ALWAYS_EAGER must be false")
-            if self.ai_provider == "anthropic" and not self.anthropic_api_key:
-                problems.append("ANTHROPIC_API_KEY is required when AI_PROVIDER=anthropic")
+            if self.ai_provider in ("auto",) and not self.configured_ai_providers():
+                problems.append("no AI provider credentials are configured; set OPENAI_API_KEY (or GEMINI_API_KEY / "
+                                "ANTHROPIC_API_KEY), or set AI_PROVIDER=demo to run the labelled demo mode on purpose")
             if problems:
                 raise ValueError(f"Unsafe configuration for {self.app_env}: {'; '.join(problems)}")
         return self

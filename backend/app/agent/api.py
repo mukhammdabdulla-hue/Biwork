@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.agent import tasks
 from app.agent.models import (
+    AICall,
     Approval,
     CommittedWrite,
     ExtractedRecord,
@@ -29,7 +30,10 @@ from app.agent.pipeline import review
 from app.agent.pipeline.ingest import IMPORT_POLICIES, UploadedFile, allowed_record_types, create_job
 from app.agent.pipeline.orchestrator import prepare_retry
 from app.agent.pipeline.report import error_report_xlsx, job_report
+from app.agent.usage import usage_report
 from app.ai.extraction import provider_info
+from app.ai.router import describe as describe_routing
+from app.ai.router import health_report as provider_health
 from app.analytics.service import agent_stats
 from app.config import get_settings
 from app.core import audit
@@ -58,7 +62,8 @@ def job_out(job: IngestionJob, names: dict | None = None, items: int | None = No
         "target_record_type": job.target_record_type, "created_at": job.created_at, "started_at": job.started_at,
         "finished_at": job.finished_at, "submitted_by": (names or {}).get(job.submitted_by),
         "stats": job.stats, "warnings": job.warnings, "error": job.error, "attempt": job.attempt,
-        "ai_provider": job.ai_provider, "ai_model": job.ai_model, "ai_is_mock": job.ai_is_mock, "prompt_version": job.prompt_version,
+        "ai_provider": job.ai_provider, "ai_model": job.ai_model, "ai_is_mock": job.ai_is_mock,
+        "ai_mode": "demo" if job.ai_is_mock else "live", "prompt_version": job.prompt_version,
         "pipeline_version": job.pipeline_version, "duplicate_of_job_id": str(job.duplicate_of_job_id) if job.duplicate_of_job_id else None,
         "items": items,
     }
@@ -151,6 +156,50 @@ def record_detail(db: Session, r: ExtractedRecord) -> dict[str, Any]:
                       "committed_at": write.committed_at} if write else None,
         "source": {"item_id": str(item.id), "format": item.detected_format, "file_id": str(item.file_id) if item.file_id else None,
                    "ocr_used": item.ocr_used},
+        **review_context(db, r, rt, item, write),
+    }
+
+
+ORIGINAL_INPUT_PREVIEW = 20_000
+
+
+def review_context(db: Session, r: ExtractedRecord, rt, item: IngestionItem, write: CommittedWrite | None) -> dict[str, Any]:
+    """What a reviewer needs beside the fields: the original input, which provider/model produced
+    the proposal (and whether it is simulated), the uncertain values, and the database change that
+    approval would cause."""
+    text = item.meta.get("full_text") or item.raw_text or ""
+    stored = db.get(StoredFile, item.file_id) if item.file_id else None
+    meta = r.ai_meta or {}
+    calls = db.execute(select(AICall).where(AICall.item_id == item.id).order_by(AICall.created_at)).scalars().all()
+    uncertain = [{"field": f.field, "state": f.state, "reason": f.state_reason, "value": f.raw_value,
+                  "confidence": float(f.confidence) if f.confidence is not None else None}
+                 for f in r.fields if f.state in ("low_confidence", "conflicting", "missing", "invalid", "needs_approval")]
+    return {
+        "original_input": {
+            "format": item.detected_format, "filename": stored.original_name if stored else item.meta.get("filename"),
+            "file_id": str(item.file_id) if item.file_id else None, "ocr_used": item.ocr_used,
+            "text": text[:ORIGINAL_INPUT_PREVIEW], "truncated": len(text) > ORIGINAL_INPUT_PREVIEW,
+            "row_ref": r.row_ref,
+        },
+        "ai": {
+            "provider": meta.get("provider"), "model": meta.get("model"), "tier": meta.get("tier"),
+            "routing_reason": meta.get("routing_reason"), "fallback_from": meta.get("fallback_from"),
+            "is_demo": bool(meta.get("is_demo")), "escalated": bool(meta.get("escalated")),
+            "escalation_reason": meta.get("escalation_reason"), "concerns": meta.get("concerns") or [],
+            "mean_confidence": meta.get("mean_confidence"),
+            "label": "Demo mode — simulated, not real AI analysis" if meta.get("is_demo") else None,
+            "calls": [{"task": c.task, "provider": c.provider, "model": c.model, "tier": c.tier, "status": c.status,
+                       "attempt": c.attempt, "fallback_from": c.fallback_from, "latency_ms": c.latency_ms,
+                       "input_tokens": c.input_tokens, "output_tokens": c.output_tokens,
+                       "cost_usd": float(c.cost_usd) if c.cost_usd is not None else None, "error": c.error} for c in calls],
+        } if meta or calls else None,
+        "uncertain_values": uncertain,
+        "proposed_change": {
+            "action": "create", "target": rt.label, "record_type": rt.code, "module": rt.module,
+            "values": r.payload, "references": r.references, "requires_permission": rt.write_permission,
+            "status": "written" if write else ("blocked" if r.review_group == "needs_correction" else "pending_approval"),
+            "written_to": {"table": write.target_table, "id": str(write.target_id), "number": write.target_number} if write else None,
+        },
     }
 
 
@@ -489,6 +538,20 @@ def info(ctx: Ctx) -> dict[str, Any]:
     return {**provider_info(), "formats": sorted(EXTENSIONS), "max_upload_mb": s.max_upload_mb, "max_files_per_job": s.max_files_per_job,
             "import_policies": list(IMPORT_POLICIES), "ocr_enabled": s.ocr_enabled, "ocr_languages": s.ocr_langs,
             "malware_scanning": bool(s.clamav_host), "confidence_threshold": s.agent_confidence_threshold}
+
+
+@router.get("/ai/status")
+def ai_status(ctx: Ctx) -> dict[str, Any]:
+    """Effective routing (provider order, models per tier) and provider health. No secrets."""
+    ctx.require("agent.read")
+    return {**describe_routing(), "providers": provider_health()}
+
+
+@router.get("/ai/usage")
+def ai_usage(ctx: Ctx, db: DB, days: int = Query(30, ge=1, le=365)) -> dict[str, Any]:
+    """Usage monitoring: calls, tokens, estimated cost, latency, retries, fallbacks, outcomes."""
+    ctx.require("agent.read")
+    return usage_report(db, ctx.company_id, days)
 
 
 @router.get("/stats")

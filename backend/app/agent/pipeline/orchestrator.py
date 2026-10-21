@@ -12,9 +12,9 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text, update
 
-from app.agent.models import ExtractedRecord, IngestionItem, IngestionJob, StageRun
+from app.agent.models import AICall, ExtractedRecord, IngestionItem, IngestionJob, StageRun
 from app.agent.pipeline import commit as commit_stage
 from app.agent.pipeline.context import StageError, fail_job, set_job, stage_run
 from app.agent.pipeline.interpret import interpret_item
@@ -136,12 +136,30 @@ def run_prepare(company_id: uuid.UUID, job_id: uuid.UUID) -> dict[str, Any]:
                 job.warnings = [*job.warnings, *[f"{i.meta.get('filename') or 'Input'}: {i.error}" for i in failed_items]]
             auto = auto_approve_ready(s, job)
             _update_job_after_review(s, job)
+        record_ai_outcomes(s, job_id)
         metrics.update({"records": len(records), "failed_items": len(failed_items), "auto_approved": len(auto)})
         audit.record(s, "agent.job.processed", company_id=company_id, actor_type="agent", entity_type="ingestion_job",
                      entity_id=job_id, summary=f"{len(records)} record(s) extracted, status {job.status}",
                      context={"pipeline_version": job.pipeline_version, "prompt_version": job.prompt_version,
                               "ai_provider": job.ai_provider, "ai_model": job.ai_model})
     return {"auto_approved": [str(a) for a in auto]}
+
+
+def record_ai_outcomes(s, job_id: uuid.UUID) -> None:
+    """Attach what each item's successful extraction led to (validation outcome) to its AI call
+    rows, so usage reports can relate cost to validated records and corrections."""
+    rows = s.execute(select(ExtractedRecord.item_id, ExtractedRecord.review_group, ExtractedRecord.status, func.count())
+                     .where(ExtractedRecord.job_id == job_id)
+                     .group_by(ExtractedRecord.item_id, ExtractedRecord.review_group, ExtractedRecord.status)).all()
+    outcomes: dict[uuid.UUID, dict[str, int]] = {}
+    for item_id, group, status, n in rows:
+        o = outcomes.setdefault(item_id, {"records": 0})
+        o["records"] += n
+        o[group or "ungrouped"] = o.get(group or "ungrouped", 0) + n
+        o[f"status_{status}"] = o.get(f"status_{status}", 0) + n
+    for item_id, outcome in outcomes.items():
+        s.execute(update(AICall).where(AICall.job_id == job_id, AICall.item_id == item_id, AICall.task == "extract",
+                                       AICall.status == "ok").values(outcome=outcome))
 
 
 def run_commit(company_id: uuid.UUID, job_id: uuid.UUID, record_ids: list[uuid.UUID] | None = None) -> commit_stage.CommitOutcome:

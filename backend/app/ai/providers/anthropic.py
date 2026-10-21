@@ -1,10 +1,11 @@
-"""Claude adapter (default production provider).
+"""Anthropic Claude adapter (optional provider, official `anthropic` SDK).
 
 - Schema-constrained output via the SDK's `messages.parse(output_format=Model)`; the parsed object
   is re-validated by the caller regardless.
 - Untrusted content is wrapped in delimited data blocks; the call has no tools.
-- Timeouts and retries come from config; 429/5xx/timeouts surface as TransientAIError so the
-  Celery stage retries with backoff, everything else as PermanentAIError.
+- The SDK's own retries are off: the AI engine retries transient errors with backoff and then
+  falls back to the next provider, so every attempt is counted and logged. 429/5xx/timeouts
+  surface as TransientAIError, everything else as PermanentAIError with a kind.
 - Refusal fallback (server-side, `fallbacks: "default"`) is on by default and can be disabled
   with AI_REFUSAL_FALLBACK=false.
 """
@@ -26,6 +27,7 @@ from app.ai.providers.base import (
     PromptTask,
     TextBlock,
     TransientAIError,
+    wrap_untrusted,
 )
 from app.config import get_settings
 
@@ -42,10 +44,7 @@ def _content_params(content: list[ContentBlock], instructions: str) -> list[dict
             blocks.append({"type": "image", "source": {"type": "base64", "media_type": block.media_type, "data": block.data_b64}})
     for block in content:
         if isinstance(block, TextBlock):
-            blocks.append({
-                "type": "text",
-                "text": f'<untrusted_data source="{block.label}">\n{block.text}\n</untrusted_data>',
-            })
+            blocks.append({"type": "text", "text": wrap_untrusted(block)})
     blocks.append({"type": "text", "text": instructions})
     return blocks
 
@@ -54,6 +53,7 @@ class AnthropicProvider:
     name = "anthropic"
     is_mock = False
     supports_vision = True
+    supports_pdf = True
     external = True
 
     def __init__(self, client: anthropic.Anthropic | None = None):
@@ -63,14 +63,14 @@ class AnthropicProvider:
             api_key=s.anthropic_api_key,
             base_url=s.anthropic_base_url,
             timeout=s.ai_timeout_s,
-            max_retries=s.ai_max_retries,
+            max_retries=0,
         )
 
     def generate(self, *, task: PromptTask, content: list[ContentBlock], output_schema: type[BaseModel],
                  timeout_s: float) -> LLMResult:
         kwargs: dict[str, Any] = {
             "model": task.model,
-            "max_tokens": 16000,
+            "max_tokens": task.max_output_tokens,
             "system": task.system,
             "messages": [{"role": "user", "content": _content_params(content, task.instructions)}],
             "output_format": output_schema,
@@ -93,19 +93,21 @@ class AnthropicProvider:
         except anthropic.APIStatusError as exc:
             if exc.status_code in (408, 409, 429) or exc.status_code >= 500:
                 raise TransientAIError(f"AI provider error {exc.status_code}") from exc
-            raise PermanentAIError(f"AI request rejected ({exc.status_code}): {exc.message}") from exc
+            kind = "auth" if exc.status_code in (401, 403) else "bad_request"
+            raise PermanentAIError(f"AI request rejected ({exc.status_code}): {exc.message}", kind) from exc
         except ValidationError as exc:
-            raise PermanentAIError(f"AI output did not match the schema: {exc.error_count()} error(s)") from exc
+            raise PermanentAIError(f"AI output did not match the schema: {exc.error_count()} error(s)", "invalid_output") from exc
         latency_ms = int((time.monotonic() - started) * 1000)
 
         if response.stop_reason == "refusal":
             category = getattr(getattr(response, "stop_details", None), "category", None)
-            raise PermanentAIError(f"The AI provider declined to process this content (category: {category or 'unspecified'})")
+            raise PermanentAIError(f"The AI provider declined to process this content (category: {category or 'unspecified'})",
+                                   "refused")
         if response.stop_reason == "max_tokens":
-            raise PermanentAIError("The AI response was truncated (output too long); split the document and retry")
+            raise PermanentAIError("The AI response was truncated (output too long); split the document and retry", "truncated")
         parsed = getattr(response, "parsed_output", None)
         if parsed is None:
-            raise PermanentAIError("The AI response contained no structured output")
+            raise PermanentAIError("The AI response contained no structured output", "invalid_output")
         usage = response.usage
         return LLMResult(
             parsed=parsed,
@@ -117,3 +119,6 @@ class AnthropicProvider:
             stop_reason=response.stop_reason,
             raw={"id": response.id, "model": response.model, "stop_reason": response.stop_reason},
         )
+
+    def list_models(self) -> list[str]:
+        return sorted(m.id for m in self.client.models.list())

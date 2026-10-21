@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+import json
 import threading
 import time
 from decimal import Decimal
+from functools import lru_cache
 
 from app.ai.providers.base import TransientAIError
 from app.config import get_settings
 
-# USD per million tokens (input, output), Anthropic first-party list prices.
+# USD per million tokens (input, output). Only Anthropic list prices ship with the code; OpenAI and
+# Gemini prices change often and depend on the account, so they are configured with AI_PRICING_JSON
+# (see docs/ai-engine.md §Costs). A model without a price is logged with cost_usd = null, never 0.
 PRICES: dict[str, tuple[Decimal, Decimal]] = {
     "claude-opus-5-5": (Decimal("4"), Decimal("20")),
     "claude-opus-5": (Decimal("5"), Decimal("25")),
@@ -22,8 +26,25 @@ PRICES: dict[str, tuple[Decimal, Decimal]] = {
 }
 
 
+@lru_cache
+def _configured_prices(raw: str | None) -> dict[str, tuple[Decimal, Decimal]]:
+    if not raw:
+        return {}
+    data = json.loads(raw)
+    return {model: (Decimal(str(p[0])), Decimal(str(p[1]))) for model, p in data.items()}
+
+
+def price_for(model: str) -> tuple[Decimal, Decimal] | None:
+    prices = {**PRICES, **_configured_prices(get_settings().ai_pricing_json)}
+    if model in prices:
+        return prices[model]
+    # Providers may answer with a dated snapshot of a configured alias ("model-2026-08-01").
+    candidates = [m for m in prices if model.startswith(m + "-")]
+    return prices[max(candidates, key=len)] if candidates else None
+
+
 def estimate_cost(model: str, input_tokens: int | None, output_tokens: int | None) -> Decimal | None:
-    price = PRICES.get(model)
+    price = price_for(model)
     if price is None or input_tokens is None or output_tokens is None:
         return None
     return (price[0] * input_tokens + price[1] * output_tokens) / Decimal(1_000_000)

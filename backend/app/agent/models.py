@@ -168,6 +168,9 @@ class ExtractedRecord(UUIDPk, Timestamps, Tenant, Base):
     overall_confidence: Mapped[Decimal | None] = mapped_column(Numeric(4, 3))
     fingerprint: Mapped[str | None] = mapped_column(String(64))
     allow_duplicate: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Which provider/model/tier produced the proposal, whether it was escalated, and the
+    # evidence-based concerns that route it to review (docs/ai-engine.md §Pipeline).
+    ai_meta: Mapped[dict[str, Any]] = mapped_column(default=dict)
     summary: Mapped[str | None] = mapped_column(String(300))
     error: Mapped[str | None] = mapped_column(Text)
     reviewed_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("core.users.id", ondelete="SET NULL"))
@@ -312,7 +315,7 @@ class AICall(UUIDPk, Tenant, Base):
     job_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("agent.ingestion_jobs.id", ondelete="CASCADE"))
     item_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("agent.ingestion_items.id", ondelete="CASCADE"))
     stage: Mapped[str] = mapped_column(String(20))
-    task: Mapped[str] = mapped_column(String(40))  # classify|extract|map_columns
+    task: Mapped[str] = mapped_column(String(40))  # classify|extract|map_columns (task type)
     provider: Mapped[str] = mapped_column(String(30))
     model: Mapped[str] = mapped_column(String(60))
     is_mock: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -323,7 +326,13 @@ class AICall(UUIDPk, Tenant, Base):
     output_tokens: Mapped[int | None] = mapped_column(Integer)
     cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(12, 6))
     latency_ms: Mapped[int | None] = mapped_column(Integer)
-    status: Mapped[str] = mapped_column(String(20))  # ok|error|refused|invalid_output
+    status: Mapped[str] = mapped_column(String(20))  # ok|cached|error|refused|invalid_output
+    tier: Mapped[str | None] = mapped_column(String(20))  # economy|default|complex|vision
+    routing_reason: Mapped[str | None] = mapped_column(String(300))
+    attempt: Mapped[int] = mapped_column(Integer, default=1)  # 1 = first try; >1 = retry on the same provider
+    fallback_from: Mapped[str | None] = mapped_column(String(30))  # provider this call stood in for
+    # Filled after validation: what the extraction led to ({records, ready, needs_review, errors, ...}).
+    outcome: Mapped[dict[str, Any] | None]
     error: Mapped[str | None] = mapped_column(Text)
     provider_request_id: Mapped[str | None] = mapped_column(String(100))
     data_categories: Mapped[list[Any]] = mapped_column(default=list)  # what left the system: text|table_sample|image

@@ -15,6 +15,7 @@ from app.core.matching import AliasTableResolver, register_resolver
 from app.core.models import Product, Unit
 from app.core.rules import today_for
 from app.core.services.master_data import convert, find_unit
+from app.core.text import normalize_key
 from app.modules.supply import service
 from app.modules.supply.models import PurchaseRequest, Supplier, SupplierAlias
 
@@ -39,6 +40,75 @@ class PurchaseRequestWrite(BaseModel):
     external_number: str | None = Field(default=None, max_length=60)
     notes: str | None = Field(default=None, max_length=5000)
     source_file_id: uuid.UUID | None = None
+
+
+class SupplierWrite(BaseModel):
+    name: str = Field(min_length=1, max_length=250)
+    code: str | None = Field(default=None, max_length=50)
+    tin: str | None = Field(default=None, max_length=32)
+    contact_person: str | None = Field(default=None, max_length=200)
+    phone: str | None = Field(default=None, max_length=50)
+    email: str | None = Field(default=None, max_length=200)
+    address: str | None = Field(default=None, max_length=1000)
+
+
+def supplier_rules(inp: RuleInput) -> Iterable[Issue]:
+    tin = (inp.payload.get("tin") or "").replace(" ", "")
+    if tin and not (tin.isdigit() and len(tin) in (9, 10, 12, 14)):
+        yield Issue("tin_format", "warning", f"TIN '{tin}' is not 9 digits (Uzbekistan STIR) or another known format", "tin")
+    email = inp.payload.get("email")
+    if email and "@" not in email:
+        yield Issue("email_format", "error", f"'{email}' is not an e-mail address", "email")
+
+
+def match_supplier(inp: RuleInput) -> Iterable[DuplicateCandidate]:
+    tin, code, name = inp.payload.get("tin"), inp.payload.get("code"), inp.payload.get("name")
+    seen: set[uuid.UUID] = set()
+    if tin:
+        for s in inp.session.execute(select(Supplier).where(Supplier.company_id == inp.company_id, Supplier.tin == tin)).scalars():
+            seen.add(s.id)
+            yield DuplicateCandidate("supplier", s.id, f"{s.code} — {s.name} (same TIN)", 1.0)
+    if code:
+        for s in inp.session.execute(select(Supplier).where(Supplier.company_id == inp.company_id, Supplier.code == code)).scalars():
+            if s.id not in seen:
+                seen.add(s.id)
+                yield DuplicateCandidate("supplier", s.id, f"{s.code} — {s.name} (same code)", 1.0)
+    if name:
+        rows = inp.session.execute(select(Supplier).join(SupplierAlias, SupplierAlias.supplier_id == Supplier.id).where(
+            SupplierAlias.company_id == inp.company_id, SupplierAlias.normalized_alias == normalize_key(name),
+        )).unique().scalars()
+        for s in rows:
+            if s.id not in seen:
+                yield DuplicateCandidate("supplier", s.id, f"{s.code} — {s.name} (same name)", 0.85, blocking=False)
+
+
+SUPPLIER = RecordTypeSpec(
+    code="supplier",
+    module="supply",
+    label="Supplier",
+    description="A supplier / vendor company (yetkazib beruvchi, поставщик): name, code, taxpayer number (STIR / ИНН), "
+                "contact person, phone, e-mail, address.",
+    fields=(
+        FieldSpec("name", "Name", "string", required=True, max_length=250,
+                  aliases=("name", "supplier", "company", "nomi", "yetkazib beruvchi", "наименование", "поставщик", "организация")),
+        FieldSpec("code", "Code", "string", max_length=50, aliases=("code", "supplier code", "kod", "код")),
+        FieldSpec("tin", "Taxpayer number (TIN)", "string", max_length=32,
+                  aliases=("tin", "inn", "stir", "инн", "taxpayer id", "soliq raqami")),
+        FieldSpec("contact_person", "Contact person", "string", max_length=200,
+                  aliases=("contact", "contact person", "mas'ul shaxs", "контактное лицо")),
+        FieldSpec("phone", "Phone", "string", max_length=50, aliases=("phone", "telefon", "телефон")),
+        FieldSpec("email", "E-mail", "string", max_length=200, aliases=("email", "e-mail", "pochta", "почта")),
+        FieldSpec("address", "Address", "text", max_length=1000, aliases=("address", "manzil", "адрес")),
+    ),
+    schema=SupplierWrite,
+    writer=service.write_supplier_from_agent,
+    write_permission="supply.write",
+    approve_permission="supply.approve",
+    validators=(supplier_rules,),
+    matcher=match_supplier,
+    fingerprint_fields=("tin", "name"),
+    summary=lambda p: " · ".join(str(x) for x in (p.get("code"), p.get("name"), p.get("tin")) if x),
+)
 
 
 def pr_rules(inp: RuleInput) -> Iterable[Issue]:
@@ -146,7 +216,7 @@ MANIFEST = ModuleManifest(
     name="BIWORK Supply",
     description="Suppliers, purchase requests and the procurement approval workflow.",
     permissions=("supply.read", "supply.write", "supply.approve"),
-    record_types=(PURCHASE_REQUEST,),
+    record_types=(PURCHASE_REQUEST, SUPPLIER),
     nav=NavEntry("/supply", "Supply", "truck"),
     phase=2,
     router_factory=_router,

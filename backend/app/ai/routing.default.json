@@ -1,0 +1,17 @@
+{
+  "_comment": "Task-based model routing (docs/ai-engine.md). Tiers name *settings*, never model ids: a tier resolves to <PROVIDER>_MODEL_<TIER>. Override with AI_ROUTING_FILE.",
+  "tasks": {
+    "classify":       {"tier": "economy", "escalate_to": "default", "cacheable": true,  "max_output_tokens": 2000},
+    "map_columns":    {"tier": "economy", "escalate_to": "default", "cacheable": true,  "max_output_tokens": 4000},
+    "extract":        {"tier": "default", "escalate_to": "complex", "cacheable": false, "max_output_tokens": 16000},
+    "extract_vision": {"tier": "vision",  "escalate_to": "complex", "cacheable": false, "max_output_tokens": 16000}
+  },
+  "escalation": {
+    "on_low_confidence": true,
+    "on_conflicting_values": true,
+    "on_missing_required": true,
+    "on_invalid_output": true,
+    "on_no_records": true,
+    "missing_required_share": 0.5
+  }
+}

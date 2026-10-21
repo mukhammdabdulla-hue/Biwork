@@ -8,7 +8,7 @@ from datetime import date, timedelta
 import pyotp
 from sqlalchemy import text
 
-from tests.conftest import PASSWORD, owner_query, records, wait_job
+from tests.conftest import PASSWORD, owner_query, records, rule_based_live_provider, wait_job
 from tests.files import xlsx
 from tests.test_scenarios import UZ_TEXT, commit, submit_file, submit_text
 
@@ -191,12 +191,24 @@ def test_all_or_nothing_policy(client, world, owner_engine):
     assert owner_query(owner_engine, "SELECT count(*) FROM production.production_reports")[0][0] == 1
 
 
-def test_admin_enabled_auto_approval(client, world, owner_engine):
+def test_admin_enabled_auto_approval(client, world, owner_engine, ai_config):
     admin = world.login(client, "admin")
     r = client.put("/api/v1/workflows/production_report", headers=admin, json={"auto_approve": True})
     assert r.status_code == 200
     operator = world.login(client, "operator")
+    # Demo-mode results are simulated: never approved automatically, whatever the workflow says.
     job = submit_text(client, operator, UZ_TEXT)
+    assert job["status"] == "awaiting_review" and job["ai_mode"] == "demo"
+    # Live AI with AI_REVIEW_REQUIRED=true (the default): a person still approves AI-extracted records.
+    ai_config(providers={"openai": rule_based_live_provider()}, AI_PROVIDER="openai", OPENAI_API_KEY="k",
+              OPENAI_MODEL_DEFAULT="test-model-default")
+    job = submit_text(client, operator, "19-oktabr kuni 300 dona B mahsulot ishlab chiqarildi. 290 dona sifat nazoratidan "
+                                        "o'tdi, 10 donasi brak bo'ldi. Mas'ul sex — 2-sex.")
+    assert job["status"] == "awaiting_review" and job["ai_mode"] == "live", job
+    # The administrator opts this low-risk workflow into automatic processing.
+    ai_config(providers={"openai": rule_based_live_provider()}, AI_REVIEW_REQUIRED="false")
+    job = submit_text(client, operator, "18-oktabr kuni 400 dona A mahsulot ishlab chiqarildi. 400 dona sifat nazoratidan "
+                                        "o'tdi, 0 donasi brak bo'ldi. Mas'ul sex — 2-sex.")
     assert job["status"] == "completed", job
     rows = owner_query(owner_engine, "SELECT a.auto, a.decided_by FROM agent.approvals a WHERE a.decision = 'approve'")
     assert rows == [(True, None)]
@@ -210,14 +222,8 @@ def test_admin_enabled_auto_approval(client, world, owner_engine):
 # --------------------------------------------------------------------------- AI data policy & untrusted content
 
 
-def test_external_ai_disabled_by_policy(client, world, monkeypatch):
-    from app.ai import extraction
-    from app.ai.providers.mock import MockProvider
-
-    class ExternalMock(MockProvider):
-        name, external = "anthropic", True
-
-    monkeypatch.setattr(extraction, "get_provider", ExternalMock)
+def test_external_ai_disabled_by_policy(client, world, ai_config):
+    ai_config(providers={"anthropic": rule_based_live_provider("anthropic")}, AI_PROVIDER="anthropic", ANTHROPIC_API_KEY="k")
     admin = world.login(client, "admin")
     client.patch("/api/v1/company/settings", headers=admin, json={"settings": {"ai_policy": {"external_ai_allowed": False}}})
     job = submit_text(client, admin, UZ_TEXT)
@@ -305,7 +311,7 @@ def test_system_queues_and_agent_stats(client, world):
     admin = world.login(client, "admin")
     submit_text(client, admin, UZ_TEXT)
     queues = client.get("/api/v1/admin/system/queues", headers=admin).json()
-    assert queues["jobs_by_status"] == {"awaiting_review": 1} and queues["ai_usage_this_month"][0]["provider"] == "mock"
+    assert queues["jobs_by_status"] == {"awaiting_review": 1} and queues["ai_usage_this_month"][0]["provider"] == "demo"
     stats = client.get("/api/v1/agent/stats", headers=admin).json()
     assert stats["success_rate"] == 100.0 and stats["review_queue"] == {"ready": 1}
     assert client.get("/api/v1/health/ready").json()["checks"]["database"] == "ok"

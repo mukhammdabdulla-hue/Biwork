@@ -82,7 +82,18 @@ def step_normalize(record: ExtractedRecord, rt: RecordTypeSpec, env: Env) -> lis
 
 def step_validate(record: ExtractedRecord, rt: RecordTypeSpec, prior: list[Issue]) -> list[Issue]:
     invalid = {i.field for i in prior if i.severity == "error" and i.field}
-    return validate_record(record, rt, invalid) + matching.conflict_issues(record)
+    return validate_record(record, rt, invalid) + matching.conflict_issues(record) + ai_quality_issues(record)
+
+
+def ai_quality_issues(record: ExtractedRecord) -> list[Issue]:
+    """Evidence-based concerns found at extraction time (low confidence, conflicts, missing required
+    fields that a stronger model could not resolve) send the record to human approval."""
+    meta = record.ai_meta or {}
+    if not meta.get("concerns") or any(f.edited_by for f in record.fields):
+        return []
+    return [Issue("ai_uncertain_extraction", "warning",
+                  "The AI extraction is uncertain: " + "; ".join(meta["concerns"])[:400] + ". Check the values against the source.",
+                  None, {"model": meta.get("model"), "escalated": meta.get("escalated")})]
 
 
 def step_match(record: ExtractedRecord, rt: RecordTypeSpec, env: Env) -> list[Issue]:
@@ -470,6 +481,11 @@ def auto_approve_ready(session: Session, job: IngestionJob) -> list[uuid.UUID]:
         wf = get_workflow(session, job.company_id, rt.code)
         if wf is None or not wf.auto_approve:
             continue
+        ai_fields = [f for f in record.fields if f.extracted_by in ("ai", "demo", "mock") and f.raw_value]
+        if (record.ai_meta or {}).get("is_demo") or any(f.extracted_by in ("demo", "mock") for f in ai_fields):
+            continue  # simulated results are never approved automatically
+        if get_settings().ai_review_required and ai_fields:
+            continue  # AI_REVIEW_REQUIRED: a person approves every AI-extracted record
         if any(f.state != "high_confidence" for f in record.fields if f.raw_value):
             continue
         _decide(session, None, record, "approve", "Auto-approved by workflow policy", auto=True)

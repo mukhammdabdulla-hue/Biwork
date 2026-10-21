@@ -1,0 +1,18 @@
+{
+  "_comment": "Synthetic master data for the evaluation company. Every name, number and TIN is invented.",
+  "departments": [
+    {"code": "SEX-1", "name": "1-sex", "kind": "workshop", "aliases": ["Sex 1", "Цех №1", "Workshop 1", "1-цех"]},
+    {"code": "SEX-2", "name": "2-sex", "kind": "workshop", "aliases": ["Sex 2", "Цех №2", "Workshop 2", "2-цех"]},
+    {"code": "TAMINOT", "name": "Ta'minot bo'limi", "kind": "office", "aliases": ["Снабжение", "Supply department", "Таъминот бўлими"]}
+  ],
+  "products": [
+    {"code": "A-001", "name": "A mahsulot", "unit": "pcs", "type": "finished_good", "aliases": ["Product A", "Изделие А", "А маҳсулот"]},
+    {"code": "B-012", "name": "Kronshteyn B-12", "unit": "pcs", "type": "finished_good", "aliases": ["Bracket B-12", "Кронштейн Б-12", "изделия Б-12"]},
+    {"code": "RM-CEM", "name": "Sement M400", "unit": "bag", "type": "raw_material", "aliases": ["Цемент М400", "Cement M400"]},
+    {"code": "RM-STL", "name": "Po'lat list 2mm", "unit": "kg", "type": "raw_material", "aliases": ["Стальной лист 2мм", "Steel sheet 2mm"]}
+  ],
+  "warehouses": [{"code": "FG", "name": "Tayyor mahsulot ombori", "kind": "finished"}, {"code": "RM", "name": "Xomashyo ombori", "kind": "raw"}],
+  "suppliers": [{"code": "QQS", "name": "Qizilqumsement AJ", "tin": "200123456"}, {"code": "OLM", "name": "Olmaliq Metall MChJ", "tin": "305123987"}],
+  "employees": [{"personnel_number": "T-0101", "full_name": "Rasulova Dilnoza Akmalovna", "position": "Texnolog", "department": "SEX-1"}],
+  "documents": [{"doc_type": "invoice", "number": "HF-500", "doc_date": "2026-10-01", "counterparty": "Qizilqumsement AJ", "total_amount": "1100000", "currency": "UZS"}]
+}
