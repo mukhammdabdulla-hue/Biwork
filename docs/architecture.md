@@ -1,6 +1,6 @@
 # BIWORK Platform Architecture
 
-> **Status:** Draft v0.1 · **Scope:** MVP (Phases 1–2) in detail; Phases 3–4 as direction
+> **Status:** v0.2 — implemented for Phases 1–3 (see [§15 Implementation status](#15-implementation-status)) · **Scope:** MVP (Phases 1–2) in detail; Phases 3–4 as direction
 > **Audience:** engineers building BIWORK Core, BIWORK Agent, and the first product modules
 
 BIWORK is an AI-powered management platform for manufacturing companies, factories, and
@@ -32,6 +32,7 @@ same pull request.
 12. [Testing strategy](#12-testing-strategy)
 13. [Roadmap mapping](#13-roadmap-mapping)
 14. [Decision log and open questions](#14-decision-log-and-open-questions)
+15. [Implementation status](#15-implementation-status)
 
 ---
 
@@ -821,7 +822,7 @@ Uploaded documents and extracted text are untrusted data:
 | `migrate` | `biwork-backend` | one-off `alembic upgrade head` before rollout | job |
 | `postgres` | PostgreSQL 16 (+ `pg_trgm`) | primary database | managed service in production |
 | `redis` | Redis 7 | broker, cache, rate limits, SSE pub/sub | managed service in production |
-| `minio` | MinIO (dev) / S3-compatible (prod) | file storage | managed |
+| `files` volume / S3 | shared volume (compose default) or any S3-compatible store | file storage | managed (S3) |
 | `clamav` | ClamAV daemon | malware scanning | 1–2 |
 
 One backend image serves api and all workers (different commands), so code versions never
@@ -831,7 +832,7 @@ drift between them.
 
 | Environment | How | Notes |
 |---|---|---|
-| **Local dev** | `docker compose up` (deploy/compose.dev.yml); hot reload for api and Vite | mock AI adapter by default; MinIO; seeded demo company flagged as sample data |
+| **Local dev** | native: `uvicorn` with `CELERY_ALWAYS_EAGER=true` + `npm run dev` (hot reload); or `docker compose up` (`docker-compose.yml`) | mock AI adapter by default; local file storage; seeded demo company flagged as sample data |
 | **CI** | GitHub Actions: lint, type check, unit + integration tests against real Postgres/Redis service containers, Playwright E2E against compose stack, eval suite (mock), image build | |
 | **Staging** | same images as prod, real AI provider with test credentials, anonymized data | migrations rehearsed here |
 | **Production** | Docker Compose on a single host for the first customers → Kubernetes (or a managed container platform) as load grows | data residency: deployable in-country / on-premises for customers that require it |
@@ -851,7 +852,7 @@ APP_ENV=dev|staging|prod
 DATABASE_URL=postgresql+asyncpg://biwork_app@postgres/biwork
 DATABASE_MIGRATION_URL=postgresql+psycopg://biwork_owner@postgres/biwork
 REDIS_URL=redis://redis:6379/0
-S3_ENDPOINT=http://minio:9000   S3_BUCKET=biwork-files   S3_ACCESS_KEY=…   S3_SECRET_KEY=…
+STORAGE_BACKEND=local|s3   S3_ENDPOINT=https://…   S3_BUCKET=biwork-files   S3_ACCESS_KEY=…   S3_SECRET_KEY=…
 JWT_SIGNING_KEY=…   FIELD_ENCRYPTION_KEY=…
 CLAMAV_HOST=clamav   CLAMAV_PORT=3310
 AI_PROVIDER=mock|anthropic|openai_compat
@@ -893,7 +894,7 @@ MAX_UPLOAD_MB=50
 | Level | Tooling | Covers |
 |---|---|---|
 | Unit | pytest | normalizers, validators, matchers, parsers (fixtures per format), confidence state machine, permission helpers |
-| Integration | pytest + real PostgreSQL/Redis (service containers), MinIO | services, RLS policies, pipeline stages end-to-end with the mock adapter, idempotency |
+| Integration | pytest + real PostgreSQL (service container), local file storage | services, RLS policies, pipeline stages end-to-end with the mock adapter, idempotency |
 | API contract | pytest + httpx, OpenAPI diff check | endpoint behaviour, error shapes, generated client freshness |
 | E2E | Playwright against the compose stack | Agent workspace flows, dashboard |
 | AI evals | `ai/evals` runner | extraction accuracy per record type and prompt/model version |
@@ -942,6 +943,16 @@ directly.
 | D6 | LLM only in the Interpret stage, tool-less, schema-constrained | containment of AI errors and prompt injection | |
 | D7 | Human approval by default; auto-approval only per record type, admin-enabled, all fields high-confidence and zero warnings | spec requirement; low-confidence values never become facts | |
 | D8 | Tesseract as default OCR with Uzbek/Russian packs; vision LLM optional and policy-gated | works offline and on-prem; privacy | OCR accuracy on real customer documents is insufficient |
+| D9 | Synchronous SQLAlchemy (psycopg 3) instead of asyncpg | the pipeline, rules and module services are CPU/DB-bound and shared with Celery workers; one sync code path is simpler to test and reason about. Only SSE uses async I/O | request concurrency becomes the bottleneck (then move hot read endpoints to async sessions) |
+| D10 | Identity tables (`users`, `memberships`, `roles` templates, refresh tokens) are not RLS-scoped | they are read before a tenant is known (sign-in, company switch); access is enforced in services. Every business table is RLS-scoped | a deployment needs DB-level isolation of identities too |
+| D11 | One Celery task per pipeline phase (parse → interpret → prepare → commit) with stage runs recorded inside each task | fewer broker round-trips for small jobs while keeping per-stage status, metrics and retries (`agent.stage_runs`) | very large jobs need per-item fan-out |
+| D12 | Files are streamed through the API (auth + tenant check per request) instead of pre-signed URLs | works identically for local disk and S3; no URL leakage | download volume makes the API a bottleneck |
+| D13 | Agent-created purchase requests are created in status `submitted` and routed to `supply.approve` holders with a task | reviewers approved the extraction; the business approval of the purchase itself stays a separate step | |
+| D14 | Added `core.department_aliases` and `agent.mapping_templates` | multilingual workshop names ("1-sex", "Цех №1") and repeat spreadsheet layouts are the main sources of manual correction | |
+| D15 | Column names: stock movements use `movement_date`; tasks use `due_date` (date, not timestamp) | matches how factories record them | |
+| D16 | Frontend response types are hand-written (`src/api/types.ts`); request types are generated from OpenAPI | most responses are assembled documents without Pydantic response models | response models are added to the API |
+| D17 | Session refresh is not counted in the strict sign-in rate limit | refresh presents an unguessable rotating token; counting it signed out offices behind one NAT address | |
+| D18 | The compose stack stores files on a shared volume (`STORAGE_BACKEND=local`); S3-compatible storage is a configuration switch | MinIO no longer publishes community container images; a volume keeps single-host installs dependency-free | multi-host deployments (use S3) |
 
 ### Open questions
 
@@ -954,3 +965,27 @@ directly.
 4. **Approval matrix:** which record types need single vs multi-step approval, and which may
    ever be auto-approved?
 5. **Identity:** is SSO (e.g. corporate AD) needed for the first customer?
+
+---
+
+## 15. Implementation status
+
+What exists in this repository (October 2026). Setup, configuration and test commands are in
+the [README](../README.md); AI provider and privacy details in [ai-providers.md](ai-providers.md).
+
+| Area | Status | Where |
+|---|---|---|
+| Core: companies, users, memberships, roles/permissions, departments + aliases, units, products, tasks, notifications, files, workflows, number sequences | Implemented | `backend/app/core` |
+| Auth: argon2id, JWT access + rotating refresh cookie with reuse detection, TOTP MFA, lockout, API keys | Implemented | `core/services/identity.py`, `core/routers/auth.py` |
+| Tenant isolation: `company_id` + RLS on 37 tables, non-owner app role | Implemented | migration `0001` |
+| Audit: hash-chained, append-only events, chain verification, provenance trace | Implemented | `core/audit.py`, `api/audit.py` |
+| BIWORK Agent: 9 stages, parsers (text, pasted tables, CSV, XLSX/XLS, DOCX, PDF, images + OCR), column mapping + templates, normalization, validation, matching, duplicates, review groups, auto-approval, idempotent commit with import policies, error report, retry/watchdog | Implemented | `backend/app/agent` |
+| AI layer: provider interface, Claude adapter (structured outputs), labelled mock adapter, versioned prompts, policy (external AI off, image sending, redaction, minimisation), injection detection, rate limit + cost tracking | Implemented | `backend/app/ai` |
+| Modules: Production (orders, reports, corrections, plan vs actual, calendar), Inventory (movements, balances, reversals, shortages), Supply (suppliers, purchase requests, approvals) | Implemented | `backend/app/modules` |
+| Analytics: executive overview, agent statistics, interim quality analytics | Implemented | `backend/app/analytics` |
+| HR, EDO, Finance, Maintenance, Quality (full) | Planned (phase 4); shown as "Soon" with no placeholder data | `modules/planned` |
+| Web app: all screens above, uz/ru/en, light/dark, responsive | Implemented | `frontend/` |
+| Tests: 79 backend tests (scenarios A–G, units, AI adapter, platform), Playwright e2e (Scenario A through the UI, corrections, page smoke, read-only role) | Implemented | `backend/tests`, `frontend/e2e` |
+| Deployment: Dockerfiles, compose stack (Postgres, Redis, API, worker, beat, web; optional ClamAV), CI | Implemented | `deploy/`, `docker-compose.yml`, `.github/workflows` |
+| Not yet built | OpenAI-compatible adapter, OpenTelemetry tracing, evaluation harness for prompts (§7.6 offline evals), SSO, multi-step approval chains, e-mail/Telegram channels | — |
+

@@ -1,0 +1,102 @@
+# BIWORK full stack for local evaluation and single-host deployments.
+#   cp .env.example .env   # then set secrets
+#   docker compose up -d --build
+#   docker compose run --rm migrate python -m app.cli seed-demo   # optional sample data
+# Web app: http://localhost:8080
+name: biwork
+
+x-backend: &backend
+  build:
+    context: .
+    dockerfile: deploy/backend.Dockerfile
+  image: biwork-backend:local
+  env_file: .env
+  environment: &backend-env
+    DATABASE_URL: postgresql+psycopg://${APP_DB_USER:-biwork_app}:${APP_DB_PASSWORD:?set APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB:-biwork}
+    DATABASE_MIGRATION_URL: postgresql+psycopg://${POSTGRES_USER:-biwork}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-biwork}
+    DATABASE_APP_ROLE: ${APP_DB_USER:-biwork_app}
+    REDIS_URL: redis://redis:6379/0
+    CELERY_ALWAYS_EAGER: "false"
+    STORAGE_DIR: /data/storage
+  # Uploaded files live on a volume shared by the API and the workers (STORAGE_BACKEND=local).
+  # For S3-compatible object storage set STORAGE_BACKEND=s3 and the S3_* variables in .env.
+  volumes: [files:/data/storage]
+  depends_on: &backend-deps
+    postgres: { condition: service_healthy }
+    redis: { condition: service_healthy }
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-biwork}
+      POSTGRES_USER: ${POSTGRES_USER:-biwork}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      APP_DB_USER: ${APP_DB_USER:-biwork_app}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?set APP_DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./deploy/postgres:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 20
+    restart: unless-stopped
+
+  # Optional malware scanning of uploads: `docker compose --profile clamav up -d` and set CLAMAV_HOST=clamav.
+  clamav:
+    image: clamav/clamav:1.4
+    profiles: [clamav]
+    restart: unless-stopped
+
+  migrate:
+    <<: *backend
+    command: ["sh", "-c", "alembic upgrade head && python -m app.cli bootstrap"]
+    restart: "no"
+
+  api:
+    <<: *backend
+    depends_on:
+      <<: *backend-deps
+      migrate: { condition: service_completed_successfully }
+
+  worker:
+    <<: *backend
+    command: ["celery", "-A", "app.workers.celery_app", "worker", "-Q", "parse,ai,commit,default", "--concurrency", "${WORKER_CONCURRENCY:-2}", "--loglevel", "INFO"]
+    healthcheck: { disable: true }
+    depends_on:
+      <<: *backend-deps
+      migrate: { condition: service_completed_successfully }
+
+  beat:
+    <<: *backend
+    command: ["celery", "-A", "app.workers.celery_app", "beat", "--loglevel", "INFO", "--schedule", "/tmp/celerybeat-schedule"]
+    healthcheck: { disable: true }
+    depends_on:
+      <<: *backend-deps
+      migrate: { condition: service_completed_successfully }
+
+  web:
+    build:
+      context: .
+      dockerfile: deploy/frontend.Dockerfile
+    image: biwork-web:local
+    ports: ["${WEB_PORT:-8080}:8080"]
+    depends_on: [api]
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
+  files:
