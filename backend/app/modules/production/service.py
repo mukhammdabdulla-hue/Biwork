@@ -350,10 +350,13 @@ def approve_report(session: Session, ctx: RequestContext, report_id: uuid.UUID, 
 
 
 def cancel_report(session: Session, ctx: RequestContext, report_id: uuid.UUID, reason: str) -> ProductionReport:
-    ctx.require("production.approve")
+    """Writers may discard drafts; cancelling an approved report reverses its postings and needs an approver."""
+    ctx.require("production.write")
     report = get_report(session, ctx, report_id)
     if report.status == "cancelled":
         raise ValidationFailed("Report is already cancelled", code="invalid_transition")
+    if report.status != "draft":
+        ctx.require("production.approve")
     before = report.status
     report.status = "cancelled"
     report.updated_by = ctx.user_id

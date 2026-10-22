@@ -159,6 +159,7 @@
      "auth"
     ],
     "summary": "Change Password",
+    "description": "Change the password and sign out every session; the caller continues with the access token returned\nhere and a new refresh cookie.",
     "operationId": "change_password_api_v1_auth_password_post",
     "requestBody": {
      "content": {
@@ -171,8 +172,15 @@
      "required": true
     },
     "responses": {
-     "204": {
-      "description": "Successful Response"
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SessionOut"
+        }
+       }
+      }
      },
      "422": {
       "description": "Validation Error",
@@ -194,6 +202,23 @@
     ],
     "summary": "Mfa Setup",
     "operationId": "mfa_setup_api_v1_auth_mfa_setup_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/MfaSetupIn"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Data"
+       }
+      }
+     }
+    },
     "responses": {
      "200": {
       "description": "Successful Response",
@@ -205,6 +230,16 @@
          },
          "type": "object",
          "title": "Response Mfa Setup Api V1 Auth Mfa Setup Post"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
         }
        }
       }
@@ -2690,7 +2725,9 @@
       "schema": {
        "anyOf": [
         {
-         "type": "integer"
+         "type": "integer",
+         "maximum": 9223372036854775807,
+         "minimum": 1
         },
         {
          "type": "null"
@@ -7668,6 +7705,37 @@
     ],
     "title": "MfaConfirmIn"
    },
+   "MfaSetupIn": {
+    "properties": {
+     "code": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 8
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Code"
+     },
+     "password": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Password"
+     }
+    },
+    "type": "object",
+    "title": "MfaSetupIn",
+    "description": "Replacing an authenticator that is already active needs its current code or the account password."
+   },
    "ModuleToggle": {
     "properties": {
      "enabled": {
@@ -8549,6 +8617,29 @@
      "permissions"
     ],
     "title": "RoleIn"
+   },
+   "SessionOut": {
+    "properties": {
+     "access_token": {
+      "type": "string",
+      "title": "Access Token"
+     },
+     "token_type": {
+      "type": "string",
+      "title": "Token Type",
+      "default": "bearer"
+     },
+     "expires_in": {
+      "type": "integer",
+      "title": "Expires In"
+     }
+    },
+    "type": "object",
+    "required": [
+     "access_token",
+     "expires_in"
+    ],
+    "title": "SessionOut"
    },
    "SettingsIn": {
     "properties": {

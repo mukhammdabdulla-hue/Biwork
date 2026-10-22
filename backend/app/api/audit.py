@@ -42,7 +42,7 @@ def event_out(e: AuditEvent, names: dict) -> dict[str, Any]:
 @router.get("/events")
 def list_events(ctx: Ctx, db: DB, action: str | None = None, entity_type: str | None = None, entity_id: str | None = None,
                 actor_id: uuid.UUID | None = None, since: datetime | None = None, until: datetime | None = None,
-                before_id: int | None = None, limit: int = Query(100, le=500)) -> dict[str, Any]:
+                before_id: int | None = Query(None, ge=1, le=2**63 - 1), limit: int = Query(100, le=500)) -> dict[str, Any]:
     ctx.require("audit.read")
     stmt = select(AuditEvent).where(AuditEvent.company_id == ctx.company_id)
     if action:

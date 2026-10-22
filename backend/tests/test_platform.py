@@ -67,11 +67,15 @@ def test_mfa_enrolment_and_login(client, world):
 
 def test_password_change_revokes_sessions(client, world):
     headers = world.login(client, "operator")
+    old_refresh = client.cookies.get("biwork_refresh")
     r = client.post("/api/v1/auth/password", headers=headers, json={"current_password": PASSWORD, "new_password": "short"})
     assert r.status_code == 422 and r.json()["code"] == "weak_password"
     r = client.post("/api/v1/auth/password", headers=headers, json={"current_password": PASSWORD, "new_password": "New-Password-456"})
-    assert r.status_code == 204
-    assert client.post("/api/v1/auth/refresh", headers={"X-Requested-With": "biwork"}).status_code == 401
+    assert r.status_code == 200 and r.json()["access_token"]
+    assert client.cookies.get("biwork_refresh") != old_refresh  # this session continues with new tokens
+    client.cookies.clear()
+    r = client.post("/api/v1/auth/refresh", headers={"X-Requested-With": "biwork", "Cookie": f"biwork_refresh={old_refresh}"})
+    assert r.status_code == 401
 
 
 # --------------------------------------------------------------------------- API conventions

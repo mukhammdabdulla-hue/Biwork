@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
 from app.core.api import DB, Ctx, Idem, IfMatch, etag_for, paginate
+from app.core.errors import ValidationFailed
 from app.core.models import Product
 from app.modules.inventory.service import movements_for_ref
 from app.modules.production import service
@@ -247,8 +248,11 @@ def plan_vs_actual(ctx: Ctx, db: DB, date_from: date | None = None, date_to: dat
 def calendar(ctx: Ctx, db: DB, month: str = Query(pattern=r"^\d{4}-\d{2}$")) -> dict[str, Any]:
     """Orders overlapping the month and daily approved output, for the planning calendar."""
     ctx.require("production.read")
-    first = date.fromisoformat(month + "-01")
-    last = (first.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+    try:
+        first = date.fromisoformat(month + "-01")
+        last = (first.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+    except (ValueError, OverflowError) as exc:
+        raise ValidationFailed("month must be a calendar month (YYYY-MM)", extra={"field": "month"}) from exc
     orders = db.execute(_scope(select(ProductionOrder).where(
         ProductionOrder.company_id == ctx.company_id, ProductionOrder.status != "cancelled",
         func.coalesce(ProductionOrder.planned_start, ProductionOrder.planned_end) <= last,

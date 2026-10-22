@@ -134,30 +134,55 @@ def logout(session: Session, refresh_token: str | None) -> None:
         audit.record(session, "auth.logout", actor_type="user", actor_id=row.user_id)
 
 
-def change_password(session: Session, user: User, current: str, new: str) -> None:
+def revoke_sessions(session: Session, user: User) -> None:
+    """End every session: revoke all refresh tokens and reject access tokens issued until now."""
+    now = datetime.now(UTC)
+    user.sessions_revoked_at = now
+    for token in session.execute(select(RefreshToken).where(RefreshToken.user_id == user.id, RefreshToken.revoked_at.is_(None))).scalars():
+        token.revoked_at = now
+
+
+def change_password(session: Session, user: User, current: str, new: str, ip: str | None, user_agent: str | None) -> TokenPair:
+    """Change the password, end every session and start a fresh one for the caller."""
     if not verify_password(user.password_hash, current):
         raise ValidationFailed("Current password is incorrect", code="invalid_password")
+    if new == current:
+        raise ValidationFailed("The new password must differ from the current one", code="password_unchanged")
     problems = password_problems(new)
     if problems:
         raise ValidationFailed("Password must have " + ", ".join(problems), code="weak_password")
     user.password_hash = hash_password(new)
-    for token in session.execute(select(RefreshToken).where(RefreshToken.user_id == user.id, RefreshToken.revoked_at.is_(None))).scalars():
-        token.revoked_at = datetime.now(UTC)
-    audit.record(session, "auth.password_changed", actor_type="user", actor_id=user.id, entity_type="user", entity_id=user.id)
+    revoke_sessions(session, user)
+    audit.record(session, "auth.password_changed", actor_type="user", actor_id=user.id, entity_type="user", entity_id=user.id,
+                 summary="Password changed; other sessions signed out")
+    return issue_tokens(session, user, ip, user_agent)
 
 
-def mfa_begin(session: Session, user: User) -> str:
+def mfa_begin(session: Session, user: User, code: str | None = None, password: str | None = None) -> str:
+    """Start enrolling an authenticator. The new secret only replaces the current one once confirmed;
+    replacing an active authenticator needs its current code or the account password."""
+    if user.mfa_enabled:
+        if code:
+            if not pyotp.TOTP(decrypt_field(user.mfa_secret)).verify(code, valid_window=1):
+                raise ValidationFailed("Invalid authentication code", code="mfa_invalid")
+        elif password:
+            if not verify_password(user.password_hash, password):
+                raise ValidationFailed("Current password is incorrect", code="invalid_password")
+        else:
+            raise ValidationFailed("Enter the current authentication code or your password to replace the authenticator",
+                                   code="mfa_reauth_required")
     secret = pyotp.random_base32()
-    user.mfa_secret = encrypt_field(secret)
-    user.mfa_enabled = False
+    user.mfa_pending_secret = encrypt_field(secret)
     return pyotp.TOTP(secret).provisioning_uri(name=user.email, issuer_name="BIWORK")
 
 
 def mfa_confirm(session: Session, user: User, code: str) -> None:
-    if not user.mfa_secret or not pyotp.TOTP(decrypt_field(user.mfa_secret)).verify(code, valid_window=1):
+    if not user.mfa_pending_secret or not pyotp.TOTP(decrypt_field(user.mfa_pending_secret)).verify(code, valid_window=1):
         raise ValidationFailed("Invalid authentication code", code="mfa_invalid")
+    user.mfa_secret, user.mfa_pending_secret = user.mfa_pending_secret, None
     user.mfa_enabled = True
-    audit.record(session, "auth.mfa_enabled", actor_type="user", actor_id=user.id, entity_type="user", entity_id=user.id)
+    audit.record(session, "auth.mfa_enabled", actor_type="user", actor_id=user.id, entity_type="user", entity_id=user.id,
+                 summary="Authenticator app confirmed")
 
 
 # --------------------------------------------------------------------------- memberships & context
@@ -378,6 +403,13 @@ def add_member(session: Session, ctx: RequestContext, data: MemberIn) -> Members
     if escalation:
         raise PermissionDenied("You cannot assign a role with permissions you do not hold")
     user = session.execute(select(User).where(func.lower(User.email) == data.email.lower())).scalar_one_or_none()
+    if user is not None and not _may_attach(session, ctx, user):
+        # An account the actor cannot see (another tenant's) is answered like an unknown email, and
+        # never attached or described: adding it needs a platform administrator.
+        if not data.password:
+            raise ValidationFailed("An initial password is required for a new user", extra={"field": "password"})
+        raise Conflict("This email address cannot be used for a new user; ask a platform administrator to add the account",
+                       code="email_unavailable")
     if user is None:
         if not data.password:
             raise ValidationFailed("An initial password is required for a new user", extra={"field": "password"})
@@ -401,6 +433,20 @@ def add_member(session: Session, ctx: RequestContext, data: MemberIn) -> Members
     return membership
 
 
+def _may_attach(session: Session, ctx: RequestContext, user: User) -> bool:
+    """An existing account can be added by a platform administrator, or by someone who already
+    administers that person in some company (including this one)."""
+    actor = session.get(User, ctx.user_id) if ctx.user_id else None
+    if actor is None:
+        return False
+    if actor.is_platform_admin:
+        return True
+    administered = (select(Membership.company_id).join(RolePermission, RolePermission.role_id == Membership.role_id)
+                    .where(Membership.user_id == actor.id, Membership.is_active.is_(True), RolePermission.permission == "admin.users"))
+    return session.execute(select(Membership.id).where(Membership.user_id == user.id,
+                                                       Membership.company_id.in_(administered)).limit(1)).first() is not None
+
+
 def _check_departments(session: Session, company_id: uuid.UUID, ids: list[uuid.UUID]) -> None:
     if not ids:
         return
@@ -422,6 +468,8 @@ def update_member(session: Session, ctx: RequestContext, membership_id: uuid.UUI
         raise NotFound("Membership not found")
     if m.user_id == ctx.user_id and data.is_active is False:
         raise ValidationFailed("You cannot deactivate your own membership")
+    if {p.permission for p in m.role.permissions} - ctx.permissions:
+        raise PermissionDenied("You cannot change a member whose role has permissions you do not hold")
     before = {"role": m.role.code, "is_active": m.is_active, "departments": sorted(str(d.department_id) for d in m.departments)}
     if data.role:
         role = get_role(session, ctx.company_id, data.role)

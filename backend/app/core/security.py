@@ -51,7 +51,7 @@ def create_access_token(user_id: uuid.UUID, *, extra: dict[str, Any] | None = No
     now = datetime.now(UTC)
     claims = {
         "sub": str(user_id),
-        "iat": now,
+        "iat": now.timestamp(),  # sub-second, so a token issued right after a password change outlives it
         "exp": now + timedelta(seconds=ttl),
         "typ": "access",
         "jti": secrets.token_hex(8),
@@ -61,7 +61,7 @@ def create_access_token(user_id: uuid.UUID, *, extra: dict[str, Any] | None = No
 
 
 def decode_access_token(token: str) -> dict[str, Any]:
-    claims = jwt.decode(token, get_settings().jwt_signing_key, algorithms=[_JWT_ALG], options={"require": ["exp", "sub"]})
+    claims = jwt.decode(token, get_settings().jwt_signing_key, algorithms=[_JWT_ALG], options={"require": ["exp", "iat", "sub"]})
     if claims.get("typ") != "access":
         raise jwt.InvalidTokenError("wrong token type")
     return claims
