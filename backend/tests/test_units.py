@@ -218,6 +218,10 @@ def _params(code):
      {"qty_produced": "1200", "qty_accepted": "1150", "qty_defective": "50", "shift": "2", "production_date": "21.10.2026"}),
     ("On October 20, workshop 3 produced 250 pcs of Bracket X. 240 accepted, 10 defective.",
      {"qty_produced": "250", "qty_accepted": "240", "qty_defective": "10", "product": "Bracket X"}),
+    # A leading numeric date is not a quantity; Uzbek case suffixes ("3-sexda") still name the workshop.
+    ("13.02.2026 kuni 3-sexda 500 dona A mahsulot ishlab chiqarildi, 480 tasi qabul qilindi, 20 tasi brak. 2-smena.",
+     {"qty_produced": "500", "qty_accepted": "480", "qty_defective": "20", "production_date": "13.02.2026",
+      "department": "3-sex", "shift": "2", "product": "A mahsulot"}),
 ])
 def test_mock_extracts_production_reports_in_three_languages(text, expected):
     from app.ai.providers.demo import MockProvider

@@ -336,8 +336,9 @@ class AICall(UUIDPk, Tenant, Base):
     error: Mapped[str | None] = mapped_column(Text)
     provider_request_id: Mapped[str | None] = mapped_column(String(100))
     data_categories: Mapped[list[Any]] = mapped_column(default=list)  # what left the system: text|table_sample|image
-    request_redacted: Mapped[dict[str, Any] | None]
-    response: Mapped[dict[str, Any] | None]
+    # Stored only while the company's retention policy allows; None must be SQL NULL so purges are visible.
+    request_redacted: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True))
+    response: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True))
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
 

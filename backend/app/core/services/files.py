@@ -169,6 +169,14 @@ class S3Storage:
             aws_secret_access_key=s.s3_secret_key, region_name=s.s3_region,
         )
 
+    def ensure_bucket(self) -> None:
+        from botocore.exceptions import ClientError
+
+        try:
+            self.client.head_bucket(Bucket=self.bucket)
+        except ClientError:
+            self.client.create_bucket(Bucket=self.bucket)
+
     def put(self, key: str, data: bytes, content_type: str) -> None:
         self.client.put_object(Bucket=self.bucket, Key=key, Body=data, ContentType=content_type)
 

@@ -22,3 +22,7 @@ frontend/playwright-report/
 .DS_Store
 .idea/
 .vscode/
+
+# Local services and build caches
+dump.rdb
+*.tsbuildinfo

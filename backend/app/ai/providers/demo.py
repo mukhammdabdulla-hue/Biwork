@@ -193,12 +193,14 @@ class DemoProvider:
         return lines
 
     def _production_reports(self, text: str, rt: dict[str, Any]) -> list[dict[str, Any]]:
+        # Dates ("13.02.2026") look like quantities; blank them out (keeping offsets) before searching.
+        masked = DATE_SPAN.sub(lambda d: "#" * len(d.group(0)), text)
         pattern = re.compile(rf"({_QTY})(?!\s*(?:kuni|yil|г\.|года|year))\s*({_UNIT})?\s+(.{{1,80}}?)\s+(?:{PRODUCED})",
                              re.IGNORECASE | re.UNICODE)
-        matches = list(pattern.finditer(text))
+        matches = list(pattern.finditer(masked))
         if not matches:  # "Выпущено 1200 шт изделия Б-12" (verb first)
             pattern = re.compile(rf"(?:{PRODUCED})\s*[:—–-]?\s*({_QTY})\s*({_UNIT})?\s+([^,.;\n]{{1,80}})", re.IGNORECASE)
-            matches = list(pattern.finditer(text))
+            matches = list(pattern.finditer(masked))
         if not matches:
             return []
         records = []
@@ -208,20 +210,26 @@ class DemoProvider:
             end = matches[idx + 1].start() if idx + 1 < len(matches) else len(text)
             seg_start = text.rfind("\n", 0, start) + 1 if idx == 0 else matches[idx - 1].end()
             segment = text[seg_start:end]
-            product = re.sub(r"^(?:kuni|da|day|of|продукции|изделий)\s+", "", m.group(3).strip(), flags=re.IGNORECASE)
+            masked_segment = masked[seg_start:end]
+
+            def grp(n: int, mm: re.Match = m) -> str | None:  # group text from the original (unmasked) input
+                return text[mm.start(n):mm.end(n)] if mm.start(n) >= 0 else None
+
+            quote = text[m.start():m.end()]
+            product = re.sub(r"^(?:kuni|da|day|of|продукции|изделий)\s+", "", grp(3).strip(), flags=re.IGNORECASE)
             rec = {f["name"]: _fv(None) for f in rt["fields"]}
-            rec["qty_produced"] = _fv(m.group(1).strip(), 0.92, m.group(0))
-            if m.group(2):
-                rec["unit"] = _fv(m.group(2).strip("."), 0.9, m.group(0))
-            rec["product"] = _fv(product, 0.85, m.group(0))
+            rec["qty_produced"] = _fv(grp(1).strip(), 0.92, quote)
+            if grp(2):
+                rec["unit"] = _fv(grp(2).strip("."), 0.9, quote)
+            rec["product"] = _fv(product, 0.85, quote)
             acc = re.search(rf"({_QTY})\s*(?:{_UNIT})?\s*(?:\w+\s+){{0,3}}?(?:{ACCEPTED})|(?:{ACCEPTED})\s*[:—–-]?\s*({_QTY})",
-                            segment, re.IGNORECASE)
+                            masked_segment, re.IGNORECASE)
             if acc:
-                rec["qty_accepted"] = _fv((acc.group(1) or acc.group(2)).strip(), 0.9, acc.group(0))
+                rec["qty_accepted"] = _fv((acc.group(1) or acc.group(2)).strip(), 0.9, segment[acc.start():acc.end()])
             dfc = re.search(rf"({_QTY})\s*(?:{_UNIT})?\s*(?:\w+\s+){{0,3}}?(?:{DEFECTIVE})|(?:{DEFECTIVE})\w*\s*[:—–-]?\s*({_QTY})",
-                            segment, re.IGNORECASE)
+                            masked_segment, re.IGNORECASE)
             if dfc:
-                rec["qty_defective"] = _fv((dfc.group(1) or dfc.group(2)).strip(), 0.88, dfc.group(0))
+                rec["qty_defective"] = _fv((dfc.group(1) or dfc.group(2)).strip(), 0.88, segment[dfc.start():dfc.end()])
             local_dates = DATE_SPAN.findall(segment)
             date_source = local_dates or (dates_all if len(set(dates_all)) == 1 else [])
             if date_source:
@@ -231,7 +239,7 @@ class DemoProvider:
                     rec["production_date"]["alternatives"] = distinct
                     rec["production_date"]["confidence"] = 0.5
             dep = re.search(rf"(?:mas['ʻ’]?ul\s+)?(?:{WORKSHOP})\s*(?:№\s*)?[—–:\-]\s*([^\n.;,]+)", text, re.IGNORECASE) or \
-                re.search(rf"(\d+\s*-?\s*(?:{WORKSHOP}))\b|((?:{WORKSHOP})\s*№?\s*\d+)", text, re.IGNORECASE)
+                re.search(rf"(\d+\s*-?\s*(?:{WORKSHOP}))(?:da|dan|ning|ga|i)?\b|((?:{WORKSHOP})\s*№?\s*\d+)", text, re.IGNORECASE)
             if dep:
                 value = next(g for g in dep.groups() if g)
                 rec["department"] = _fv(value.strip(), 0.88, dep.group(0))
