@@ -299,7 +299,7 @@ DEFAULT_COMPANY_SETTINGS: dict[str, Any] = {
     "date_order": "DMY",
     "ai_policy": {
         "external_ai_allowed": True,
-        "allowed_providers": ["anthropic", "mock"],
+        "allowed_providers": ["openai", "gemini", "anthropic", "demo"],
         "send_images_to_ai": False,
         "redaction_rules": ["phone", "email", "passport", "card", "bank_account"],
         "minimize_context": True,

@@ -17,6 +17,7 @@ from sqlalchemy import (
     Index,
     Integer,
     LargeBinary,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
@@ -264,6 +265,54 @@ class ProductAlias(UUIDPk, Tenant, Base):
     product_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("core.products.id", ondelete="CASCADE"), index=True)
     alias: Mapped[str] = mapped_column(String(250))
     normalized_alias: Mapped[str] = mapped_column(String(250))
+
+
+# --------------------------------------------------------------------------- personnel and business documents
+
+
+class Employee(UUIDPk, Timestamps, Tenant, Authored, Versioned, FromAgent, Base):
+    """Personnel register (not login accounts: users are in core.users)."""
+
+    __tablename__ = "employees"
+    __table_args__ = (
+        Index("uq_employees_company_number", "company_id", "personnel_number", unique=True,
+              postgresql_where=text("personnel_number IS NOT NULL")),
+        Index("ix_employees_company_name", "company_id", "normalized_name"),
+        CheckConstraint("status IN ('active', 'on_leave', 'dismissed')", name="employee_status"),
+        CORE,
+    )
+
+    personnel_number: Mapped[str | None] = mapped_column(String(40))
+    full_name: Mapped[str] = mapped_column(String(250))
+    normalized_name: Mapped[str] = mapped_column(String(250))
+    position: Mapped[str | None] = mapped_column(String(200))
+    department_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("core.departments.id"))
+    hire_date: Mapped[date | None] = mapped_column(Date)
+    phone: Mapped[str | None] = mapped_column(String(50))
+    status: Mapped[str] = mapped_column(String(20), default="active")
+
+
+class BusinessDocument(UUIDPk, Timestamps, Tenant, Authored, Versioned, FromAgent, Base):
+    """Register of incoming business documents (invoices, waybills, contracts, acts...)."""
+
+    __tablename__ = "business_documents"
+    __table_args__ = (
+        UniqueConstraint("company_id", "doc_type", "number", "counterparty_key"),
+        CheckConstraint("total_amount IS NULL OR total_amount >= 0", name="document_total_non_negative"),
+        CORE,
+    )
+
+    doc_type: Mapped[str] = mapped_column(String(20))  # invoice|waybill|contract|act|specification|other
+    number: Mapped[str] = mapped_column(String(60))
+    doc_date: Mapped[date] = mapped_column(Date)
+    counterparty: Mapped[str | None] = mapped_column(String(250))
+    counterparty_key: Mapped[str] = mapped_column(String(250), default="")  # normalized, for the uniqueness constraint
+    supplier_id: Mapped[uuid.UUID | None]  # supply.suppliers when the counterparty is a known supplier (no FK: module data)
+    total_amount: Mapped[Decimal | None] = mapped_column(Numeric(18, 2))
+    currency: Mapped[str | None] = mapped_column(String(3))
+    description: Mapped[str | None] = mapped_column(Text)
+    lines: Mapped[list[Any]] = mapped_column(default=list)
+    source_file_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("core.files.id", ondelete="SET NULL"))
 
 
 # --------------------------------------------------------------------------- files

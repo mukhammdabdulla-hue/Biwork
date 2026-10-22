@@ -12,11 +12,14 @@ from app.ai.providers.base import PermanentAIError
 class PolicyBlocked(PermanentAIError):
     """The company's AI policy does not allow this provider / this data to be sent."""
 
+    def __init__(self, message: str):
+        super().__init__(message, "policy")
+
 
 @dataclass(frozen=True)
 class AIPolicy:
     external_ai_allowed: bool = True
-    allowed_providers: tuple[str, ...] = ("anthropic", "mock")
+    allowed_providers: tuple[str, ...] = ("openai", "gemini", "anthropic", "demo")
     send_images_to_ai: bool = False
     redaction_rules: tuple[str, ...] = ("phone", "email", "passport", "card", "bank_account", "personal_id")
     minimize_context: bool = True
@@ -28,7 +31,8 @@ class AIPolicy:
         p = (settings or {}).get("ai_policy") or {}
         return cls(
             external_ai_allowed=bool(p.get("external_ai_allowed", True)),
-            allowed_providers=tuple(p.get("allowed_providers") or ("anthropic", "mock")),
+            allowed_providers=tuple(dict.fromkeys(
+                "demo" if name == "mock" else name for name in (p.get("allowed_providers") or cls.allowed_providers))),
             send_images_to_ai=bool(p.get("send_images_to_ai", False)),
             redaction_rules=tuple(p.get("redaction_rules") if p.get("redaction_rules") is not None else cls.redaction_rules),
             minimize_context=bool(p.get("minimize_context", True)),
@@ -36,6 +40,8 @@ class AIPolicy:
         )
 
     def check(self, provider_name: str, external: bool) -> None:
+        if provider_name == "mock":
+            provider_name = "demo"
         if provider_name not in self.allowed_providers:
             raise PolicyBlocked(f"AI provider '{provider_name}' is not allowed by this company's AI policy")
         if external and not self.external_ai_allowed:
@@ -47,7 +53,11 @@ class AIPolicy:
 
 REDACTION_PATTERNS: dict[str, re.Pattern[str]] = {
     "email": re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b"),
-    "phone": re.compile(r"(?<!\d)(?:\+?998[\s\-]?)?\(?\d{2}\)?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}(?!\d)|\+\d[\d\s\-()]{9,}\d"),
+    # A phone needs a country code or separators: a bare 9-digit number is far more often a taxpayer
+    # number (STIR / ИНН), an account or a document number, which extraction must see unchanged.
+    "phone": re.compile(r"(?<!\d)\+?998[\s\-]?\(?\d{2}\)?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}(?!\d)"
+                        r"|(?<![\d\w])\(?\d{2}\)?[\s\-]\d{3}[\s\-]?\d{2}[\s\-]?\d{2}(?!\d)"
+                        r"|\+\d[\d\s\-()]{9,}\d"),
     "passport": re.compile(r"\b[A-Z]{2}\s?\d{7}\b"),
     "card": re.compile(r"\b\d{4}[ -]?\d{4}[ -]?\d{4}[ -]?\d{4}\b"),
     "bank_account": re.compile(r"\b\d{20}\b"),

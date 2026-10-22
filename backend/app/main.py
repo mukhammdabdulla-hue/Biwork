@@ -12,6 +12,7 @@ from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.agent.api import router as agent_router
+from app.ai.router import describe as describe_routing
 from app.analytics.router import router as analytics_router
 from app.api import admin, audit, events
 from app.config import get_settings
@@ -51,7 +52,11 @@ def create_app() -> FastAPI:
         if manifest.available and manifest.router_factory is not None:
             api.include_router(manifest.router_factory())
     app.include_router(api)
-    logging.getLogger("biwork").info("BIWORK API ready (env=%s, ai=%s)", settings.app_env, settings.ai_provider)
+    routing = describe_routing()
+    logging.getLogger("biwork").info("BIWORK API ready (env=%s, ai_mode=%s, providers=%s)", settings.app_env, routing["mode"],
+                                     ",".join(routing["provider_order"]) or "none")
+    if routing["mode"] == "demo":
+        logging.getLogger("biwork").warning("AI demo mode: no provider credentials configured; results are simulated and labelled")
     return app
 
 

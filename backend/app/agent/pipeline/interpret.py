@@ -24,7 +24,7 @@ from app.agent.normalization import parse_date
 from app.agent.pipeline.context import StageError
 from app.agent.pipeline.ingest import enabled_modules
 from app.agent.pipeline.records import FieldInput, column_letter, create_record, locate_quote, ocr_confidence_for
-from app.ai import extraction
+from app.ai import extraction, router
 from app.ai.policy import AIPolicy, PolicyBlocked
 from app.ai.providers.base import ImageBlock, PdfBlock
 from app.core.locale_data import DATE_SPAN
@@ -39,7 +39,7 @@ RULE_EXACT, RULE_PARTIAL, TEMPLATE, USER = 0.95, 0.7, 0.97, 1.0
 # Columns mapped by AI are proposals until a person confirms the mapping: their cells stay below the
 # confidence threshold, so the rows need approval rather than being 'ready'.
 AI_MAPPING_CAP = 0.7
-MIN_CLASSIFY_CONFIDENCE = 0.5
+MIN_CLASSIFY_CONFIDENCE = extraction.MIN_CLASSIFY_CONFIDENCE
 
 
 # --------------------------------------------------------------------------- column mapping
@@ -227,8 +227,10 @@ def _envelope_to_inputs(env: dict[str, Any], fields: tuple[FieldSpec, ...], item
     return out
 
 
-def _vision_blocks(session: Session, item: IngestionItem, policy: AIPolicy, provider) -> list:
-    if not (policy.send_images_to_ai and provider.supports_vision and item.file_id):
+def _vision_blocks(session: Session, item: IngestionItem, policy: AIPolicy, supports_vision: bool) -> list:
+    """Images / scanned PDFs go to a vision-capable model only when the company's policy allows it;
+    otherwise the OCR text alone is used."""
+    if not (policy.send_images_to_ai and supports_vision and item.file_id):
         return []
     if item.detected_format == "image":
         stored = session.get(StoredFile, item.file_id)
@@ -243,9 +245,8 @@ def interpret_document(session: Session, job: IngestionJob, item: IngestionItem,
                        ai_ctx: extraction.AIContext, seq_start: int, pages: dict[int, dict[str, Any]],
                        warnings: list[str]) -> tuple[int, list[str]]:
     text = item.meta.get("full_text") or item.raw_text or ""
-    provider = ai_ctx.provider or extraction.get_provider()
-    ai_ctx.provider = provider
-    blocks = _vision_blocks(session, item, ai_ctx.policy, provider)
+    supports_vision = ai_ctx.provider.supports_vision if ai_ctx.provider is not None else not router.demo_mode()
+    blocks = _vision_blocks(session, item, ai_ctx.policy, supports_vision)
     if not text.strip() and not blocks:
         raise StageError("No readable text was found in this input" + (" (OCR found nothing)" if item.ocr_used else ""))
     if len(candidates) == 1:
@@ -257,16 +258,26 @@ def interpret_document(session: Session, job: IngestionJob, item: IngestionItem,
         types = [record_type(r["record_type"]) for r in result.record_types if r["confidence"] >= MIN_CLASSIFY_CONFIDENCE][:3]
         if not types:
             raise StageError("Could not identify a supported record type in this content. Retry with a record type selected.")
-    by = "mock" if provider.is_mock else "ai"
     count = 0
     for rt in types:
-        for env in extraction.extract(ai_ctx, rt, text, blocks):
+        result = extraction.extract(ai_ctx, rt, text, blocks)
+        by = "demo" if result.is_mock else "ai"
+        warnings.extend(result.notes)
+        if result.escalated and result.escalation_reason:
+            warnings.append(f"{rt.label}: escalated to {result.candidate.model} ({result.escalation_reason})")
+        meta = {"provider": result.candidate.provider, "model": result.candidate.model, "tier": result.candidate.tier,
+                "routing_reason": result.candidate.reason, "fallback_from": result.candidate.fallback_from,
+                "is_demo": result.is_mock, "escalated": result.escalated, "escalation_reason": result.escalation_reason,
+                "concerns": result.concerns, "mean_confidence": result.mean_confidence}
+        item.meta = {**item.meta, "ai": meta}
+        for env in result.records:
             fields = _envelope_to_inputs(env, rt.fields, item, pages, by)
             lines = [_envelope_to_inputs(line, rt.line_fields, item, pages, by) for line in env.get("lines") or []]
             if not any(f.raw not in (None, "") for f in fields.values()) and not lines:
                 continue
-            create_record(session, job, item, rt, seq_start + count, fields, lines,
-                          {"page": next((r.get("page") for f in fields.values() for r in f.refs if r.get("page")), None)})
+            record = create_record(session, job, item, rt, seq_start + count, fields, lines,
+                                   {"page": next((r.get("page") for f in fields.values() for r in f.refs if r.get("page")), None)})
+            record.ai_meta = meta
             count += 1
     if count == 0:
         raise StageError(f"No {', '.join(rt.label for rt in types)} data could be extracted from this content")
@@ -352,8 +363,11 @@ def interpret_item(session: Session, item: IngestionItem, provider=None) -> dict
         pages = {s.page or 1: s.content for s in segments if s.kind == "text"}
         created, detected = interpret_document(session, job, item, candidates, ai_ctx, seq, pages, warnings)
 
-    item.warnings = warnings
+    item.warnings = list(dict.fromkeys(warnings))
     item.detected_record_type = ",".join(dict.fromkeys(detected)) or None
     item.status = "interpreted"
+    used = item.meta.get("ai") or {}
+    if used.get("model"):  # what actually served the item (after routing, fallback and escalation)
+        job.ai_provider, job.ai_model = used["provider"], used["model"][:60]
     return {"records": created, "record_types": detected, "ai_calls": ai_ctx.calls}
 

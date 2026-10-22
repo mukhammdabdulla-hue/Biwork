@@ -68,6 +68,16 @@ def create_supplier(session: Session, ctx: RequestContext, data: SupplierIn, sou
     return supplier
 
 
+def write_supplier_from_agent(session: Session, ctx: RequestContext, data: BaseModel, source_record_id: uuid.UUID | None) -> WriteResult:
+    """Agent commit path. A supplier without a code gets the next SUP number."""
+    p = data.model_dump()
+    supplier = create_supplier(session, ctx, SupplierIn(
+        code=p.get("code") or next_number(session, ctx.company_id, "SUP"), name=p["name"], tin=p.get("tin"),
+        contact_person=p.get("contact_person"), phone=p.get("phone"), email=p.get("email"), address=p.get("address"),
+    ), source_record_id=source_record_id)
+    return WriteResult("supply.suppliers", supplier.id, supplier.code, f"{supplier.code} — {supplier.name}")
+
+
 # --------------------------------------------------------------------------- purchase requests
 
 

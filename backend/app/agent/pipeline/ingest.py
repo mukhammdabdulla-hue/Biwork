@@ -115,7 +115,7 @@ def create_job(
     info = provider_info()
     warnings: list[str] = []
     if info["is_mock"]:
-        warnings.append("Mock AI adapter: extraction uses deterministic rules, not real AI analysis")
+        warnings.append(info["demo_notice"])
     if files and not settings.clamav_host:
         warnings.append("Malware scanning is not configured (CLAMAV_HOST unset); files were not scanned")
     if previous is not None:
@@ -128,7 +128,7 @@ def create_job(
         status="queued", import_policy=import_policy, target_record_type=target_record_type,
         idempotency_key=idempotency_key, content_fingerprint=fingerprint, force_reprocess=bool(force and previous),
         duplicate_of_job_id=previous.id if previous else None, pipeline_version=pipeline_version(),
-        ai_provider=info["provider"], ai_model=info["model_extract"], ai_is_mock=info["is_mock"],
+        ai_provider=info["provider"], ai_model=(info["model_extract"] or "")[:60] or None, ai_is_mock=info["is_mock"],
         prompt_version=info["prompt_version"], warnings=warnings, stats={},
     )
     session.add(job)

@@ -16,6 +16,8 @@ from sqlalchemy import func, select
 
 from app.agent.models import AICall, IngestionJob, StageRun
 from app.agent.pipeline.ingest import enabled_modules
+from app.ai.router import demo_mode
+from app.ai.router import health_report as provider_health
 from app.config import get_settings
 from app.core import audit
 from app.core.api import DB, Ctx, CurrentUser
@@ -278,10 +280,11 @@ def system_queues(ctx: Ctx, db: DB) -> dict[str, Any]:
         "running_stages": [{"job_id": str(r.job_id), "stage": r.stage, "started_at": r.started_at, "attempt": r.attempt} for r in running],
         "recent_failures": [{"job_id": str(r.job_id), "stage": r.stage, "error": r.error, "at": r.started_at, "attempt": r.attempt}
                             for r in failed_runs],
+        "ai_providers": provider_health(),
         "ai_usage_this_month": [{"provider": p, "model": m, "calls": c, "input_tokens": int(i), "output_tokens": int(o),
                                  "cost_usd": float(cost), "errors": e} for p, m, c, i, o, cost, e in ai],
         "queue_backlog": backlog,
-        "config": {"ai_provider": s.ai_provider, "ocr_enabled": s.ocr_enabled, "malware_scanning": bool(s.clamav_host),
+        "config": {"ai_provider": s.ai_provider, "ai_mode": "demo" if demo_mode() else "live", "ocr_enabled": s.ocr_enabled, "malware_scanning": bool(s.clamav_host),
                    "storage": s.storage_backend},
     }
 

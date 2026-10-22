@@ -43,7 +43,7 @@ def test_scenario_a_text_ingestion(client, world, owner_engine):
     manager = world.login(client, "manager")
     job = submit_text(client, operator, UZ_TEXT)
     assert job["status"] == "awaiting_review"
-    assert job["ai_is_mock"] is True and any("Mock AI" in w for w in job["warnings"])
+    assert job["ai_is_mock"] is True and any("Demo mode" in w for w in job["warnings"])
 
     recs = records(client, operator, job["id"])
     assert recs["total"] == 1
@@ -355,7 +355,7 @@ def test_scenario_e_authorization(client, world, owner_engine):
 
 
 def test_scenario_f_processing_failure_and_retry(client, world, monkeypatch, owner_engine):
-    from app.ai.providers.mock import MockProvider
+    from app.ai.providers.demo import MockProvider
 
     manager = world.login(client, "manager")
     original = MockProvider.generate
@@ -469,7 +469,7 @@ def test_scenario_g_auditability(client, world, owner_engine):
     decisions = [(a["decision"], a["by"]) for a in agent["approvals"]]
     assert ("correct", "Operator") in decisions and ("approve", "Manager") in decisions
     assert agent["processing"]["pipeline_version"] and "extract@v1" in agent["processing"]["prompt_version"]
-    assert agent["processing"]["ai_provider"] == "mock" and agent["processing"]["ai_is_mock"] is True
+    assert agent["processing"]["ai_provider"] == "demo" and agent["processing"]["ai_is_mock"] is True
     assert {c["task"] for c in agent["processing"]["ai_calls"]} == {"classify", "extract"}
     assert agent["database_write"]["target_table"] == "production.production_reports"
     created = next(e for e in trace["audit_events"] if e["action"] == "production_report.created")

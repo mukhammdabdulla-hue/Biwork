@@ -196,6 +196,17 @@ ENUM_SYNONYMS: dict[str, tuple[str, ...]] = {
     "consumable": ("sarflanadigan", "расходный материал", "consumable"),
     "packaging": ("qadoq", "тара", "packaging"),
     "service": ("xizmat", "услуга", "service"),
+    # business documents
+    "invoice": ("hisob-faktura", "hisob faktura", "schet-faktura", "счёт-фактура", "счет-фактура", "счёт", "счет", "invoice",
+                "tax invoice", "faktura"),
+    "waybill": ("nakladnoy", "nakladnaya", "yuk xati", "накладная", "товарная накладная", "ттн", "waybill", "delivery note"),
+    "contract": ("shartnoma", "договор", "контракт", "contract", "agreement"),
+    "act": ("dalolatnoma", "akt", "акт", "акт выполненных работ", "act", "acceptance act"),
+    "specification": ("spetsifikatsiya", "спецификация", "specification", "spec"),
+    # employees
+    "active": ("faol", "ishlamoqda", "работает", "активный", "active", "employed"),
+    "on_leave": ("ta'tilda", "tatilda", "в отпуске", "отпуск", "on leave", "leave"),
+    "dismissed": ("bo'shatilgan", "boshatilgan", "уволен", "уволена", "dismissed", "terminated"),
 }
 
 

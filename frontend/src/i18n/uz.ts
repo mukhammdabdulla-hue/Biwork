@@ -563,7 +563,7 @@ export const uz: Partial<Record<MessageKey, string>> = {
   "settings.ai.retain": "AI soʻrov va javoblarini saqlash (kun)",
   "settings.ai.retainHint": "0 qiymati faqat meta-ma’lumotlarni (model, tokenlar, narx) saqlaydi — mazmunni emas.",
   "settings.ai.provider": "Faol provayder",
-  "settings.ai.mockWarning": "Sinov (mock) adapteri faol: natijalar AI tahlili emas, oldindan belgilangan qoidalar asosida olinadi. Haqiqiy ma’lumot ajratib olish uchun AI_PROVIDER=anthropic ni API kaliti bilan sozlang.",
+  "settings.ai.mockWarning": "Sinov (mock) adapteri faol: natijalar AI tahlili emas, oldindan belgilangan qoidalar asosida olinadi. Haqiqiy ma’lumot ajratib olish uchun serverda OpenAI, Gemini yoki Anthropic API kalitini sozlang.",
   "settings.redact.phone": "Telefon raqamlari",
   "settings.redact.email": "Elektron pochta manzillari",
   "settings.redact.passport": "Pasport raqamlari",

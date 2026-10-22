@@ -9,6 +9,7 @@ import subprocess
 from functools import lru_cache
 
 from app.ai.prompts import pipeline_prompt_version
+from app.ai.router import describe as describe_routing
 from app.config import get_settings
 
 CODE_VERSION = "0.1.0"
@@ -29,8 +30,10 @@ def git_sha() -> str:
 @lru_cache
 def pipeline_version() -> str:
     s = get_settings()
+    routing = describe_routing()
     config = {
-        "ai_provider": s.ai_provider, "model_extract": s.ai_model_extract, "model_classify": s.ai_model_classify,
+        "ai_provider": s.ai_provider, "provider_order": routing["provider_order"], "models": routing["models"],
+        "routing": routing["tasks"], "routing_enabled": s.ai_routing_enabled, "escalation": s.ai_escalation_confidence,
         "effort": s.ai_effort, "threshold": s.agent_confidence_threshold, "ocr": s.ocr_langs,
         "prompts": pipeline_prompt_version(),
     }

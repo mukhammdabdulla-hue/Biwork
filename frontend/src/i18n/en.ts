@@ -561,7 +561,7 @@ export const en = {
   "settings.ai.retain": "Keep AI request and response payloads (days)",
   "settings.ai.retainHint": "0 keeps only metadata (model, tokens, cost) — no content.",
   "settings.ai.provider": "Active provider",
-  "settings.ai.mockWarning": "The mock adapter is active: results come from deterministic rules, not AI. Configure AI_PROVIDER=anthropic with an API key for real extraction.",
+  "settings.ai.mockWarning": "The mock adapter is active: results come from deterministic rules, not AI. Configure an OpenAI, Gemini or Anthropic API key on the server for real extraction.",
   "settings.redact.phone": "Phone numbers",
   "settings.redact.email": "Email addresses",
   "settings.redact.passport": "Passport numbers",

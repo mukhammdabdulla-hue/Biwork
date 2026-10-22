@@ -634,19 +634,29 @@ arbitrarily.
 
 ### 7.1 Responsibilities and separation
 
+> The multi-provider engine (OpenAI primary, Gemini, Anthropic, labelled demo mode), task-based
+> routing, fallbacks, usage monitoring and evaluation are specified in detail in
+> [ai-engine.md](ai-engine.md); this section keeps the architectural view.
+
 ```
 app/ai/
 ├── providers/
-│   ├── base.py         # LLMProvider protocol
-│   ├── anthropic.py    # default production adapter
-│   ├── openai_compat.py# optional (self-hosted / other vendors)
-│   └── mock.py         # deterministic, clearly labelled development adapter
-├── ocr/                # OCRProvider protocol, tesseract adapter, optional cloud OCR adapter
+│   ├── base.py         # LLMProvider protocol, error kinds, untrusted-data wrapping
+│   ├── openai.py       # primary provider (Responses API, strict structured output)
+│   ├── gemini.py       # alternative provider (google-genai, JSON-schema output)
+│   ├── anthropic.py    # optional provider (messages.parse)
+│   └── demo.py         # deterministic, clearly labelled demo mode (no credentials)
+├── router.py           # task → tier → provider/model candidates; fallback order
+├── routing.default.json# routing rules (tiers, escalation), overridable with AI_ROUTING_FILE
+├── health.py           # per-provider circuit breaker
+├── cache.py            # company-scoped cache for classification / column mapping
+├── ocr/                # OCRProvider protocol, tesseract adapter
 ├── prompts/            # versioned prompt templates (files, not inline strings)
-├── extraction.py       # classify() and extract() use cases
+├── extraction.py       # classify(), extract() (with escalation), map_columns(); retries, fallback, usage rows
 ├── policy.py           # data-handling policy enforcement & redaction
-├── budget.py           # rate limits, cost tracking, per-company quotas
-└── evals/              # golden datasets and scoring
+└── budget.py           # rate limits, price table, cost estimation
+app/agent/usage.py      # usage monitoring report (cost per document / per validated record)
+app/agent/evaluation.py # provider/model evaluation on eval/dataset (python -m app.cli ai-eval)
 ```
 
 The concerns the spec lists are kept in separate code units:
@@ -688,13 +698,13 @@ class LLMProvider(Protocol):
 - **Extraction envelope:** the model returns, per field, `value`, `confidence`
   (0–1), `source_quote`, and `not_found: bool`. The envelope is generated from the record
   type schema so each module only defines its business fields.
-- **Model selection:** configured per task (classification can use a smaller, cheaper model;
-  complex document extraction a larger one). Defaults live in config, e.g.
-  `AI_PROVIDER=anthropic`, `AI_MODEL_EXTRACT=claude-opus-5-5`,
-  `AI_MODEL_CLASSIFY=claude-haiku-5-5`. Business logic never names a model.
-- **Mock adapter:** returns deterministic, rule-based results for known fixtures. Every job
-  processed with it is flagged `ai_provider=mock`, and the UI shows a persistent
-  "Mock AI — not real analysis" banner on the job and its records.
+- **Model selection:** a configurable router picks a tier per task (economy for classification
+  and column mapping, default for routine extraction, complex for escalation, vision for images)
+  and resolves it to `<PROVIDER>_MODEL_<TIER>` settings, in provider order with fallback
+  (ai-engine.md §3). Business logic never names a model or a vendor.
+- **Demo mode:** with no credentials, a deterministic rule-based provider stands in. Every job
+  processed with it is flagged (`ai_is_mock`, `ai_mode="demo"`) with a "Demo mode — not real AI
+  analysis" warning, and its records are never auto-approved.
 
 ### 7.3 Reliability, rate limits, and cost
 

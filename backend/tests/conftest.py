@@ -21,7 +21,8 @@ os.environ.update({
     "DATABASE_URL": os.environ.get("TEST_DATABASE_URL", f"postgresql+psycopg://biwork_app:biwork_app@{DB_HOST}:5432/{TEST_DB}"),
     "DATABASE_MIGRATION_URL": os.environ.get("TEST_DATABASE_MIGRATION_URL", f"postgresql+psycopg://biwork:biwork@{DB_HOST}:5432/{TEST_DB}"),
     "CELERY_ALWAYS_EAGER": "true",
-    "AI_PROVIDER": "mock",
+    "AI_PROVIDER": "mock",  # alias of demo; tests that exercise real adapters switch with the ai_config fixture
+    "AI_RETRY_BASE_DELAY_S": "0",
     "REDIS_URL": "",
     "STORAGE_DIR": tempfile.mkdtemp(prefix="biwork-test-storage-"),
     "AUTH_RATE_LIMIT_PER_MINUTE": "10000",
@@ -79,6 +80,48 @@ def client() -> TestClient:
     from app.main import app
 
     return TestClient(app)
+
+
+@pytest.fixture
+def ai_config(monkeypatch):
+    """Reconfigure the AI layer for one test: `ai_config(providers={"openai": fake}, OPENAI_API_KEY="k", ...)`.
+    Environment variables are applied, settings/router/health/cache are reset, and injected provider
+    instances (real adapter classes on a fake HTTP transport) replace the SDK-backed ones."""
+    from app.agent import versioning
+    from app.ai import cache, health, router
+
+    def reset() -> None:
+        get_settings.cache_clear()
+        router.reset()
+        health.reset()
+        cache.clear()
+        versioning.pipeline_version.cache_clear()
+
+    def configure(providers: dict[str, Any] | None = None, **env: Any) -> None:
+        for key, value in env.items():
+            monkeypatch.setenv(key.upper(), str(value))
+        reset()
+        for name, provider in (providers or {}).items():
+            router._instances[name] = provider
+
+    yield configure
+    monkeypatch.undo()
+    reset()
+
+
+def rule_based_live_provider(name: str = "openai", model: str = "test-model-default"):
+    """A provider that answers like the demo rules but presents itself as a real, external one —
+    for pipeline tests of live-mode behaviour (routing, auto-approval, policy) without network."""
+    from app.ai.providers.demo import DemoProvider
+
+    class RuleBasedLive(DemoProvider):
+        is_mock = False
+        external = True
+        supports_vision = True
+
+    provider = RuleBasedLive()
+    provider.name, provider.model = name, model
+    return provider
 
 
 # --------------------------------------------------------------------------- world

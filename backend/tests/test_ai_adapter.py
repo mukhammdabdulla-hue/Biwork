@@ -92,10 +92,8 @@ def test_fallback_can_be_disabled(monkeypatch):
     assert "fallbacks" not in json.loads(seen[0].content) and "anthropic-beta" not in seen[0].headers
 
 
-def test_end_to_end_extraction_with_claude_adapter(client, world, monkeypatch):
+def test_end_to_end_extraction_with_claude_adapter(client, world, ai_config):
     """The whole pipeline with the real adapter class (fake transport): AI calls are logged with cost."""
-    from app.ai import extraction
-
     def handler(request: httpx2.Request) -> httpx2.Response:
         body = json.loads(request.content)
         if "Allowed record types" in body["messages"][0]["content"][-1]["text"]:
@@ -110,7 +108,7 @@ def test_end_to_end_extraction_with_claude_adapter(client, world, monkeypatch):
         return httpx2.Response(200, json=_message(json.dumps({"records": [rec]})))
 
     provider, seen = _provider(handler)
-    monkeypatch.setattr(extraction, "get_provider", lambda: provider)
+    ai_config(providers={"anthropic": provider}, AI_PROVIDER="anthropic", ANTHROPIC_API_KEY="test-key")
     headers = world.login(client, "manager")
     r = client.post("/api/v1/agent/jobs", headers=headers, data={"text": "21-oktabr kuni 500 dona A mahsulot ... 1-sex"})
     job = client.get(f"/api/v1/agent/jobs/{r.json()['id']}", headers=headers).json()

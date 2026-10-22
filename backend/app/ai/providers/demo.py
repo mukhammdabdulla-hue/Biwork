@@ -1,9 +1,11 @@
-"""Mock AI adapter — deterministic, rule-based, for development and tests (docs/architecture.md §7.2).
+"""Demo mode — deterministic, rule-based stand-in for an AI provider (docs/ai-engine.md §Demo mode).
 
-It implements the same interface as real providers so the whole pipeline can be exercised without
-credentials, but it is NOT AI: it recognizes common phrasings (labelled fields, item tables, and
-narrative production reports in Uzbek/Russian/English) with regular expressions. Every job
-processed with it is flagged `ai_is_mock` and the UI shows a "Mock AI — not real analysis" banner.
+Used only when no AI provider credentials are configured (or AI_PROVIDER=demo), and never as a
+fallback for a failing real provider. It implements the same interface as real providers so the
+whole pipeline can be exercised without credentials, but it is NOT AI: it recognizes common
+phrasings (labelled fields, item tables, and narrative production reports in Uzbek/Russian/English)
+with regular expressions. Every job processed with it is flagged `ai_is_mock` / `ai_mode="demo"`,
+carries a "Demo mode" warning, and is never auto-approved.
 """
 
 from __future__ import annotations
@@ -42,6 +44,11 @@ _DOC_KEYWORDS = {
     "stock_movement": ("kirim", "chiqim", "приход", "расход", "omborga", "ombordan", "склад", "warehouse", "receipt", "issued"),
     "task": ("vazifa", "topshiriq", "задача", "поручение", "task", "please", "iltimos", "прошу", "kerak", "необходимо"),
     "product": ("yangi mahsulot", "new product", "новый товар", "артикул", "artikul", "номенклатура"),
+    "employee": ("xodim", "ishchi", "сотрудник", "работник", "employee", "табельный", "tabel raqami", "lavozim", "должность",
+                 "ishga qabul", "приём на работу", "hired"),
+    "supplier": ("yetkazib beruvchi", "поставщик", "supplier", "vendor", "inn", "инн", "stir", "контрагент", "kontragent"),
+    "business_document": ("hisob-faktura", "счёт-фактура", "счет-фактура", "invoice", "nakladnoy", "накладная", "waybill",
+                          "shartnoma", "договор", "contract", "dalolatnoma", "акт", "итого", "jami", "total"),
 }
 
 
@@ -95,10 +102,12 @@ def _match_header(header: str, fields: list[dict[str, Any]]) -> str | None:
     return None
 
 
-class MockProvider:
-    name = "mock"
+class DemoProvider:
+    name = "demo"
+    model = "demo-rules-v1"
     is_mock = True
     supports_vision = False
+    supports_pdf = False
     external = False
 
     def generate(self, *, task: PromptTask, content: list[ContentBlock], output_schema: type[BaseModel],
@@ -114,7 +123,7 @@ class MockProvider:
         else:  # pragma: no cover
             raise ValueError(task.prompt_id)
         parsed = output_schema.model_validate(data)
-        return LLMResult(parsed=parsed, model="mock-rules-v1", input_tokens=len(text) // 4, output_tokens=0,
+        return LLMResult(parsed=parsed, model=self.model, input_tokens=len(text) // 4, output_tokens=0,
                          latency_ms=int((time.monotonic() - started) * 1000), stop_reason="end_turn")
 
     # ------------------------------------------------------------------ classify
@@ -186,7 +195,8 @@ class MockProvider:
     def _production_reports(self, text: str, rt: dict[str, Any]) -> list[dict[str, Any]]:
         # Dates ("13.02.2026") look like quantities; blank them out (keeping offsets) before searching.
         masked = DATE_SPAN.sub(lambda d: "#" * len(d.group(0)), text)
-        pattern = re.compile(rf"({_QTY})\s*({_UNIT})?\s+(.{{1,80}}?)\s+(?:{PRODUCED})", re.IGNORECASE | re.UNICODE)
+        pattern = re.compile(rf"({_QTY})(?!\s*(?:kuni|yil|г\.|года|year))\s*({_UNIT})?\s+(.{{1,80}}?)\s+(?:{PRODUCED})",
+                             re.IGNORECASE | re.UNICODE)
         matches = list(pattern.finditer(masked))
         if not matches:  # "Выпущено 1200 шт изделия Б-12" (verb first)
             pattern = re.compile(rf"(?:{PRODUCED})\s*[:—–-]?\s*({_QTY})\s*({_UNIT})?\s+([^,.;\n]{{1,80}})", re.IGNORECASE)
@@ -308,3 +318,6 @@ class MockProvider:
             if best is None or score > best[0]:
                 best = (score, rt["code"], cols)
         return {"record_type": best[1], "columns": best[2]}
+
+
+MockProvider = DemoProvider  # former name, kept for callers that inject it explicitly
