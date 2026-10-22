@@ -16,7 +16,13 @@ from app.ai.router import describe as describe_routing
 from app.analytics.router import router as analytics_router
 from app.api import admin, audit, events
 from app.config import get_settings
-from app.core.api import RateLimitMiddleware, RequestIdMiddleware, SecurityHeadersMiddleware, install_error_handlers
+from app.core.api import (
+    RateLimitMiddleware,
+    RequestIdMiddleware,
+    SecurityHeadersMiddleware,
+    install_error_handlers,
+    require_module,
+)
 from app.core.routers import auth, files, health, master, tasks
 from app.logging import configure_logging
 from app.modules.registry import manifests
@@ -50,7 +56,7 @@ def create_app() -> FastAPI:
         api.include_router(router)
     for manifest in manifests():
         if manifest.available and manifest.router_factory is not None:
-            api.include_router(manifest.router_factory())
+            api.include_router(manifest.router_factory(), dependencies=[require_module(manifest.code)])
     app.include_router(api)
     routing = describe_routing()
     logging.getLogger("biwork").info("BIWORK API ready (env=%s, ai_mode=%s, providers=%s)", settings.app_env, routing["mode"],

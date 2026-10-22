@@ -73,12 +73,13 @@ def seed_demo(password: str) -> None:
         "operator": ("operator@biwork.local", "Jasur Toshmatov", "operator"),
         "viewer": ("viewer@biwork.local", "Nodira Rahimova", "viewer"),
     }
+    with SessionLocal() as s:
+        if s.execute(select(Company).where(Company.code == "DEMO")).scalar_one_or_none():
+            print("Demo company already exists; nothing to do")  # demo passwords are left as they are
+            return
     admin = create_admin(users["admin"][0], password, users["admin"][1])
     rnd = random.Random(42)
     with SessionLocal() as s:
-        if s.execute(select(Company).where(Company.code == "DEMO")).scalar_one_or_none():
-            print("Demo company already exists; nothing to do")
-            return
         admin = s.get(User, admin.id)
         company = identity.create_company(s, admin, identity.CompanyIn(
             name="BIWORK Demo Factory", code="DEMO", tin="301234567", organization_code="DEMO-HOLDING",
@@ -91,7 +92,8 @@ def seed_demo(password: str) -> None:
         for code, name, kind, aliases in [
             ("SEX-1", "1-sex", "workshop", ["Sex 1", "1 sex", "Цех №1", "Цех 1", "Workshop 1", "Birinchi sex"]),
             ("SEX-2", "2-sex", "workshop", ["Sex 2", "Цех №2", "Цех 2", "Workshop 2", "Ikkinchi sex"]),
-            ("SEX-3", "3-sex (qadoqlash)", "workshop", ["3-sex", "Цех №3", "Packaging workshop", "Qadoqlash sexi"]),
+            ("SEX-3", "3-sex (qadoqlash)", "workshop", ["3-sex", "Sex 3", "Цех №3", "Цех 3", "Workshop 3", "Packaging workshop",
+                                                         "Qadoqlash sexi"]),
             ("OMBOR", "Ombor xo'jaligi", "warehouse", ["Ombor", "Склад", "Warehouse"]),
             ("TAMINOT", "Ta'minot bo'limi", "office", ["Ta'minot", "Снабжение", "Procurement"]),
             ("SIFAT", "Sifat nazorati bo'limi", "office", ["OTK", "ОТК", "Quality control"]),

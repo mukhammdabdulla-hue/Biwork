@@ -81,9 +81,12 @@ class User(UUIDPk, Timestamps, Base):
     is_platform_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     mfa_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     mfa_secret: Mapped[bytes | None] = mapped_column(LargeBinary)  # Fernet-encrypted TOTP secret
+    mfa_pending_secret: Mapped[bytes | None] = mapped_column(LargeBinary)  # enrolled, not yet confirmed
     failed_login_count: Mapped[int] = mapped_column(Integer, default=0)
     locked_until: Mapped[datetime | None]
     last_login_at: Mapped[datetime | None]
+    # Access tokens issued before this moment are rejected (password change ends every session).
+    sessions_revoked_at: Mapped[datetime | None]
     locale: Mapped[str] = mapped_column(String(8), default="en")
 
 
@@ -426,8 +429,9 @@ class AuditChainHead(Base):
 
 class IdempotencyKey(UUIDPk, Tenant, Base):
     __tablename__ = "idempotency_keys"
-    __table_args__ = (UniqueConstraint("company_id", "key"), CORE)
+    __table_args__ = (UniqueConstraint("company_id", "actor_id", "key"), CORE)
 
+    actor_id: Mapped[uuid.UUID]  # the user or API client that sent the request; keys are not shared between callers
     key: Mapped[str] = mapped_column(String(120))
     request_hash: Mapped[str] = mapped_column(String(64))
     status_code: Mapped[int | None] = mapped_column(Integer)

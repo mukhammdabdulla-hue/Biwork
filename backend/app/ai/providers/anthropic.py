@@ -61,7 +61,8 @@ class AnthropicProvider:
         self.settings = s
         self.client = client or anthropic.Anthropic(
             api_key=s.anthropic_api_key,
-            base_url=s.anthropic_base_url,
+            # Explicit default: with None the SDK re-reads ANTHROPIC_BASE_URL, which may be set but empty.
+            base_url=s.anthropic_base_url or "https://api.anthropic.com",
             timeout=s.ai_timeout_s,
             max_retries=0,
         )

@@ -11,6 +11,7 @@ from sqlalchemy import Date, cast, func, select
 from sqlalchemy.orm import Session
 
 from app.agent.models import AICall, Approval, ExtractedRecord, ExtractionFeedback, IngestionJob, StageRun
+from app.agent.pipeline.review import visible_jobs, visible_records
 from app.core.context import RequestContext
 from app.core.models import AuditEvent, Company, Department, Product, Task, Unit, User
 from app.core.text import fmt_qty
@@ -32,18 +33,23 @@ def _delta(current: float, previous: float) -> float | None:
     return round((current - previous) / previous * 100, 1) if previous else None
 
 
+def _scoped(stmt, column, ctx: RequestContext, unassigned: bool = False):
+    """Limit to the caller's departments (unassigned rows too where the module lists them to everyone)."""
+    if ctx.department_ids is None:
+        return stmt
+    return stmt.where(column.is_(None) | column.in_(ctx.department_ids) if unassigned else column.in_(ctx.department_ids))
+
+
 def _reports(ctx: RequestContext):
     stmt = select(ProductionReport).where(ProductionReport.company_id == ctx.company_id, ProductionReport.status == "approved")
-    if ctx.department_ids is not None:
-        stmt = stmt.where(ProductionReport.department_id.in_(ctx.department_ids))
-    return stmt
+    return _scoped(stmt, ProductionReport.department_id, ctx)
 
 
 def _primary_unit(db: Session, ctx: RequestContext, start: date, end: date) -> str | None:
-    row = db.execute(select(Unit.code, func.sum(ProductionReport.qty_produced).label("q"))
-                     .join(ProductionReport, ProductionReport.unit_id == Unit.id)
-                     .where(ProductionReport.company_id == ctx.company_id, ProductionReport.status == "approved",
-                            ProductionReport.production_date.between(start, end))
+    row = db.execute(_scoped(select(Unit.code, func.sum(ProductionReport.qty_produced).label("q"))
+                             .join(ProductionReport, ProductionReport.unit_id == Unit.id)
+                             .where(ProductionReport.company_id == ctx.company_id, ProductionReport.status == "approved",
+                                    ProductionReport.production_date.between(start, end)), ProductionReport.department_id, ctx)
                      .group_by(Unit.code).order_by(func.count().desc())).first()
     return row[0] if row else None
 
@@ -56,9 +62,7 @@ def _production_totals(db: Session, ctx: RequestContext, start: date, end: date,
                    ProductionReport.production_date.between(start, end)))
     if unit:
         stmt = stmt.where(Unit.code == unit)
-    if ctx.department_ids is not None:
-        stmt = stmt.where(ProductionReport.department_id.in_(ctx.department_ids))
-    produced, accepted, defective = db.execute(stmt).one()
+    produced, accepted, defective = db.execute(_scoped(stmt, ProductionReport.department_id, ctx)).one()
     return {"produced": _f(produced), "accepted": _f(accepted), "defective": _f(defective)}
 
 
@@ -75,32 +79,36 @@ def overview(db: Session, ctx: RequestContext, days: int = 30) -> dict[str, Any]
     in_scope = [o for o in pva if o["status"] in ("released", "in_progress", "completed")]
     planned = sum(_f(o["planned_qty"]) for o in in_scope)
     actual = sum(min(_f(o["actual_qty"]), _f(o["planned_qty"])) for o in in_scope)
-    order_counts = dict(db.execute(select(ProductionOrder.status, func.count()).where(ProductionOrder.company_id == ctx.company_id)
-                                   .group_by(ProductionOrder.status)).all())
+    order_counts = dict(db.execute(_scoped(select(ProductionOrder.status, func.count()).where(ProductionOrder.company_id == ctx.company_id),
+                                           ProductionOrder.department_id, ctx).group_by(ProductionOrder.status)).all())
     shortage_list = shortages(db, ctx.company_id) if ctx.has("inventory.read") else []
-    overdue_q = select(Task).where(Task.company_id == ctx.company_id, Task.due_date < today, Task.status.in_(("open", "in_progress")))
+    overdue_q = _scoped(select(Task).where(Task.company_id == ctx.company_id, Task.due_date < today, Task.status.in_(("open", "in_progress"))),
+                        Task.department_id, ctx, unassigned=True)
     overdue = db.execute(overdue_q.order_by(Task.due_date)).scalars().all()
     pending_records = db.execute(select(func.count()).select_from(ExtractedRecord).where(
-        ExtractedRecord.company_id == ctx.company_id, ExtractedRecord.status.in_(("needs_review", "approved")))).scalar_one()
-    pending_prs = db.execute(select(func.count()).select_from(PurchaseRequest).where(
-        PurchaseRequest.company_id == ctx.company_id, PurchaseRequest.status == "submitted")).scalar_one()
-    draft_reports = db.execute(select(func.count()).select_from(ProductionReport).where(
-        ProductionReport.company_id == ctx.company_id, ProductionReport.status == "draft")).scalar_one()
+        ExtractedRecord.company_id == ctx.company_id, ExtractedRecord.status.in_(("needs_review", "approved")),
+        visible_records(ctx))).scalar_one()
+    pending_prs = db.execute(_scoped(select(func.count()).select_from(PurchaseRequest).where(
+        PurchaseRequest.company_id == ctx.company_id, PurchaseRequest.status == "submitted"), PurchaseRequest.department_id, ctx,
+        unassigned=True)).scalar_one()
+    draft_reports = db.execute(_scoped(select(func.count()).select_from(ProductionReport).where(
+        ProductionReport.company_id == ctx.company_id, ProductionReport.status == "draft"), ProductionReport.department_id, ctx)).scalar_one()
     job_stats = dict(db.execute(select(IngestionJob.status, func.count()).where(
-        IngestionJob.company_id == ctx.company_id, IngestionJob.created_at >= datetime.combine(start, datetime.min.time(), UTC)
-    ).group_by(IngestionJob.status)).all())
+        IngestionJob.company_id == ctx.company_id, IngestionJob.created_at >= datetime.combine(start, datetime.min.time(), UTC),
+        visible_jobs(ctx)).group_by(IngestionJob.status)).all())
     ok_jobs = sum(v for k, v in job_stats.items() if k in ("awaiting_review", "completed", "committing"))
     failed_jobs = job_stats.get("failed", 0)
-    failed_now = db.execute(select(IngestionJob).where(IngestionJob.company_id == ctx.company_id, IngestionJob.status == "failed")
-                            .order_by(IngestionJob.created_at.desc()).limit(5)).scalars().all()
+    failed_q = select(IngestionJob).where(IngestionJob.company_id == ctx.company_id, IngestionJob.status == "failed", visible_jobs(ctx))
+    currently_failed = db.execute(select(func.count()).select_from(failed_q.subquery())).scalar_one()
+    failed_now = db.execute(failed_q.order_by(IngestionJob.created_at.desc()).limit(5)).scalars().all()
 
     # Charts
-    trend_rows = db.execute(
+    trend_rows = db.execute(_scoped(
         select(ProductionReport.production_date, func.sum(ProductionReport.qty_produced),
                func.sum(func.coalesce(ProductionReport.qty_accepted, 0)), func.sum(func.coalesce(ProductionReport.qty_defective, 0)))
         .join(Unit, Unit.id == ProductionReport.unit_id)
         .where(ProductionReport.company_id == ctx.company_id, ProductionReport.status == "approved",
-               ProductionReport.production_date.between(start, today), Unit.code == unit)
+               ProductionReport.production_date.between(start, today), Unit.code == unit), ProductionReport.department_id, ctx)
         .group_by(ProductionReport.production_date).order_by(ProductionReport.production_date)).all() if unit else []
     by_day = {d: (p, a, x) for d, p, a, x in trend_rows}
     trend = []
@@ -108,46 +116,54 @@ def overview(db: Session, ctx: RequestContext, days: int = 30) -> dict[str, Any]
         d = start + timedelta(days=i)
         p, a, x = by_day.get(d, (0, 0, 0))
         trend.append({"date": d.isoformat(), "produced": _f(p), "accepted": _f(a), "defective": _f(x)})
-    by_product = db.execute(
+    by_product = db.execute(_scoped(
         select(Product.code, Product.name, Unit.code, func.sum(ProductionReport.qty_produced), func.sum(func.coalesce(ProductionReport.qty_defective, 0)))
         .join(Product, Product.id == ProductionReport.product_id).join(Unit, Unit.id == ProductionReport.unit_id)
         .where(ProductionReport.company_id == ctx.company_id, ProductionReport.status == "approved",
-               ProductionReport.production_date.between(start, today))
+               ProductionReport.production_date.between(start, today)), ProductionReport.department_id, ctx)
         .group_by(Product.code, Product.name, Unit.code).order_by(func.sum(ProductionReport.qty_produced).desc()).limit(8)).all()
-    by_department = db.execute(
+    by_department = db.execute(_scoped(
         select(Department.name, func.sum(ProductionReport.qty_produced), func.sum(func.coalesce(ProductionReport.qty_defective, 0)))
         .join(Department, Department.id == ProductionReport.department_id)
         .where(ProductionReport.company_id == ctx.company_id, ProductionReport.status == "approved",
-               ProductionReport.production_date.between(start, today))
+               ProductionReport.production_date.between(start, today)), ProductionReport.department_id, ctx)
         .group_by(Department.name).order_by(Department.name)).all()
 
+    # Each alert carries English title/detail plus `params`, from which the web app renders it in the
+    # reader's language (by `kind`).
     alerts: list[dict[str, Any]] = []
     for s in shortage_list[:5]:
         alerts.append({"severity": "warning", "kind": "shortage", "title": f"Low stock: {s['code']} {s['name']}",
-                       "detail": f"{fmt_qty(s['on_hand'])} {s['unit']} on hand, reorder level {fmt_qty(s['reorder_level'])}", "link": "/inventory?tab=shortages"})
+                       "detail": f"{fmt_qty(s['on_hand'])} {s['unit']} on hand, reorder level {fmt_qty(s['reorder_level'])}", "link": "/inventory?tab=shortages",
+                       "params": {"code": s["code"], "name": s["name"], "on_hand": _f(s["on_hand"]), "unit": s["unit"],
+                                  "reorder_level": _f(s["reorder_level"])}})
     for o in pva:
         if o["planned_end"] and o["planned_end"] < today and o["status"] not in ("completed", "cancelled"):
             alerts.append({"severity": "danger", "kind": "order_late", "title": f"Order {o['number']} is past its deadline",
-                           "detail": f"{o['completion_pct'] or 0}% complete, planned end {o['planned_end']}", "link": "/production?tab=orders"})
+                           "detail": f"{o['completion_pct'] or 0}% complete, planned end {o['planned_end']}", "link": "/production?tab=orders",
+                           "params": {"number": o["number"], "completion_pct": o["completion_pct"] or 0, "planned_end": o["planned_end"]}})
     for t in overdue[:5]:
         alerts.append({"severity": "warning", "kind": "task_overdue", "title": f"Overdue task {t.number}",
-                       "detail": f"{t.title} (due {t.due_date})", "link": "/tasks"})
+                       "detail": f"{t.title} (due {t.due_date})", "link": "/tasks",
+                       "params": {"number": t.number, "title": t.title, "due_date": t.due_date}})
     for j in failed_now:
+        message = (j.error or {}).get("message", "")[:120]
         alerts.append({"severity": "danger", "kind": "job_failed", "title": "BIWORK Agent job failed",
-                       "detail": f"{j.title or j.id}: {(j.error or {}).get('message', '')[:120]}", "link": f"/agent/jobs/{j.id}"})
+                       "detail": f"{j.title or j.id}: {message}", "link": f"/agent/jobs/{j.id}",
+                       "params": {"title": j.title or "", "message": message, "job_id": str(j.id)}})
     week = today - timedelta(days=6)
-    for code, produced, defective in db.execute(
+    for code, produced, defective in db.execute(_scoped(
         select(Product.code, func.sum(ProductionReport.qty_produced), func.sum(func.coalesce(ProductionReport.qty_defective, 0)))
         .join(Product, Product.id == ProductionReport.product_id)
         .where(ProductionReport.company_id == ctx.company_id, ProductionReport.status == "approved",
-               ProductionReport.production_date >= week).group_by(Product.code)).all():
+               ProductionReport.production_date >= week), ProductionReport.department_id, ctx).group_by(Product.code)).all():
         rate = _pct(_f(defective), _f(produced))
         if rate is not None and rate >= 5:
             alerts.append({"severity": "warning", "kind": "defect_rate", "title": f"High defect rate for {code}",
-                           "detail": f"{rate}% defective over the last 7 days", "link": "/quality"})
+                           "detail": f"{rate}% defective over the last 7 days", "link": "/quality", "params": {"code": code, "rate": rate}})
 
     activity = []
-    if ctx.has("audit.read"):
+    if ctx.has("audit.read") and ctx.department_ids is None:  # the audit trail is company-wide
         events = db.execute(select(AuditEvent).where(AuditEvent.company_id == ctx.company_id).order_by(AuditEvent.id.desc()).limit(15)).scalars().all()
         names = dict(db.execute(select(User.id, User.full_name).where(User.id.in_({e.actor_id for e in events if e.actor_id})) ).all()) if events else {}
         activity = [{"at": e.occurred_at, "action": e.action, "summary": e.summary, "actor": names.get(e.actor_id) or e.actor_type,
@@ -165,7 +181,7 @@ def overview(db: Session, ctx: RequestContext, days: int = 30) -> dict[str, Any]
             "pending_approvals": {"value": pending_records + pending_prs + draft_reports, "agent_records": pending_records,
                                   "purchase_requests": pending_prs, "draft_reports": draft_reports},
             "ingestion_success_rate": {"value": _pct(ok_jobs, ok_jobs + failed_jobs), "jobs": ok_jobs + failed_jobs},
-            "failed_jobs": {"value": failed_jobs, "currently_failed": len(failed_now)},
+            "failed_jobs": {"value": failed_jobs, "currently_failed": currently_failed},
             "defect_rate": {"value": _pct(cur["defective"], cur["produced"]), "delta_pct": _delta(
                 _pct(cur["defective"], cur["produced"]) or 0, _pct(prev["defective"], prev["produced"]) or 0)},
         },

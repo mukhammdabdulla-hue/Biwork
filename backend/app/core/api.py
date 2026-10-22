@@ -34,8 +34,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import get_settings
 from app.core.context import RequestContext
-from app.core.errors import AppError, Conflict, PreconditionFailed, RateLimited, Unauthorized
-from app.core.models import IdempotencyKey, User
+from app.core.errors import AppError, Conflict, PermissionDenied, PreconditionFailed, RateLimited, Unauthorized
+from app.core.models import CompanyModule, IdempotencyKey, User
 from app.core.security import decode_access_token
 from app.core.services import identity
 from app.db.session import SessionLocal, bind_tenant
@@ -85,9 +85,15 @@ def current_user(request: Request, db: DB) -> User:
         raise Unauthorized("Session expired", code="token_expired") from exc
     except jwt.InvalidTokenError as exc:
         raise Unauthorized("Invalid access token", code="invalid_token") from exc
-    user = db.get(User, uuid.UUID(claims["sub"]))
+    try:
+        user_id, issued_at = uuid.UUID(claims["sub"]), float(claims["iat"])
+    except (TypeError, ValueError) as exc:
+        raise Unauthorized("Invalid access token", code="invalid_token") from exc
+    user = db.get(User, user_id)
     if user is None or not user.is_active:
         raise Unauthorized("Account disabled", code="account_disabled")
+    if user.sessions_revoked_at and issued_at < user.sessions_revoked_at.timestamp():
+        raise Unauthorized("Session ended; please sign in again", code="session_revoked")
     bind_tenant(db, None, user.id)
     return user
 
@@ -128,6 +134,17 @@ def require(*permissions: str):
     return Depends(dependency)
 
 
+def require_module(code: str):
+    """Routes of a product module answer 403 `module_disabled` while the company has the module switched off."""
+    def dependency(ctx: Ctx, db: DB) -> None:
+        row = db.get(CompanyModule, (ctx.company_id, code))
+        if row is None or not row.enabled:
+            raise PermissionDenied(f"The '{code}' module is switched off for this company", code="module_disabled",
+                                   extra={"module": code})
+
+    return Depends(dependency)
+
+
 # --------------------------------------------------------------------------- pagination
 
 
@@ -145,9 +162,12 @@ def decode_cursor(cursor: str | None) -> list[str] | None:
         return None
     try:
         padded = cursor + "=" * (-len(cursor) % 4)
-        return json.loads(base64.urlsafe_b64decode(padded.encode()))
+        values = json.loads(base64.urlsafe_b64decode(padded.encode()))
     except Exception as exc:  # noqa: BLE001
         raise AppError("Invalid cursor", code="invalid_cursor") from exc
+    if not isinstance(values, list) or len(values) != 2 or not all(isinstance(v, str) for v in values):
+        raise AppError("Invalid cursor", code="invalid_cursor")
+    return values
 
 
 def paginate(db: Session, stmt, model, cursor: str | None, limit: int, order: str = "created_at") -> tuple[list[Any], str | None]:
@@ -155,12 +175,15 @@ def paginate(db: Session, stmt, model, cursor: str | None, limit: int, order: st
     col = getattr(model, order)
     values = decode_cursor(cursor)
     if values:
-        after_value: Any = values[0]
-        if order.endswith("_at"):
-            after_value = datetime.fromisoformat(values[0])
-        elif order.endswith("_date"):
-            after_value = datetime.fromisoformat(values[0]).date()
-        after_id: Any = int(values[1]) if values[1].isdigit() else uuid.UUID(values[1])
+        try:
+            after_value: Any = values[0]
+            if order.endswith("_at"):
+                after_value = datetime.fromisoformat(values[0])
+            elif order.endswith("_date"):
+                after_value = datetime.fromisoformat(values[0]).date()
+            after_id: Any = model.id.type.python_type(values[1])  # uuid.UUID or int
+        except ValueError as exc:
+            raise AppError("Invalid cursor", code="invalid_cursor") from exc
         stmt = stmt.where((col < after_value) | ((col == after_value) & (model.id < after_id)))
     rows = list(db.execute(stmt.order_by(col.desc(), model.id.desc()).limit(limit + 1)).unique().scalars())
     next_cursor = None
@@ -203,7 +226,9 @@ class Idempotency:
         if not self.key:
             return None
         self.request_hash = hashlib.sha256(json.dumps(body, sort_keys=True, default=str).encode()).hexdigest()
-        row = db.execute(select(IdempotencyKey).where(IdempotencyKey.company_id == ctx.company_id,
+        # Keys belong to the caller: another user's key never replays someone else's response (or skips
+        # the permission checks of the request it stands for).
+        row = db.execute(select(IdempotencyKey).where(IdempotencyKey.company_id == ctx.company_id, IdempotencyKey.actor_id == ctx.actor_id,
                                                       IdempotencyKey.key == self.key)).scalar_one_or_none()
         if row is None:
             return None
@@ -214,7 +239,7 @@ class Idempotency:
     def store(self, db: Session, ctx: RequestContext, status_code: int, response: Any) -> None:
         if not self.key:
             return
-        db.add(IdempotencyKey(company_id=ctx.company_id, key=self.key, request_hash=self.request_hash or "",
+        db.add(IdempotencyKey(company_id=ctx.company_id, actor_id=ctx.actor_id, key=self.key, request_hash=self.request_hash or "",
                               status_code=status_code, response=json.loads(json.dumps(response, default=str)),
                               expires_at=datetime.now(UTC) + timedelta(days=2)))
 
@@ -336,7 +361,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         # The strict bucket covers endpoints that check a guessable secret. Session refresh presents an
         # unguessable rotating token, and counting it here would sign out offices sharing one IP.
-        if path in ("/api/v1/auth/login", "/api/v1/auth/password", "/api/v1/auth/mfa/confirm"):
+        if path in ("/api/v1/auth/login", "/api/v1/auth/password", "/api/v1/auth/mfa/setup", "/api/v1/auth/mfa/confirm"):
             limit, bucket = s.auth_rate_limit_per_minute, "auth"
         elif path.startswith("/api/v1/health") or path.startswith("/api/v1/events"):
             return await call_next(request)

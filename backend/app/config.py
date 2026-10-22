@@ -11,10 +11,24 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Literal
 
+from cryptography.fernet import Fernet
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 _DEV_JWT_KEY = "dev-only-insecure-jwt-signing-key-change-me"
+
+
+def _is_placeholder(secret: str) -> bool:
+    """The development key and the "change-me" values published in .env.example are known to everyone."""
+    return secret == _DEV_JWT_KEY or "change-me" in secret.lower()
+
+
+def _is_fernet_key(key: str) -> bool:
+    try:
+        Fernet(key.encode())
+    except (ValueError, TypeError):
+        return False
+    return True
 
 
 class Settings(BaseSettings):
@@ -135,6 +149,12 @@ class Settings(BaseSettings):
     def broker_url(self) -> str:
         return self.celery_broker_url or self.redis_url or "memory://"
 
+    @field_validator("openai_base_url", "gemini_base_url", "anthropic_base_url", mode="before")
+    @classmethod
+    def _blank_is_unset(cls, value):
+        # `ANTHROPIC_BASE_URL=` in .env means "use the provider's public endpoint", not an empty URL.
+        return value.strip() or None if isinstance(value, str) else value
+
     @field_validator("ai_fallback_providers", mode="before")
     @classmethod
     def _split_providers(cls, value):
@@ -177,12 +197,12 @@ class Settings(BaseSettings):
     def _check_production_safety(self) -> Settings:
         if self.app_env in ("staging", "prod"):
             problems = []
-            if self.jwt_signing_key == _DEV_JWT_KEY:
-                problems.append("JWT_SIGNING_KEY must be set to a strong secret")
+            if _is_placeholder(self.jwt_signing_key):
+                problems.append("JWT_SIGNING_KEY must be set to a strong secret (not the example or development value)")
             if not self.cookie_secure:
                 problems.append("COOKIE_SECURE must be true")
-            if not self.field_encryption_key:
-                problems.append("FIELD_ENCRYPTION_KEY must be set")
+            if not self.field_encryption_key or _is_placeholder(self.field_encryption_key) or not _is_fernet_key(self.field_encryption_key):
+                problems.append("FIELD_ENCRYPTION_KEY must be set to a Fernet key (Fernet.generate_key())")
             if self.celery_always_eager:
                 problems.append("CELERY_ALWAYS_EAGER must be false")
             if self.ai_provider in ("auto",) and not self.configured_ai_providers():

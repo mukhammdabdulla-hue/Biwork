@@ -72,7 +72,10 @@ def parse_item(session: Session, item: IngestionItem) -> dict:
             "chars": len(full_text)}
 
 
-def mark_item_failed(session: Session, item_id: uuid.UUID, message: str) -> None:
+def mark_item_failed(session: Session, item_id: uuid.UUID, message: str, stage: str, retryable: bool) -> None:
+    """`stage` is where the item stopped; `retryable` says whether processing it again can help (an
+    unreadable file cannot; another record type might make text extractable)."""
     item = session.get(IngestionItem, item_id)
     item.status = "failed"
     item.error = message[:2000]
+    item.meta = {**item.meta, "failed_stage": stage, "retryable": retryable}

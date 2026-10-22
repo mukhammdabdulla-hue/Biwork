@@ -58,6 +58,16 @@ def test_parse_decimal(raw, value, unit):
 def test_parse_decimal_ambiguous_thousands_is_flagged():
     result = parse_decimal("1,200")
     assert result.low_confidence and result.notes
+    # A lone dot before three digits groups thousands in uz/ru, but may be a decimal point: flagged too.
+    result = parse_decimal("1.500")
+    assert result.value == Decimal("1500") and result.low_confidence and "thousands" in result.notes[0]
+    assert parse_decimal("1.500", comma_decimal=False).value == Decimal("1.5") and not parse_decimal("1.500", comma_decimal=False).notes
+    assert not parse_decimal("0.500").low_confidence and not parse_decimal("2.75").low_confidence
+
+
+def test_parse_decimal_refuses_several_numbers():
+    assert parse_decimal("50 50 0").error and parse_decimal("12 5").error  # not 50500 / 125
+    assert parse_decimal("1 200 300").value == Decimal("1200300") and parse_decimal("1'200").value == Decimal("1200")
 
 
 def test_units_currency_enums():
@@ -84,6 +94,17 @@ def test_fuzzy_matching_never_confuses_numbered_entities():
     assert fuzzy_score("1-sex", "2-sex") < 0.5
     assert fuzzy_score("A mahsulot", "B mahsulot") < 0.5
     assert fuzzy_score("Sement M400", "Sement M-400") > 0.9
+
+
+def test_only_several_plausible_candidates_are_ambiguous():
+    import uuid
+
+    from app.agent.pipeline.match import close_call
+
+    a, b = uuid.uuid4(), uuid.uuid4()
+    assert close_call([Candidate("product", a, "A", 0.97, ALIAS), Candidate("product", b, "B", 0.97, ALIAS)])
+    assert not close_call([Candidate("product", a, "A-001 — A mahsulot", 0.4, FUZZY)])
+    assert not close_call([Candidate("department", a, "1-sex", 0.45, FUZZY), Candidate("department", b, "2-sex", 0.44, FUZZY)])
 
 
 def test_choose_requires_unambiguous_match():
@@ -222,10 +243,78 @@ def _params(code):
     ("13.02.2026 kuni 3-sexda 500 dona A mahsulot ishlab chiqarildi, 480 tasi qabul qilindi, 20 tasi brak. 2-smena.",
      {"qty_produced": "500", "qty_accepted": "480", "qty_defective": "20", "production_date": "13.02.2026",
       "department": "3-sex", "shift": "2", "product": "A mahsulot"}),
+    # Uzbek Cyrillic is read through a Latin view; values stay in the original script.
+    ("Кеча 1-сех 2-сменада 380 дона А маҳсулот ишлаб чиқарилди, 370 дона сифат назоратидан ўтди, 10 дона брак.",
+     {"qty_produced": "380", "qty_accepted": "370", "qty_defective": "10", "department": "1-сех", "shift": "2",
+      "product": "А маҳсулот", "unit": "дона", "production_date": "Кеча"}),
+    ("21-октябр куни 2-цехда 1-смена: 860 дона B mahsulot ishlab chiqarildi. Сифатдан ўтди 840, брак 20.",
+     {"qty_produced": "860", "qty_accepted": "840", "qty_defective": "20", "department": "2-цех", "shift": "1",
+      "product": "B mahsulot", "unit": "дона"}),
+    ("Сана: 19.10.2026\nСех: 1-сех\nСмена: 1\nМаҳсулот: А маҳсулот\nИшлаб чиқарилди: 412\nСифатдан ўтди: 400\nБрак: 12",
+     {"production_date": "19.10.2026", "department": "1-сех", "shift": "1", "product": "А маҳсулот", "qty_produced": "412",
+      "qty_accepted": "400", "qty_defective": "12"}),
+    # A year before "цех" is not a workshop number; "изделия" is not part of the product; "принято ОТК 630".
+    ("18.10.2026 цех №2, смена 1: 455 шт B mahsulot произведено, принято 440, брак 15.",
+     {"department": "цех №2", "shift": "1", "qty_produced": "455", "qty_accepted": "440"}),
+    ("Цех №1, смена 1.\nВыпущено 640 шт изделия A-001, принято ОТК 630, брак 10",
+     {"department": "Цех №1", "shift": "1", "product": "A-001", "qty_produced": "640", "qty_accepted": "630"}),
+    ("Production report for October 20, 2026. Workshop 3-sex, shift 2: 300 pcs C-010 produced, 295 accepted.",
+     {"department": "3-sex", "product": "C-010", "qty_accepted": "295"}),
 ])
 def test_mock_extracts_production_reports_in_three_languages(text, expected):
     from app.ai.providers.demo import MockProvider
 
     record = MockProvider()._extract(text, _params("production_report"))["records"][0]
     values = {k: v["value"] for k, v in record.items() if not v["not_found"]}
+    assert expected.items() <= values.items()
+    assert all(v["source_quote"] in text for v in record.values() if not v["not_found"])  # quotes point at the original
+
+
+@pytest.mark.parametrize("text,expected", [
+    ("20.02.2026 hisobot:\n1-sex 1-smena: 100 dona A mahsulot ishlab chiqarildi, 95 dona qabul qilindi, 5 dona brak.\n"
+     "2-sex 2-smena: 300 dona B mahsulot ishlab chiqarildi, 290 dona qabul qilindi, 10 dona brak.",
+     [{"department": "1-sex", "shift": "1", "qty_accepted": "95", "qty_defective": "5", "production_date": "20.02.2026"},
+      {"department": "2-sex", "shift": "2", "qty_accepted": "290", "qty_defective": "10", "production_date": "20.02.2026"}]),
+    ("03.03.2026 1-sex 1-smena: 100 dona A mahsulot ishlab chiqarildi, 100 dona qabul qilindi.\n"
+     "03.03.2026 2-sex 2-smena: 140 dona B mahsulot ishlab chiqarildi, 140 dona qabul qilindi.",
+     [{"department": "1-sex", "qty_accepted": "100"}, {"department": "2-sex", "qty_accepted": "140"}]),
+    ("Kecha hisobot.\n1-sex: 50 dona A mahsulot ishlab chiqarildi.\n3-sex: 60 dona C-010 ishlab chiqarildi.",
+     [{"department": "1-sex", "product": "A mahsulot"}, {"department": "3-sex", "product": "C-010"}]),
+    # Two reports in one line; a header line applies to every report.
+    ("21.10.2026 1-sex: 500 dona A mahsulot ishlab chiqarildi, 480 qabul qilindi; 2-sex: 300 dona B mahsulot ishlab "
+     "chiqarildi, 290 qabul qilindi.",
+     [{"department": "1-sex", "qty_accepted": "480", "product": "A mahsulot"},
+      {"department": "2-sex", "qty_accepted": "290", "product": "B mahsulot"}]),
+    ("Sex: 2-sex, 1-smena\n500 dona A mahsulot ishlab chiqarildi.\n300 dona B mahsulot ishlab chiqarildi. Izoh: yangi qolip",
+     [{"department": "2-sex", "shift": "1", "qty_produced": "500"},
+      {"department": "2-sex", "shift": "1", "qty_produced": "300", "notes": "yangi qolip"}]),
+])
+def test_mock_reads_each_report_of_a_message_from_its_own_text(text, expected):
+    from app.ai.providers.demo import MockProvider
+
+    records = MockProvider()._extract(text, _params("production_report"))["records"]
+    values = [{k: v["value"] for k, v in r.items() if not v["not_found"]} for r in records]
+    assert len(values) == len(expected)
+    for got, want in zip(values, expected, strict=True):
+        assert want.items() <= got.items()
+    assert "notes" not in values[0] or len(expected) == 1
+
+
+@pytest.mark.parametrize("code,text,expected", [
+    ("stock_movement", "Omborga kirim: 18.10.2026 RM omboriga 120 qop Sement M400 kirim qilindi. Nakladnoy: NK-5521",
+     {"warehouse": "RM", "product": "Sement M400", "quantity": "120", "unit": "qop", "reference": "NK-5521"}),
+    ("stock_movement", "Расход со склада RM 20.10.2026: выдано 5000 кг Po'lat list 2mm в 1-sex. Накладная № RS-3301",
+     {"warehouse": "RM", "product": "Po'lat list 2mm", "movement_type": "Расход", "reference": "RS-3301"}),
+    ("stock_movement", "Receipt to warehouse FG on 20.10.2026: 40 pcs B mahsulot received. Doc no: GRN-881",
+     {"warehouse": "FG", "product": "B mahsulot", "reference": "GRN-881"}),
+    ("task", "Vazifa: 2-sex kompressorini ta'mirlash kerak. Muddat: 25.10.2026 gacha. Mas'ul: Jasur Toshmatov. Shoshilinch!",
+     {"title": "2-sex kompressorini ta'mirlash kerak", "due_date": "25.10.2026", "assignee": "Jasur Toshmatov"}),
+    ("task", "Вазифа: 2-сех компрессорини таъмирлаш. Муддат: 25.10.2026 гача. Масъул: Жасур Тошматов.",
+     {"title": "2-сех компрессорини таъмирлаш", "due_date": "25.10.2026", "assignee": "Жасур Тошматов"}),
+])
+def test_mock_reads_narrative_stock_movements_and_tasks(code, text, expected):
+    from app.ai.providers.demo import MockProvider
+
+    record = MockProvider()._extract(text, _params(code))["records"][0]
+    values = {k: v["value"] for k, v in record.items() if k != "lines" and not v["not_found"]}
     assert expected.items() <= values.items()

@@ -120,9 +120,7 @@ def pr_rules(inp: RuleInput) -> Iterable[Issue]:
         yield Issue("needed_by_passed", "warning", f"Needed-by date {need} is already in the past", "needed_by")
     if req and date.fromisoformat(req) > today_for(inp):
         yield Issue("date_in_future", "error", f"Request date {req} is in the future", "request_date")
-    lines = p.get("lines") or []
-    if not lines:
-        yield Issue("no_lines", "error", "The request has no items", "lines")
+    lines = p.get("lines") or []  # a request without items is reported by the generic validation (no_lines)
     if not p.get("supplier"):
         yield Issue("supplier_not_specified", "info", "No supplier specified; procurement will select one", "supplier")
     elif not inp.ref_id("supplier"):
@@ -201,7 +199,7 @@ PURCHASE_REQUEST = RecordTypeSpec(
 
 register_resolver(AliasTableResolver(
     entity_type="supplier", model=Supplier, alias_model=SupplierAlias, alias_fk="supplier_id",
-    label=lambda s: f"{s.name} ({s.code})", data=lambda s: {"tin": s.tin},
+    label=lambda s: f"{s.name} ({s.code})", data=lambda s: {"tin": s.tin}, permissions=("supply.read",),
 ))
 
 

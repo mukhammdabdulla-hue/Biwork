@@ -176,6 +176,7 @@ def _build_tenant(session, admin, code: str, name: str, *, sample: bool = False)
     t.warehouses["FG"] = inventory.create_warehouse(session, ctx, inventory.WarehouseIn(code="FG", name="Tayyor mahsulot ombori",
                                                                                         kind="finished")).id
     t.warehouses["RM"] = inventory.create_warehouse(session, ctx, inventory.WarehouseIn(code="RM", name="Xomashyo ombori", kind="raw")).id
+    company.settings = {**company.settings, "production_output_warehouse_id": str(t.warehouses["FG"])}
     for scode, sname in [("1", "1-smena"), ("2", "2-smena")]:
         t.shifts[scode] = production.create_shift(session, ctx, production.ShiftIn(code=scode, name=sname, starts_at=time(8))).id
     supply.create_supplier(session, ctx, supply.SupplierIn(code="QQS", name="Qizilqumsement AJ", tin="200123456"))

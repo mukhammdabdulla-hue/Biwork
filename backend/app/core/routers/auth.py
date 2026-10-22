@@ -92,16 +92,33 @@ class PasswordIn(BaseModel):
     new_password: str = Field(max_length=200)
 
 
-@router.post("/password", status_code=204)
-def change_password(data: PasswordIn, user: CurrentUser, db: DB) -> Response:
-    identity.change_password(db, user, data.current_password, data.new_password)
+class SessionOut(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+
+
+@router.post("/password", response_model=SessionOut)
+def change_password(data: PasswordIn, request: Request, response: Response, user: CurrentUser, db: DB) -> SessionOut:
+    """Change the password and sign out every session; the caller continues with the access token returned
+    here and a new refresh cookie."""
+    pair = identity.change_password(db, user, data.current_password, data.new_password, client_ip(request),
+                                    request.headers.get("user-agent"))
     db.commit()
-    return Response(status_code=204)
+    _set_cookie(response, pair.refresh_token)
+    return SessionOut(access_token=pair.access_token, expires_in=pair.expires_in)
+
+
+class MfaSetupIn(BaseModel):
+    """Replacing an authenticator that is already active needs its current code or the account password."""
+
+    code: str | None = Field(default=None, max_length=8)
+    password: str | None = Field(default=None, max_length=200)
 
 
 @router.post("/mfa/setup")
-def mfa_setup(user: CurrentUser, db: DB) -> dict[str, str]:
-    uri = identity.mfa_begin(db, user)
+def mfa_setup(user: CurrentUser, db: DB, data: MfaSetupIn | None = None) -> dict[str, str]:
+    uri = identity.mfa_begin(db, user, data.code if data else None, data.password if data else None)
     db.commit()
     return {"otpauth_uri": uri}
 

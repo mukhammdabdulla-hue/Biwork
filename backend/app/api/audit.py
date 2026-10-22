@@ -22,7 +22,8 @@ from app.agent.models import (
 )
 from app.core import audit
 from app.core.api import DB, Ctx
-from app.core.errors import NotFound
+from app.core.context import RequestContext
+from app.core.errors import NotFound, PermissionDenied
 from app.core.models import AuditEvent, StoredFile, User
 
 router = APIRouter(prefix="/audit", tags=["audit"])
@@ -31,6 +32,14 @@ router = APIRouter(prefix="/audit", tags=["audit"])
 def _names(db, ids) -> dict[uuid.UUID, str]:
     ids = {i for i in ids if i}
     return dict(db.execute(select(User.id, User.full_name).where(User.id.in_(ids))).all()) if ids else {}
+
+
+def _require_audit(ctx: RequestContext) -> None:
+    """The audit trail spans every department, so members limited to some departments cannot read it."""
+    ctx.require("audit.read")
+    if ctx.department_ids is not None:
+        raise PermissionDenied("The audit trail covers all departments; your access is limited to some of them",
+                               code="department_restricted")
 
 
 def event_out(e: AuditEvent, names: dict) -> dict[str, Any]:
@@ -42,8 +51,8 @@ def event_out(e: AuditEvent, names: dict) -> dict[str, Any]:
 @router.get("/events")
 def list_events(ctx: Ctx, db: DB, action: str | None = None, entity_type: str | None = None, entity_id: str | None = None,
                 actor_id: uuid.UUID | None = None, since: datetime | None = None, until: datetime | None = None,
-                before_id: int | None = None, limit: int = Query(100, le=500)) -> dict[str, Any]:
-    ctx.require("audit.read")
+                before_id: int | None = Query(None, ge=1, le=2**63 - 1), limit: int = Query(100, ge=1, le=500)) -> dict[str, Any]:
+    _require_audit(ctx)
     stmt = select(AuditEvent).where(AuditEvent.company_id == ctx.company_id)
     if action:
         stmt = stmt.where(AuditEvent.action.startswith(action))
@@ -66,7 +75,7 @@ def list_events(ctx: Ctx, db: DB, action: str | None = None, entity_type: str | 
 
 @router.get("/verify")
 def verify(ctx: Ctx, db: DB) -> dict[str, Any]:
-    ctx.require("audit.read")
+    _require_audit(ctx)
     return audit.verify_chain(db, ctx.company_id)
 
 
@@ -124,7 +133,7 @@ def _record_trace(db, record: ExtractedRecord) -> dict[str, Any]:
 def trace(entity_type: str, entity_id: uuid.UUID, ctx: Ctx, db: DB) -> dict[str, Any]:
     """Full provenance chain: original input -> extracted values -> validation -> approval ->
     processing versions -> final database change."""
-    ctx.require("audit.read")
+    _require_audit(ctx)
     record = None
     if entity_type == "extracted_record":
         record = db.get(ExtractedRecord, entity_id)

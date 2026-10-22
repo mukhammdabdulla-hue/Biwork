@@ -21,7 +21,7 @@ from app.core.errors import Conflict, NotFound, PreconditionFailed, ValidationFa
 from app.core.manifest import WriteResult
 from app.core.models import Company, Department, Product, Unit
 from app.core.numbering import next_number
-from app.core.services.master_data import convert, require_unit
+from app.core.services.master_data import check_reference, convert, require_unit
 from app.core.text import clean_text, fmt_qty
 from app.modules.inventory import service as inventory
 from app.modules.production.models import ProductionLine, ProductionOrder, ProductionReport, Shift
@@ -53,7 +53,8 @@ def create_shift(session: Session, ctx: RequestContext, data: ShiftIn) -> Shift:
     shift = Shift(company_id=ctx.company_id, **data.model_dump())
     session.add(shift)
     session.flush()
-    audit.record(session, "shift.created", ctx=ctx, entity_type="shift", entity_id=shift.id, changes=data.model_dump())
+    audit.record(session, "shift.created", ctx=ctx, entity_type="shift", entity_id=shift.id,
+                 summary=f"Shift {shift.code} — {shift.name} created", changes=data.model_dump())
     return shift
 
 
@@ -74,6 +75,7 @@ def create_line(session: Session, ctx: RequestContext, data: LineIn) -> Producti
     session.add(line)
     session.flush()
     audit.record(session, "production_line.created", ctx=ctx, entity_type="production_line", entity_id=line.id,
+                 summary=f"Production line {line.code} — {line.name} created",
                  changes={"code": line.code, "name": line.name})
     return line
 
@@ -147,6 +149,7 @@ def create_order(session: Session, ctx: RequestContext, data: OrderIn, source_re
     unit = _unit_for(session, product, data.unit)
     if data.department_id:
         _workshop(session, ctx, data.department_id)
+    check_reference(session, ctx, ProductionLine, data.line_id, "production line", "line")
     if data.external_number and session.execute(
         select(ProductionOrder.id).where(ProductionOrder.company_id == ctx.company_id,
                                          ProductionOrder.external_number == data.external_number,
@@ -189,6 +192,7 @@ def set_order_status(session: Session, ctx: RequestContext, order_id: uuid.UUID,
     order.updated_by = ctx.user_id
     session.flush()
     audit.record(session, "production_order.status_changed", ctx=ctx, entity_type="production_order", entity_id=order.id,
+                 summary=f"Production order {order.number} status changed from {before} to {status}",
                  changes={"status": {"from": before, "to": status}})
     return order
 
@@ -272,7 +276,8 @@ def _output_qty(report: ProductionReport) -> Decimal:
 
 
 def _post_output(session: Session, ctx: RequestContext, report: ProductionReport) -> None:
-    """Approved output goes to the configured finished-goods warehouse (Production -> Inventory)."""
+    """Approved output goes to the configured finished-goods warehouse (Production -> Inventory).
+    Without one nothing is posted; `stock_warnings` tells the user so."""
     company = session.get(Company, ctx.company_id)
     warehouse_id = (company.settings or {}).get("production_output_warehouse_id")
     qty = _output_qty(report)
@@ -289,12 +294,25 @@ def _reverse_output(session: Session, ctx: RequestContext, report: ProductionRep
     reversed_ids = {m.reverses_id for m in movements if m.reverses_id}
     for movement in movements:
         if movement.reverses_id is None and movement.id not in reversed_ids:
-            inventory.reverse_movement(session, ctx, movement.id, reason, permission="production.approve")
+            inventory.reverse_movement(session, ctx, movement.id, reason, permission="production.approve",
+                                       ref_type="production_report", ref_id=report.id)
+
+
+def stock_warnings(session: Session, ctx: RequestContext, report: ProductionReport) -> list[dict[str, str]]:
+    """Why an approved report's output is not in stock (returned with the report, never silent)."""
+    if report.status != "approved" or _output_qty(report) <= 0:
+        return []
+    if inventory.movements_for_ref(session, ctx.company_id, "production_report", report.id):
+        return []
+    return [{"code": "output_not_posted",
+             "message": "The output was not added to stock: no finished-goods warehouse was set in the company settings "
+                        "when the report was approved"}]
 
 
 def create_report(session: Session, ctx: RequestContext, data: ReportIn, *, approve: bool = False,
                   source_record_id: uuid.UUID | None = None, supersedes_id: uuid.UUID | None = None) -> ProductionReport:
-    ctx.require("production.write")
+    if supersedes_id is None:  # a correction is an approver's action (correct_report) and needs no write permission
+        ctx.require("production.write")
     if approve:
         ctx.require("production.approve")
     product, unit = _check_report_refs(session, ctx, data)
@@ -344,24 +362,33 @@ def approve_report(session: Session, ctx: RequestContext, report_id: uuid.UUID, 
     report.updated_by = ctx.user_id
     session.flush()
     audit.record(session, "production_report.approved", ctx=ctx, entity_type="production_report", entity_id=report.id,
+                 summary=f"Production report {report.number} approved",
                  changes={"status": {"from": "draft", "to": "approved"}})
     _post_output(session, ctx, report)
     return report
 
 
 def cancel_report(session: Session, ctx: RequestContext, report_id: uuid.UUID, reason: str) -> ProductionReport:
-    ctx.require("production.approve")
+    """Writers may discard drafts; cancelling an approved report reverses its postings and needs an approver."""
+    if not (ctx.has("production.write") or ctx.has("production.approve")):
+        ctx.require("production.write")
     report = get_report(session, ctx, report_id)
     if report.status == "cancelled":
         raise ValidationFailed("Report is already cancelled", code="invalid_transition")
+    ctx.require("production.write" if report.status == "draft" else "production.approve")
+    _mark_cancelled(session, ctx, report, reason)
+    _reverse_output(session, ctx, report, reason)
+    return report
+
+
+def _mark_cancelled(session: Session, ctx: RequestContext, report: ProductionReport, reason: str) -> None:
     before = report.status
     report.status = "cancelled"
     report.updated_by = ctx.user_id
     session.flush()
-    _reverse_output(session, ctx, report, reason)
     audit.record(session, "production_report.cancelled", ctx=ctx, entity_type="production_report", entity_id=report.id,
+                 summary=f"Production report {report.number} cancelled",
                  changes={"status": {"from": before, "to": "cancelled"}}, context={"reason": reason})
-    return report
 
 
 def correct_report(session: Session, ctx: RequestContext, report_id: uuid.UUID, data: ReportIn, reason: str) -> ProductionReport:
@@ -370,8 +397,11 @@ def correct_report(session: Session, ctx: RequestContext, report_id: uuid.UUID, 
     old = get_report(session, ctx, report_id)
     if old.status != "approved":
         raise ValidationFailed("Only approved reports can be corrected; edit drafts directly", code="invalid_transition")
-    cancel_report(session, ctx, old.id, f"Superseded: {reason}")
+    # The new output is posted before the old one is reversed, so output already issued from stock does
+    # not take the balance below zero halfway through the correction.
+    _mark_cancelled(session, ctx, old, f"Superseded: {reason}")
     new = create_report(session, ctx, data, approve=True, supersedes_id=old.id)
+    _reverse_output(session, ctx, old, f"Superseded: {reason}")
     audit.record(session, "production_report.corrected", ctx=ctx, entity_type="production_report", entity_id=new.id,
                  summary=f"{new.number} supersedes {old.number}",
                  changes=audit.diff(report_snapshot(old), report_snapshot(new)), context={"reason": reason})
@@ -398,6 +428,7 @@ def update_draft(session: Session, ctx: RequestContext, report_id: uuid.UUID, da
     report.updated_by = ctx.user_id
     session.flush()
     audit.record(session, "production_report.updated", ctx=ctx, entity_type="production_report", entity_id=report.id,
+                 summary=f"Production report {report.number} updated",
                  changes=audit.diff(before, report_snapshot(report)))
     return report
 

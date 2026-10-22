@@ -15,9 +15,9 @@ from app.core import audit
 from app.core.context import RequestContext
 from app.core.errors import Conflict, NotFound, ValidationFailed
 from app.core.manifest import WriteResult
-from app.core.models import Product
+from app.core.models import Department, Product
 from app.core.numbering import next_number
-from app.core.services.master_data import convert, require_unit
+from app.core.services.master_data import check_reference, convert, require_unit
 from app.core.text import clean_text, fmt_qty
 from app.modules.inventory.models import StockBalance, StockMovement, Warehouse
 
@@ -38,11 +38,13 @@ def create_warehouse(session: Session, ctx: RequestContext, data: WarehouseIn) -
     ctx.require("inventory.write", "master.write")
     if session.execute(select(Warehouse.id).where(Warehouse.company_id == ctx.company_id, Warehouse.code == data.code)).first():
         raise Conflict(f"Warehouse code '{data.code}' already exists")
+    check_reference(session, ctx, Department, data.department_id, "department", "department_id")
     wh = Warehouse(company_id=ctx.company_id, code=data.code, name=clean_text(data.name), kind=data.kind,
                    department_id=data.department_id)
     session.add(wh)
     session.flush()
     audit.record(session, "warehouse.created", ctx=ctx, entity_type="warehouse", entity_id=wh.id,
+                 summary=f"Warehouse {wh.code} — {wh.name} created",
                  changes={"code": wh.code, "name": wh.name, "kind": wh.kind})
     return wh
 
@@ -130,13 +132,25 @@ def post_movement(
 
 
 def reverse_movement(session: Session, ctx: RequestContext, movement_id: uuid.UUID, reason: str,
-                     permission: str = "inventory.write") -> StockMovement:
+                     permission: str = "inventory.write", *, ref_type: str | None = None,
+                     ref_id: uuid.UUID | None = None) -> StockMovement:
+    """Compensate a movement. A movement posted by a document (e.g. a production report) is reversed only
+    by that document's own cancel/correct (which passes its ref), a reversal is final, and stock never
+    goes negative."""
     ctx.require(permission)
     original = session.execute(
         select(StockMovement).where(StockMovement.id == movement_id, StockMovement.company_id == ctx.company_id)
     ).scalar_one_or_none()
     if original is None:
         raise NotFound("Movement not found")
+    if original.reverses_id is not None:
+        raise ValidationFailed(f"{original.number} is a reversal and cannot be reversed itself", code="reversal_not_reversible")
+    if original.ref_type and (original.ref_type, original.ref_id) != (ref_type, ref_id):
+        raise ValidationFailed(
+            f"{original.number} was posted by {original.ref_type.replace('_', ' ')} {original.reference or original.ref_id}; "
+            "cancel or correct that document instead", code="posted_by_document",
+            extra={"ref_type": original.ref_type, "ref_id": str(original.ref_id) if original.ref_id else None},
+        )
     if session.execute(select(StockMovement.id).where(StockMovement.reverses_id == original.id)).first():
         raise Conflict("Movement already reversed")
     reversal = StockMovement(
@@ -150,7 +164,7 @@ def reverse_movement(session: Session, ctx: RequestContext, movement_id: uuid.UU
     session.add(reversal)
     session.flush()
     _apply_balance(session, ctx.company_id, original.warehouse_id, original.product_id, original.batch_code,
-                   reversal.base_qty, allow_negative=True)
+                   reversal.base_qty, allow_negative=False)
     audit.record(session, "stock_movement.reversed", ctx=ctx, entity_type="stock_movement", entity_id=original.id,
                  summary=f"{original.number} reversed by {reversal.number}", changes={"reason": reason, "reversal": reversal.number})
     return reversal

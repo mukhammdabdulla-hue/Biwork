@@ -41,6 +41,7 @@ class Candidate:
 
 class EntityResolver(Protocol):
     entity_type: str
+    permissions: tuple[str, ...]  # any one of these lets a caller search this entity type
 
     def resolve(self, session: Session, company_id: uuid.UUID, value: str, **context: Any) -> list[Candidate]: ...
 
@@ -108,6 +109,7 @@ class AliasTableResolver:
     code_attr: str | None = "code"
     data: Callable[[Any], dict[str, Any]] = lambda _e: {}
     filters: Callable[[Any], list[Any]] = lambda _m: []
+    permissions: tuple[str, ...] = ("master.read",)
 
     def _base(self, company_id: uuid.UUID):
         m = self.model
@@ -172,6 +174,8 @@ class ListResolver:
     keys: Callable[[Any], Iterable[str]]  # strings that identify the entity exactly (code, name, ...)
     data: Callable[[Any], dict[str, Any]] = lambda _e: {}
     fuzzy: bool = True  # False for identifiers (order numbers) where near-misses are different entities
+    permissions: tuple[str, ...] = ("master.read",)
+    department: Callable[[Any], uuid.UUID | None] | None = None  # for department-scoped entities (orders)
 
     def get(self, session: Session, company_id: uuid.UUID, entity_id: uuid.UUID) -> Candidate | None:
         for e in self.load(session, company_id):
@@ -179,13 +183,16 @@ class ListResolver:
                 return Candidate(self.entity_type, e.id, self.label(e), 1.0, EXACT, self.data(e))
         return None
 
-    def resolve(self, session: Session, company_id: uuid.UUID, value: str, **_: Any) -> list[Candidate]:
+    def resolve(self, session: Session, company_id: uuid.UUID, value: str, *,
+                department_ids: frozenset[uuid.UUID] | None = None, **_: Any) -> list[Candidate]:
         key = normalize_key(value)
         if not key:
             return []
         sorted_key = " ".join(sorted(key.split()))
         found = []
         for e in self.load(session, company_id):
+            if department_ids is not None and self.department is not None and self.department(e) not in (None, *department_ids):
+                continue
             keys = [k for k in self.keys(e) if k]
             norm = [normalize_key(k) for k in keys]
             if key in norm or sorted_key in {" ".join(sorted(n.split())) for n in norm}:

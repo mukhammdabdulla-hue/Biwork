@@ -7,6 +7,7 @@ from __future__ import annotations
 import dataclasses
 import hashlib
 import json
+import re
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -27,7 +28,7 @@ from app.core.models import CompanyModule
 from app.core.services.files import store_upload
 from app.core.text import clean_text
 from app.db.session import after_commit
-from app.modules.registry import record_types_for_modules
+from app.modules.registry import record_type, record_types_for_modules
 
 IMPORT_POLICIES = ("valid_rows_only", "all_or_nothing", "stop_on_first_error")
 MAX_TEXT_CHARS = 200_000
@@ -47,6 +48,20 @@ def enabled_modules(session: Session, company_id: uuid.UUID) -> list[str]:
 
 def allowed_record_types(session: Session, company_id: uuid.UUID) -> list[str]:
     return [rt.code for rt in record_types_for_modules(enabled_modules(session, company_id))]
+
+
+def default_title(text: str | None, files: list[UploadedFile], target_record_type: str | None, channel: str) -> str:
+    """A job is never untitled: its files' names, the text's first line, or what a form/API payload holds."""
+    if files:
+        return ", ".join(f.filename for f in files)[:300]
+    # The first line with something printable: a BOM or zero-width space alone is not whitespace to strip().
+    first = next((cleaned for line in (text or "").splitlines() if (cleaned := clean_text(line))), None)
+    if first:
+        return first if len(first) <= 80 else first[:79].rstrip() + "…"
+    label = re.sub(r"\s*\(.*\)$", "", record_type(target_record_type).label) if target_record_type else None
+    if text:
+        return f"{label} (text)" if label else "Text"
+    return f"{label or 'Structured data'} ({'API' if channel == 'api' else 'form'})"  # "Product (form)", not "Product (master data) (form)"
 
 
 def _fingerprint(file_hashes: list[str], text: str | None, payload: dict[str, Any] | None, target: str | None) -> str:
@@ -124,7 +139,7 @@ def create_job(
     job = IngestionJob(
         company_id=ctx.company_id, submitted_by=ctx.user_id, api_client_id=ctx.api_client_id, channel=channel,
         source_kind="form" if payload is not None else ("file" if files else "text"),
-        title=clean_text(title, 300) or (files[0].filename if files else (text or "")[:120]),
+        title=clean_text(title, 300) or default_title(text, files, target_record_type, channel),
         status="queued", import_policy=import_policy, target_record_type=target_record_type,
         idempotency_key=idempotency_key, content_fingerprint=fingerprint, force_reprocess=bool(force and previous),
         duplicate_of_job_id=previous.id if previous else None, pipeline_version=pipeline_version(),

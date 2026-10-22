@@ -16,7 +16,7 @@ from app.core import audit
 from app.core.context import RequestContext
 from app.core.errors import Conflict, NotFound, PreconditionFailed, ValidationFailed
 from app.core.manifest import WriteResult
-from app.core.models import Department, Product, Task
+from app.core.models import Company, Department, Product, Task
 from app.core.numbering import next_number
 from app.core.services.master_data import require_unit
 from app.core.services.notifications import notify_permission
@@ -64,6 +64,7 @@ def create_supplier(session: Session, ctx: RequestContext, data: SupplierIn, sou
     for alias in {normalize_key(a): a for a in [supplier.name, supplier.code, *data.aliases] if normalize_key(a)}.items():
         session.add(SupplierAlias(company_id=ctx.company_id, supplier_id=supplier.id, alias=alias[1], normalized_alias=alias[0]))
     audit.record(session, "supplier.created", ctx=ctx, entity_type="supplier", entity_id=supplier.id,
+                 summary=f"Supplier {supplier.code} — {supplier.name} created",
                  changes={"code": supplier.code, "name": supplier.name, "tin": supplier.tin})
     return supplier
 
@@ -136,11 +137,13 @@ def create_purchase_request(session: Session, ctx: RequestContext, data: Purchas
         PurchaseRequest.status != "cancelled",
     )).first():
         raise Conflict(f"Purchase request '{data.external_number}' was already registered", code="duplicate_purchase_request")
+    # Prices without a stated currency are in the company's default currency.
+    currency = data.currency or (session.get(Company, ctx.company_id).settings or {}).get("default_currency")
     pr = PurchaseRequest(
         company_id=ctx.company_id, number=next_number(session, ctx.company_id, "PR", data.request_date),
         external_number=clean_text(data.external_number, 60), request_date=data.request_date, needed_by=data.needed_by,
         department_id=data.department_id, requested_by_employee=clean_text(data.requested_by, 200), supplier_id=data.supplier_id,
-        status="submitted", priority=data.priority, currency=(data.currency or "").upper() or None,
+        status="submitted", priority=data.priority, currency=(currency or "").upper() or None,
         notes=clean_text(data.notes, 5000), source_file_id=source_file_id, created_by=ctx.user_id, updated_by=ctx.user_id,
         source_record_id=source_record_id,
     )
@@ -170,7 +173,7 @@ def create_purchase_request(session: Session, ctx: RequestContext, data: Purchas
 
 def _route_for_approval(session: Session, ctx: RequestContext, pr: PurchaseRequest) -> None:
     """Procurement approval workflow: notify approvers and open an approval task."""
-    link = f"/supply/purchase-requests/{pr.id}"
+    link = f"/supply?request={pr.id}"
     notify_permission(session, ctx.company_id, "supply.approve", "purchase_request.submitted",
                       f"Purchase request {pr.number} awaits approval",
                       f"{len(pr.lines)} line(s), needed by {pr.needed_by or 'not specified'}", link, exclude=ctx.user_id)
@@ -203,11 +206,13 @@ def decide_purchase_request(session: Session, ctx: RequestContext, pr_id: uuid.U
         raise ValidationFailed(f"Cannot change status from '{pr.status}' to '{status}'", code="invalid_transition")
     before = pr.status
     pr.status = status
-    if status in ("approved", "rejected"):
+    # The request shows its latest decision: approval/rejection always, later steps when they carry a comment.
+    if status in ("approved", "rejected") or clean_text(comment, 2000):
         pr.decided_by, pr.decided_at, pr.decision_comment = ctx.user_id, datetime.now(UTC), clean_text(comment, 2000)
     pr.updated_by = ctx.user_id
     session.flush()
     audit.record(session, f"purchase_request.{status}", ctx=ctx, entity_type="purchase_request", entity_id=pr.id,
+                 summary=f"Purchase request {pr.number} status changed from {before} to {status}",
                  changes={"status": {"from": before, "to": status}}, context={"comment": comment} if comment else None)
     # Close the approval task once a decision is made.
     if status in ("approved", "rejected", "cancelled"):

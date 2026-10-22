@@ -90,6 +90,7 @@ def toggle_module(code: str, data: ModuleToggle, ctx: Ctx, db: DB) -> dict[str, 
         db.add(row)
     row.enabled = data.enabled
     audit.record(db, "company.module_toggled", ctx=ctx, entity_type="company", entity_id=ctx.company_id,
+                 summary=f"Module {manifest.name} {'enabled' if data.enabled else 'disabled'}",
                  changes={"module": code, "enabled": data.enabled})
     db.commit()
     return company_out(db, db.get(Company, ctx.company_id))

@@ -16,7 +16,7 @@ from sqlalchemy import func, null, or_, select, text, update
 
 from app.agent.models import AICall, ExtractedRecord, IngestionItem, IngestionJob, StageRun
 from app.agent.pipeline import commit as commit_stage
-from app.agent.pipeline.context import StageError, fail_job, set_job, stage_run
+from app.agent.pipeline.context import STAGES, StageError, fail_job, publish, set_job, stage_run
 from app.agent.pipeline.interpret import interpret_item
 from app.agent.pipeline.parse import mark_item_failed, parse_item
 from app.agent.pipeline.review import (
@@ -63,7 +63,7 @@ def run_parse(company_id: uuid.UUID, job_id: uuid.UUID) -> bool:
                 metrics.update(parse_item(s, s.get(IngestionItem, item_id)))
         except StageError as exc:
             with tenant_session(company_id) as s:
-                mark_item_failed(s, item_id, str(exc))
+                mark_item_failed(s, item_id, str(exc), "parse", retryable=False)
     return True
 
 
@@ -77,7 +77,7 @@ def run_interpret(company_id: uuid.UUID, job_id: uuid.UUID, provider=None) -> bo
                 metrics.update(interpret_item(s, s.get(IngestionItem, item_id), provider=provider))
         except (StageError, PermanentAIError) as exc:
             with tenant_session(company_id) as s:
-                mark_item_failed(s, item_id, str(exc))
+                mark_item_failed(s, item_id, str(exc), "interpret", retryable=True)
     return True
 
 
@@ -87,8 +87,32 @@ def _undecided(s, job_id: uuid.UUID) -> list[ExtractedRecord]:
     ).order_by(ExtractedRecord.seq)).scalars())
 
 
+def _fail_without_records(company_id: uuid.UUID, job_id: uuid.UUID) -> bool:
+    """When every input failed and nothing was extracted, the job fails at the stage its inputs
+    stopped at; the later stages never run (and are not recorded as succeeded)."""
+    with tenant_session(company_id) as s:
+        job = s.get(IngestionJob, job_id)
+        failed_items = [i for i in job.items if i.status == "failed"]
+        if not failed_items or s.execute(select(ExtractedRecord.id).where(ExtractedRecord.job_id == job_id).limit(1)).first():
+            return False
+        now = datetime.now(UTC)
+        stage = min((i.meta.get("failed_stage") or "interpret" for i in failed_items), key=STAGES.index)
+        job.status, job.current_stage, job.finished_at = "failed", stage, now
+        job.error = {"stage": stage, "message": "; ".join(i.error or "unknown error" for i in failed_items)[:1500],
+                     "retryable": any(i.meta.get("retryable", True) for i in failed_items), "at": now.isoformat()}
+        record_ai_outcomes(s, job_id)
+        audit.record(s, "agent.job.processed", company_id=company_id, actor_type="agent", entity_type="ingestion_job",
+                     entity_id=job_id, summary=f"Processing failed at stage {stage}: no records extracted",
+                     context={"pipeline_version": job.pipeline_version, "prompt_version": job.prompt_version,
+                              "ai_provider": job.ai_provider, "ai_model": job.ai_model, "failed_stage": stage})
+    publish(company_id, job_id, {"status": "failed", "current_stage": stage})
+    return True
+
+
 def run_prepare(company_id: uuid.UUID, job_id: uuid.UUID) -> dict[str, Any]:
     """Stages 4–6 as three observable passes over the job's undecided records, then review."""
+    if _fail_without_records(company_id, job_id):
+        return {"auto_approved": []}
     with stage_run(company_id, job_id, "normalize") as metrics, tenant_session(company_id) as s:
         job = s.get(IngestionJob, job_id)
         count = 0
@@ -126,17 +150,11 @@ def run_prepare(company_id: uuid.UUID, job_id: uuid.UUID) -> dict[str, Any]:
         items = s.execute(select(IngestionItem).where(IngestionItem.job_id == job_id)).scalars().all()
         records = s.execute(select(ExtractedRecord.id).where(ExtractedRecord.job_id == job_id)).all()
         failed_items = [i for i in items if i.status == "failed"]
-        if not records and failed_items:
-            reasons = "; ".join(i.error or "unknown error" for i in failed_items)[:1500]
-            job.status = "failed"
-            job.error = {"stage": "interpret", "message": reasons, "retryable": True, "at": datetime.now(UTC).isoformat()}
-            job.finished_at = datetime.now(UTC)
-        else:
-            job.status = "awaiting_review"
-            if failed_items:
-                job.warnings = [*job.warnings, *[f"{i.meta.get('filename') or 'Input'}: {i.error}" for i in failed_items]]
-            auto = auto_approve_ready(s, job)
-            _update_job_after_review(s, job)
+        job.status = "awaiting_review"
+        if failed_items:
+            job.warnings = [*job.warnings, *[f"{i.meta.get('filename') or 'Input'}: {i.error}" for i in failed_items]]
+        auto = auto_approve_ready(s, job)
+        _update_job_after_review(s, job)
         record_ai_outcomes(s, job_id)
         metrics.update({"records": len(records), "failed_items": len(failed_items), "auto_approved": len(auto)})
         audit.record(s, "agent.job.processed", company_id=company_id, actor_type="agent", entity_type="ingestion_job",
@@ -206,6 +224,7 @@ def prepare_retry(session, job: IngestionJob, target_record_type: str | None = N
                                            {"i": item.id}).first() is not None
             item.status = "parsed" if has_segments and item.parser else "pending"
             item.error = None
+            item.meta = {k: v for k, v in item.meta.items() if k not in ("failed_stage", "retryable")}
     job.status = "queued"
     return "process"
 

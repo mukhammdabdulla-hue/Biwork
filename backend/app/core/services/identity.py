@@ -60,7 +60,7 @@ def authenticate(session: Session, email: str, password: str, otp: str | None, i
     now = datetime.now(UTC)
     if user is not None and user.locked_until and user.locked_until > now:
         audit.record(session, "auth.login_blocked", actor_type="user", actor_id=user.id, entity_type="user",
-                     entity_id=user.id, context={"ip": ip})
+                     entity_id=user.id, summary="Sign-in refused: account temporarily locked", context={"ip": ip})
         raise Unauthorized("Account temporarily locked after repeated failed sign-ins", code="account_locked")
     ok = verify_password(user.password_hash if user else None, password)
     if not ok or user is None or not user.is_active:
@@ -70,19 +70,21 @@ def authenticate(session: Session, email: str, password: str, otp: str | None, i
                 user.locked_until = now + timedelta(minutes=settings.login_lockout_minutes)
                 user.failed_login_count = 0
         audit.record(session, "auth.login_failed", actor_type="user", actor_id=user.id if user else None,
+                     summary="Sign-in failed: wrong email or password",
                      context={"ip": ip, "email_hash": token_hash(email.strip().lower())[:16]})
         raise Unauthorized("Invalid email or password", code="invalid_credentials")
     if user.mfa_enabled:
         if not otp:
             raise Unauthorized("Enter the code from your authenticator app", code="mfa_required")
         if not pyotp.TOTP(decrypt_field(user.mfa_secret)).verify(otp, valid_window=1):
-            audit.record(session, "auth.mfa_failed", actor_type="user", actor_id=user.id, context={"ip": ip})
+            audit.record(session, "auth.mfa_failed", actor_type="user", actor_id=user.id,
+                         summary="Sign-in failed: wrong authenticator code", context={"ip": ip})
             raise Unauthorized("Invalid authentication code", code="mfa_invalid")
     user.failed_login_count = 0
     user.locked_until = None
     user.last_login_at = now
     audit.record(session, "auth.login", actor_type="user", actor_id=user.id, entity_type="user", entity_id=user.id,
-                 context={"ip": ip})
+                 summary="Signed in", context={"ip": ip})
     return user
 
 
@@ -99,7 +101,16 @@ def issue_tokens(session: Session, user: User, ip: str | None, user_agent: str |
     return TokenPair(access, ttl, refresh, user)
 
 
+def _lock_user(session: Session, user_id: uuid.UUID) -> None:
+    """Session changes of one user run one at a time: a "sign out everywhere" waits for a refresh in flight,
+    so it also revokes the token that refresh issues. Taken before any refresh-token row lock."""
+    session.execute(select(User.id).where(User.id == user_id).with_for_update())
+
+
 def rotate_refresh(session: Session, refresh_token: str, ip: str | None, user_agent: str | None) -> TokenPair:
+    owner = session.execute(select(RefreshToken.user_id).where(RefreshToken.token_hash == token_hash(refresh_token))).scalar_one_or_none()
+    if owner is not None:
+        _lock_user(session, owner)
     row = session.execute(
         select(RefreshToken).where(RefreshToken.token_hash == token_hash(refresh_token)).with_for_update()
     ).scalar_one_or_none()
@@ -110,6 +121,7 @@ def rotate_refresh(session: Session, refresh_token: str, ip: str | None, user_ag
         # A consumed refresh token was presented again: assume theft, revoke the whole family.
         revoke_family(session, row.family_id)
         audit.record(session, "auth.refresh_reuse_detected", actor_type="user", actor_id=row.user_id,
+                     summary="Reused session token detected; the session was signed out",
                      context={"ip": ip, "family_id": str(row.family_id)})
         raise Unauthorized("Session invalidated for security reasons; please sign in again", code="refresh_reuse")
     user = session.get(User, row.user_id)
@@ -131,33 +143,59 @@ def logout(session: Session, refresh_token: str | None) -> None:
     row = session.execute(select(RefreshToken).where(RefreshToken.token_hash == token_hash(refresh_token))).scalar_one_or_none()
     if row is not None:
         revoke_family(session, row.family_id)
-        audit.record(session, "auth.logout", actor_type="user", actor_id=row.user_id)
+        audit.record(session, "auth.logout", actor_type="user", actor_id=row.user_id, summary="Signed out")
 
 
-def change_password(session: Session, user: User, current: str, new: str) -> None:
+def revoke_sessions(session: Session, user: User) -> None:
+    """End every session: revoke all refresh tokens and reject access tokens issued until now."""
+    _lock_user(session, user.id)
+    now = datetime.now(UTC)
+    user.sessions_revoked_at = now
+    for token in session.execute(select(RefreshToken).where(RefreshToken.user_id == user.id, RefreshToken.revoked_at.is_(None))).scalars():
+        token.revoked_at = now
+
+
+def change_password(session: Session, user: User, current: str, new: str, ip: str | None, user_agent: str | None) -> TokenPair:
+    """Change the password, end every session and start a fresh one for the caller."""
     if not verify_password(user.password_hash, current):
         raise ValidationFailed("Current password is incorrect", code="invalid_password")
+    if new == current:
+        raise ValidationFailed("The new password must differ from the current one", code="password_unchanged")
     problems = password_problems(new)
     if problems:
         raise ValidationFailed("Password must have " + ", ".join(problems), code="weak_password")
     user.password_hash = hash_password(new)
-    for token in session.execute(select(RefreshToken).where(RefreshToken.user_id == user.id, RefreshToken.revoked_at.is_(None))).scalars():
-        token.revoked_at = datetime.now(UTC)
-    audit.record(session, "auth.password_changed", actor_type="user", actor_id=user.id, entity_type="user", entity_id=user.id)
+    revoke_sessions(session, user)
+    audit.record(session, "auth.password_changed", actor_type="user", actor_id=user.id, entity_type="user", entity_id=user.id,
+                 summary="Password changed; other sessions signed out")
+    return issue_tokens(session, user, ip, user_agent)
 
 
-def mfa_begin(session: Session, user: User) -> str:
+def mfa_begin(session: Session, user: User, code: str | None = None, password: str | None = None) -> str:
+    """Start enrolling an authenticator. The new secret only replaces the current one once confirmed;
+    replacing an active authenticator needs its current code or the account password."""
+    if user.mfa_enabled:
+        if code:
+            if not pyotp.TOTP(decrypt_field(user.mfa_secret)).verify(code, valid_window=1):
+                raise ValidationFailed("Invalid authentication code", code="mfa_invalid")
+        elif password:
+            if not verify_password(user.password_hash, password):
+                raise ValidationFailed("Current password is incorrect", code="invalid_password")
+        else:
+            raise ValidationFailed("Enter the current authentication code or your password to replace the authenticator",
+                                   code="mfa_reauth_required")
     secret = pyotp.random_base32()
-    user.mfa_secret = encrypt_field(secret)
-    user.mfa_enabled = False
+    user.mfa_pending_secret = encrypt_field(secret)
     return pyotp.TOTP(secret).provisioning_uri(name=user.email, issuer_name="BIWORK")
 
 
 def mfa_confirm(session: Session, user: User, code: str) -> None:
-    if not user.mfa_secret or not pyotp.TOTP(decrypt_field(user.mfa_secret)).verify(code, valid_window=1):
+    if not user.mfa_pending_secret or not pyotp.TOTP(decrypt_field(user.mfa_pending_secret)).verify(code, valid_window=1):
         raise ValidationFailed("Invalid authentication code", code="mfa_invalid")
+    user.mfa_secret, user.mfa_pending_secret = user.mfa_pending_secret, None
     user.mfa_enabled = True
-    audit.record(session, "auth.mfa_enabled", actor_type="user", actor_id=user.id, entity_type="user", entity_id=user.id)
+    audit.record(session, "auth.mfa_enabled", actor_type="user", actor_id=user.id, entity_type="user", entity_id=user.id,
+                 summary="Authenticator app confirmed")
 
 
 # --------------------------------------------------------------------------- memberships & context
@@ -273,7 +311,7 @@ def create_role(session: Session, ctx: RequestContext, data: RoleIn) -> Role:
                 permissions=[RolePermission(permission=p) for p in sorted(set(data.permissions))])
     session.add(role)
     session.flush()
-    audit.record(session, "role.created", ctx=ctx, entity_type="role", entity_id=role.id,
+    audit.record(session, "role.created", ctx=ctx, entity_type="role", entity_id=role.id, summary=f"Role {role.name} created",
                  changes={"code": role.code, "permissions": sorted(set(data.permissions))})
     return role
 
@@ -351,8 +389,9 @@ def update_company_settings(session: Session, ctx: RequestContext, values: dict[
         merged["ai_policy"] = {**company.settings.get("ai_policy", {}), **values["ai_policy"]}
     company.settings = merged
     session.flush()
+    changes = audit.diff(before, merged)
     audit.record(session, "company.settings_updated", ctx=ctx, entity_type="company", entity_id=company.id,
-                 changes=audit.diff(before, merged))
+                 summary=f"Company settings updated: {', '.join(changes) or 'no change'}", changes=changes)
     return company
 
 
@@ -378,6 +417,13 @@ def add_member(session: Session, ctx: RequestContext, data: MemberIn) -> Members
     if escalation:
         raise PermissionDenied("You cannot assign a role with permissions you do not hold")
     user = session.execute(select(User).where(func.lower(User.email) == data.email.lower())).scalar_one_or_none()
+    if user is not None and not _may_attach(session, ctx, user):
+        # An account the actor cannot see (another tenant's) is answered like an unknown email, and
+        # never attached or described: adding it needs a platform administrator.
+        if not data.password:
+            raise ValidationFailed("An initial password is required for a new user", extra={"field": "password"})
+        raise Conflict("This email address cannot be used for a new user; ask a platform administrator to add the account",
+                       code="email_unavailable")
     if user is None:
         if not data.password:
             raise ValidationFailed("An initial password is required for a new user", extra={"field": "password"})
@@ -401,6 +447,20 @@ def add_member(session: Session, ctx: RequestContext, data: MemberIn) -> Members
     return membership
 
 
+def _may_attach(session: Session, ctx: RequestContext, user: User) -> bool:
+    """An existing account can be added by a platform administrator, or by someone who already
+    administers that person in some company (including this one)."""
+    actor = session.get(User, ctx.user_id) if ctx.user_id else None
+    if actor is None:
+        return False
+    if actor.is_platform_admin:
+        return True
+    administered = (select(Membership.company_id).join(RolePermission, RolePermission.role_id == Membership.role_id)
+                    .where(Membership.user_id == actor.id, Membership.is_active.is_(True), RolePermission.permission == "admin.users"))
+    return session.execute(select(Membership.id).where(Membership.user_id == user.id,
+                                                       Membership.company_id.in_(administered)).limit(1)).first() is not None
+
+
 def _check_departments(session: Session, company_id: uuid.UUID, ids: list[uuid.UUID]) -> None:
     if not ids:
         return
@@ -422,6 +482,8 @@ def update_member(session: Session, ctx: RequestContext, membership_id: uuid.UUI
         raise NotFound("Membership not found")
     if m.user_id == ctx.user_id and data.is_active is False:
         raise ValidationFailed("You cannot deactivate your own membership")
+    if {p.permission for p in m.role.permissions} - ctx.permissions:
+        raise PermissionDenied("You cannot change a member whose role has permissions you do not hold")
     before = {"role": m.role.code, "is_active": m.is_active, "departments": sorted(str(d.department_id) for d in m.departments)}
     if data.role:
         role = get_role(session, ctx.company_id, data.role)
@@ -435,7 +497,9 @@ def update_member(session: Session, ctx: RequestContext, membership_id: uuid.UUI
         m.departments = [MembershipDepartment(department_id=d) for d in data.department_ids]
     session.flush()
     after = {"role": m.role.code, "is_active": m.is_active, "departments": sorted(str(d.department_id) for d in m.departments)}
-    audit.record(session, "membership.updated", ctx=ctx, entity_type="membership", entity_id=m.id, changes=audit.diff(before, after))
+    changes = audit.diff(before, after)
+    audit.record(session, "membership.updated", ctx=ctx, entity_type="membership", entity_id=m.id,
+                 summary=f"Member {session.get(User, m.user_id).email} updated: {', '.join(changes) or 'no change'}", changes=changes)
     return m
 
 
@@ -466,6 +530,7 @@ def create_api_client(session: Session, ctx: RequestContext, data: ApiClientIn) 
     session.add(client)
     session.flush()
     audit.record(session, "api_client.created", ctx=ctx, entity_type="api_client", entity_id=client.id,
+                 summary=f"API client {client.name} created",
                  changes={"name": client.name, "scopes": client.scopes})
     return client, key
 
@@ -489,4 +554,5 @@ def revoke_api_client(session: Session, ctx: RequestContext, client_id: uuid.UUI
     if client is None:
         raise NotFound("API client not found")
     client.revoked_at = datetime.now(UTC)
-    audit.record(session, "api_client.revoked", ctx=ctx, entity_type="api_client", entity_id=client.id)
+    audit.record(session, "api_client.revoked", ctx=ctx, entity_type="api_client", entity_id=client.id,
+                 summary=f"API client {client.name} revoked")

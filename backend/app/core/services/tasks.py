@@ -15,8 +15,9 @@ from app.core.context import RequestContext
 from app.core.errors import NotFound, PreconditionFailed, ValidationFailed
 from app.core.manifest import WriteResult
 from app.core.matching import ListResolver, register_resolver
-from app.core.models import Membership, Task, User
+from app.core.models import Department, Membership, Task, User
 from app.core.numbering import next_number
+from app.core.services.master_data import check_reference
 from app.core.services.notifications import notify
 from app.core.text import clean_text
 
@@ -60,6 +61,7 @@ def create_task(session: Session, ctx: RequestContext, data: TaskIn, source_reco
     if data.priority not in PRIORITIES:
         raise ValidationFailed(f"priority must be one of {', '.join(PRIORITIES)}")
     _check_assignee(session, ctx.company_id, data.assignee_id)
+    check_reference(session, ctx, Department, data.department_id, "department", "department_id")
     ctx.require_department(data.department_id)
     task = Task(
         company_id=ctx.company_id, number=next_number(session, ctx.company_id, "T"), title=clean_text(data.title, 300),
@@ -72,7 +74,7 @@ def create_task(session: Session, ctx: RequestContext, data: TaskIn, source_reco
     audit.record(session, "task.created", ctx=ctx, entity_type="task", entity_id=task.id,
                  summary=f"Task {task.number}: {task.title}", changes=task_snapshot(task))
     if task.assignee_id and task.assignee_id != ctx.user_id:
-        notify(session, ctx.company_id, task.assignee_id, "task.assigned", f"New task {task.number}", task.title, f"/tasks?id={task.id}")
+        notify(session, ctx.company_id, task.assignee_id, "task.assigned", f"New task {task.number}", task.title, f"/tasks?task={task.id}")
     return task
 
 
@@ -98,8 +100,8 @@ def update_task(session: Session, ctx: RequestContext, task_id: uuid.UUID, data:
         _check_assignee(session, ctx.company_id, values["assignee_id"])
     for key, value in values.items():
         setattr(task, key, clean_text(value) if key in ("title", "description") else value)
-    if task.status == "done" and task.completed_at is None:
-        task.completed_at = datetime.now(UTC)
+    if task.status != before["status"]:  # completing stamps the time; reopening or cancelling clears it
+        task.completed_at = datetime.now(UTC) if task.status == "done" else None
     task.updated_by = ctx.user_id
     session.flush()
     changes = audit.diff(before, task_snapshot(task))
@@ -127,5 +129,5 @@ def _company_users(session: Session, company_id: uuid.UUID) -> list[User]:
 
 register_resolver(ListResolver(
     entity_type="user", load=_company_users, label=lambda u: f"{u.full_name} <{u.email}>",
-    keys=lambda u: [u.email, u.full_name, u.email.split("@")[0]],
+    keys=lambda u: [u.email, u.full_name, u.email.split("@")[0]], permissions=("tasks.read", "admin.users"),
 ))
