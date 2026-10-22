@@ -54,11 +54,14 @@ def default_title(text: str | None, files: list[UploadedFile], target_record_typ
     """A job is never untitled: its files' names, the text's first line, or what a form/API payload holds."""
     if files:
         return ", ".join(f.filename for f in files)[:300]
-    if text:
-        first = clean_text(next(line for line in text.splitlines() if line.strip()))
+    # The first line with something printable: a BOM or zero-width space alone is not whitespace to strip().
+    first = next((cleaned for line in (text or "").splitlines() if (cleaned := clean_text(line))), None)
+    if first:
         return first if len(first) <= 80 else first[:79].rstrip() + "…"
-    label = re.sub(r"\s*\(.*\)$", "", record_type(target_record_type).label) if target_record_type else "Structured data"
-    return f"{label} ({'API' if channel == 'api' else 'form'})"  # "Product (form)", not "Product (master data) (form)"
+    label = re.sub(r"\s*\(.*\)$", "", record_type(target_record_type).label) if target_record_type else None
+    if text:
+        return f"{label} (text)" if label else "Text"
+    return f"{label or 'Structured data'} ({'API' if channel == 'api' else 'form'})"  # "Product (form)", not "Product (master data) (form)"
 
 
 def _fingerprint(file_hashes: list[str], text: str | None, payload: dict[str, Any] | None, target: str | None) -> str:

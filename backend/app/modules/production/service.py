@@ -311,7 +311,8 @@ def stock_warnings(session: Session, ctx: RequestContext, report: ProductionRepo
 
 def create_report(session: Session, ctx: RequestContext, data: ReportIn, *, approve: bool = False,
                   source_record_id: uuid.UUID | None = None, supersedes_id: uuid.UUID | None = None) -> ProductionReport:
-    ctx.require("production.write")
+    if supersedes_id is None:  # a correction is an approver's action (correct_report) and needs no write permission
+        ctx.require("production.write")
     if approve:
         ctx.require("production.approve")
     product, unit = _check_report_refs(session, ctx, data)
@@ -369,12 +370,12 @@ def approve_report(session: Session, ctx: RequestContext, report_id: uuid.UUID, 
 
 def cancel_report(session: Session, ctx: RequestContext, report_id: uuid.UUID, reason: str) -> ProductionReport:
     """Writers may discard drafts; cancelling an approved report reverses its postings and needs an approver."""
-    ctx.require("production.write")
+    if not (ctx.has("production.write") or ctx.has("production.approve")):
+        ctx.require("production.write")
     report = get_report(session, ctx, report_id)
     if report.status == "cancelled":
         raise ValidationFailed("Report is already cancelled", code="invalid_transition")
-    if report.status != "draft":
-        ctx.require("production.approve")
+    ctx.require("production.write" if report.status == "draft" else "production.approve")
     _mark_cancelled(session, ctx, report, reason)
     _reverse_output(session, ctx, report, reason)
     return report

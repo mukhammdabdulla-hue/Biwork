@@ -101,7 +101,16 @@ def issue_tokens(session: Session, user: User, ip: str | None, user_agent: str |
     return TokenPair(access, ttl, refresh, user)
 
 
+def _lock_user(session: Session, user_id: uuid.UUID) -> None:
+    """Session changes of one user run one at a time: a "sign out everywhere" waits for a refresh in flight,
+    so it also revokes the token that refresh issues. Taken before any refresh-token row lock."""
+    session.execute(select(User.id).where(User.id == user_id).with_for_update())
+
+
 def rotate_refresh(session: Session, refresh_token: str, ip: str | None, user_agent: str | None) -> TokenPair:
+    owner = session.execute(select(RefreshToken.user_id).where(RefreshToken.token_hash == token_hash(refresh_token))).scalar_one_or_none()
+    if owner is not None:
+        _lock_user(session, owner)
     row = session.execute(
         select(RefreshToken).where(RefreshToken.token_hash == token_hash(refresh_token)).with_for_update()
     ).scalar_one_or_none()
@@ -139,6 +148,7 @@ def logout(session: Session, refresh_token: str | None) -> None:
 
 def revoke_sessions(session: Session, user: User) -> None:
     """End every session: revoke all refresh tokens and reject access tokens issued until now."""
+    _lock_user(session, user.id)
     now = datetime.now(UTC)
     user.sessions_revoked_at = now
     for token in session.execute(select(RefreshToken).where(RefreshToken.user_id == user.id, RefreshToken.revoked_at.is_(None))).scalars():

@@ -6,6 +6,8 @@ from datetime import date, timedelta
 
 import pytest
 
+from tests.conftest import PASSWORD
+
 
 @pytest.mark.parametrize("path, params", [
     ("/api/v1/production/reports", {"cursor": "MTIz"}),  # base64 of 123
@@ -25,6 +27,11 @@ def test_malformed_cursor_is_a_client_error(client, world, path, params):
     ("/api/v1/production/calendar", {"month": "2026-13"}),
     ("/api/v1/production/calendar", {"month": "0000-01"}),
     ("/api/v1/production/calendar", {"month": "9999-12"}),
+    ("/api/v1/audit/events", {"limit": "-1"}),
+    ("/api/v1/audit/events", {"limit": "0"}),
+    ("/api/v1/notifications", {"limit": "-1"}),
+    ("/api/v1/agent/items/00000000-0000-0000-0000-000000000000/preview", {"limit": "-1"}),
+    ("/api/v1/agent/jobs/00000000-0000-0000-0000-000000000000/records", {"limit": "-1"}),
 ])
 def test_out_of_range_query_values_are_validation_errors(client, world, path, params):
     r = client.get(path, headers=world.login(client, "admin"), params=params)
@@ -75,3 +82,26 @@ def test_report_writers_cancel_drafts_and_approvers_cancel_or_correct_approved_r
     viewer = world.login(client, "viewer")
     other = client.post("/api/v1/production/reports", headers=operator, json={**body, "qty_produced": "5"}).json()
     assert client.post(f"/api/v1/production/reports/{other['id']}/cancel", headers=viewer, json={"reason": "Nope"}).status_code == 403
+
+
+def test_approvers_without_write_permission_cancel_and_correct_approved_reports(client, world):
+    admin, manager = world.login(client, "admin"), world.login(client, "manager")
+    r = client.post("/api/v1/roles", headers=admin, json={"code": "approver", "name": "Approver",
+                                                          "permissions": ["production.read", "production.approve"]})
+    assert r.status_code == 201, r.text
+    client.post("/api/v1/members", headers=admin, json={"email": "approver@a.test", "full_name": "Approver", "role": "approver",
+                                                         "password": PASSWORD})
+    token = client.post("/api/v1/auth/login", json={"email": "approver@a.test", "password": PASSWORD}).json()["access_token"]
+    approver = {"Authorization": f"Bearer {token}", "X-Company-Id": world.a.id}
+    body = {"production_date": (date.today() - timedelta(days=1)).isoformat(), "product_id": str(world.a.products["A-001"]),
+            "department_id": str(world.a.departments["SEX-1"]), "qty_produced": "100"}
+
+    draft = client.post("/api/v1/production/reports", headers=manager, json=body).json()
+    r = client.post(f"/api/v1/production/reports/{draft['id']}/cancel", headers=approver, json={"reason": "Entered twice"})
+    assert r.status_code == 403 and r.json()["missing"] == ["production.write"]
+    assert client.post(f"/api/v1/production/reports/{draft['id']}/approve", headers=approver).status_code == 200
+    r = client.post(f"/api/v1/production/reports/{draft['id']}/correct", headers=approver,
+                    json={"report": {**body, "qty_produced": "90"}, "reason": "Recount"})
+    assert r.status_code == 201 and r.json()["status"] == "approved" and r.json()["supersedes_id"] == draft["id"], r.text
+    r = client.post(f"/api/v1/production/reports/{r.json()['id']}/cancel", headers=approver, json={"reason": "Wrong product"})
+    assert r.status_code == 200 and r.json()["status"] == "cancelled"

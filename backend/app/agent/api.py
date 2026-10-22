@@ -55,9 +55,10 @@ def _names(db: Session, ids) -> dict[uuid.UUID, str]:
     return dict(db.execute(select(User.id, User.full_name).where(User.id.in_(ids))).all()) if ids else {}
 
 
-def job_out(job: IngestionJob, names: dict | None = None, items: int | None = None) -> dict[str, Any]:
+def job_out(job: IngestionJob, names: dict | None = None, items: int | None = None, hide_source: bool = False) -> dict[str, Any]:
+    """`hide_source` (review.hidden_sources): a text job's title is the text's first line, so it is left out."""
     return {
-        "id": str(job.id), "title": job.title, "status": job.status, "current_stage": job.current_stage,
+        "id": str(job.id), "title": None if hide_source and job.source_kind == "text" else job.title, "status": job.status, "current_stage": job.current_stage,
         "source_kind": job.source_kind, "channel": job.channel, "import_policy": job.import_policy,
         "target_record_type": job.target_record_type, "created_at": job.created_at, "started_at": job.started_at,
         "finished_at": job.finished_at, "submitted_by": (names or {}).get(job.submitted_by),
@@ -86,15 +87,18 @@ def _tables(db: Session, item: IngestionItem) -> list[dict[str, Any]]:
     return out
 
 
-def item_out(db: Session, item: IngestionItem, files: dict[uuid.UUID, StoredFile]) -> dict[str, Any]:
+def item_out(db: Session, item: IngestionItem, files: dict[uuid.UUID, StoredFile], hide_source: bool = False) -> dict[str, Any]:
     f = files.get(item.file_id) if item.file_id else None
+    tables = _tables(db, item)
+    if hide_source:  # the text and the lines above a table's header can show other departments' data
+        tables = [{**t, "preamble": None} for t in tables]
     return {
         "id": str(item.id), "position": item.position, "format": item.detected_format, "status": item.status, "error": item.error,
         "file": {"id": str(f.id), "name": f.original_name, "size": f.size, "mime_type": f.mime_type, "scan_status": f.scan_status} if f else None,
-        "text_preview": (item.raw_text or "")[:500] if item.raw_text else None, "parser": item.parser, "ocr_used": item.ocr_used,
+        "text_preview": (item.raw_text or "")[:500] if item.raw_text and not hide_source else None, "parser": item.parser, "ocr_used": item.ocr_used,
         "ocr_confidence": float(item.ocr_confidence) if item.ocr_confidence is not None else None, "page_count": item.page_count,
         "warnings": item.warnings, "detected_record_type": item.detected_record_type, "is_tabular": bool(item.meta.get("is_tabular")),
-        "tables": _tables(db, item),
+        "tables": tables,
     }
 
 
@@ -278,9 +282,10 @@ def list_jobs(ctx: Ctx, db: DB, status: str | None = None, source_kind: str | No
         stmt = stmt.where(IngestionJob.submitted_by == ctx.user_id)
     rows, next_cursor = paginate(db, stmt, IngestionJob, cursor, limit)
     names = _names(db, [j.submitted_by for j in rows])
+    hidden = review.hidden_sources(db, ctx, rows)
     counts = dict(db.execute(select(IngestionItem.job_id, func.count()).where(IngestionItem.job_id.in_([j.id for j in rows]))
                              .group_by(IngestionItem.job_id)).all()) if rows else {}
-    return {"items": [job_out(j, names, counts.get(j.id)) for j in rows], "next_cursor": next_cursor}
+    return {"items": [job_out(j, names, counts.get(j.id), j.id in hidden) for j in rows], "next_cursor": next_cursor}
 
 
 @router.get("/jobs/{job_id}")
@@ -290,9 +295,10 @@ def get_job(job_id: uuid.UUID, ctx: Ctx, db: DB) -> dict[str, Any]:
     names = _names(db, [job.submitted_by])
     files = {f.id: f for f in db.execute(select(StoredFile).where(StoredFile.id.in_([i.file_id for i in job.items if i.file_id]))).scalars()}
     runs = db.execute(select(StageRun).where(StageRun.job_id == job.id).order_by(StageRun.started_at)).scalars().all()
+    hidden = bool(review.hidden_sources(db, ctx, [job]))
     return {
-        **job_out(job, names, len(job.items)),
-        "items_detail": [item_out(db, i, files) for i in job.items],
+        **job_out(job, names, len(job.items), hidden),
+        "items_detail": [item_out(db, i, files, hidden) for i in job.items],
         "stage_runs": [{"stage": r.stage, "status": r.status, "attempt": r.attempt, "item_id": str(r.item_id) if r.item_id else None,
                         "started_at": r.started_at, "finished_at": r.finished_at, "duration_ms": r.duration_ms, "error": r.error,
                         "metrics": r.metrics} for r in runs],
@@ -302,7 +308,7 @@ def get_job(job_id: uuid.UUID, ctx: Ctx, db: DB) -> dict[str, Any]:
 
 @router.get("/jobs/{job_id}/records")
 def list_records(job_id: uuid.UUID, ctx: Ctx, db: DB, group: str | None = None, status: str | None = None, q: str | None = None,
-                 offset: int = Query(0, ge=0), limit: int = Query(50, le=500)) -> dict[str, Any]:
+                 offset: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=500)) -> dict[str, Any]:
     ctx.require("agent.read")
     job = review.get_job(db, ctx, job_id)
     visible = review.visible_records(ctx)
@@ -445,18 +451,25 @@ def update_mapping(job_id: uuid.UUID, item_id: uuid.UUID, data: MappingIn, ctx: 
 
 @router.get("/items/{item_id}/preview")
 def item_preview(item_id: uuid.UUID, ctx: Ctx, db: DB, table_seq: int | None = None, offset: int = Query(0, ge=0),
-                 limit: int = Query(100, le=500)) -> dict[str, Any]:
-    """Parsed content for source preview: pages with line boxes, or table rows."""
+                 limit: int = Query(100, ge=1, le=500)) -> dict[str, Any]:
+    """Parsed content for source preview: pages with line boxes, or table rows. When the job also holds records of
+    departments outside a restricted member's access, they get only the rows of records they may see (403 for pages)."""
     ctx.require("agent.read")
     item = db.execute(select(IngestionItem).where(IngestionItem.id == item_id, IngestionItem.company_id == ctx.company_id)).scalar_one_or_none()
     if item is None:
         raise NotFound("Item not found")
-    review.get_job(db, ctx, item.job_id)  # department scope
+    hidden = bool(review.hidden_sources(db, ctx, [review.get_job(db, ctx, item.job_id)]))  # department scope
     if table_seq is not None:
         rows = db.execute(select(ParsedSegment).where(ParsedSegment.item_id == item.id, ParsedSegment.kind == "row",
                                                       ParsedSegment.table_seq == table_seq).order_by(ParsedSegment.seq)
                           .offset(offset).limit(limit)).scalars().all()
+        if hidden:  # filtered after paging, so row positions stay those of the sheet
+            shown = {ref.get("row") for ref in db.execute(select(ExtractedRecord.row_ref).where(
+                ExtractedRecord.item_id == item.id, review.visible_records(ctx))).scalars() if ref.get("table_seq") == table_seq}
+            rows = [r for r in rows if r.content["row_number"] in shown]
         return {"table_seq": table_seq, "offset": offset, "rows": [{"row_number": r.content["row_number"], "cells": r.content["cells"]} for r in rows]}
+    if hidden:
+        raise PermissionDenied("This source also holds data of departments outside your access", code="department_restricted")
     pages = db.execute(select(ParsedSegment).where(ParsedSegment.item_id == item.id, ParsedSegment.kind == "text")
                        .order_by(ParsedSegment.seq)).scalars().all()
     return {"format": item.detected_format, "ocr_used": item.ocr_used, "full_text": (item.meta or {}).get("full_text") or item.raw_text,

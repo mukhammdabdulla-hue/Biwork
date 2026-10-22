@@ -186,6 +186,16 @@ def visible_jobs(ctx: RequestContext):
     return or_(IngestionJob.submitted_by == ctx.user_id, shown) if ctx.user_id else shown
 
 
+def hidden_sources(session: Session, ctx: RequestContext, jobs: list[IngestionJob]) -> set[uuid.UUID]:
+    """Jobs whose source (text, rows, text-derived title) a department-restricted member may not read: they
+    also hold records of other departments, whose data the source shows, and the member did not submit them."""
+    others = [j.id for j in jobs if j.submitted_by != ctx.user_id]
+    if ctx.department_ids is None or not others:
+        return set()
+    return set(session.execute(select(ExtractedRecord.job_id).where(
+        ExtractedRecord.job_id.in_(others), ~visible_records(ctx)).distinct()).scalars())
+
+
 # --------------------------------------------------------------------------- loading helpers
 
 
@@ -473,6 +483,8 @@ def update_mapping(session: Session, ctx: RequestContext, job_id: uuid.UUID, ite
                                                                 ParsedSegment.table_seq == table_seq).order_by(ParsedSegment.seq)).scalars().all()
     existing = session.execute(select(ExtractedRecord).where(ExtractedRecord.item_id == item.id)).scalars().all()
     table_records = [r for r in existing if (r.row_ref or {}).get("table_seq") == table_seq]
+    if not all(ctx.can_access_department(record_department(r)) for r in table_records):
+        raise PermissionDenied("This table also holds rows of departments outside your access", code="department_restricted")
     if any(r.status in ("approved", "committed") for r in table_records):
         raise Conflict("Some rows of this table are already approved or saved; reopen or reject them before re-mapping",
                        code="mapping_locked")

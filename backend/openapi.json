@@ -2501,6 +2501,7 @@
       "schema": {
        "type": "integer",
        "maximum": 200,
+       "minimum": 1,
        "default": 50,
        "title": "Limit"
       }
@@ -2743,6 +2744,7 @@
       "schema": {
        "type": "integer",
        "maximum": 500,
+       "minimum": 1,
        "default": 100,
        "title": "Limit"
       }
@@ -3387,6 +3389,7 @@
       "schema": {
        "type": "integer",
        "maximum": 500,
+       "minimum": 1,
        "default": 50,
        "title": "Limit"
       }
@@ -4031,7 +4034,7 @@
      "agent"
     ],
     "summary": "Item Preview",
-    "description": "Parsed content for source preview: pages with line boxes, or table rows.",
+    "description": "Parsed content for source preview: pages with line boxes, or table rows. When the job also holds records of\ndepartments outside a restricted member's access, they get only the rows of records they may see (403 for pages).",
     "operationId": "item_preview_api_v1_agent_items__item_id__preview_get",
     "parameters": [
      {
@@ -4078,6 +4081,7 @@
       "schema": {
        "type": "integer",
        "maximum": 500,
+       "minimum": 1,
        "default": 100,
        "title": "Limit"
       }

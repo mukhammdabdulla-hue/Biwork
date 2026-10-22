@@ -70,6 +70,52 @@ def test_mixed_department_spreadsheet_shows_only_the_members_rows(client, world)
     assert client.post(f"/api/v1/agent/jobs/{job['id']}/cancel", headers=operator).status_code == 200
 
 
+def test_sources_of_mixed_jobs_are_hidden_from_restricted_members(client, world):
+    operator = world.login(client, "operator")
+    scoped = world.login(client, "scoped")
+    day = date.today() - timedelta(days=1)
+    sheet = submit_file(client, operator, "mixed.xlsx", xlsx([["Sana", "Mahsulot", "Sex", "Ishlab chiqarildi"],
+                                                              [day, "A mahsulot", "1-sex", 777], [day, "B mahsulot", "2-sex", 5]]))
+    mixed = submit_text(client, operator, f"{UZ_TEXT}\n{UZ_TEXT_SEX2}")
+    assert records(client, operator, mixed["id"])["total"] == 2 and records(client, scoped, mixed["id"])["total"] == 1
+    own = submit_text(client, scoped, f"{UZ_TEXT_SEX2}\n{UZ_TEXT}".replace("oktabr", "noyabr"))
+    sex2 = submit_text(client, operator, UZ_TEXT_SEX2.replace("300", "310"))
+
+    def source(job, who):
+        item = job["items_detail"][0]
+        detail = client.get(f"/api/v1/agent/jobs/{job['id']}", headers=who).json()
+        params = {"table_seq": item["tables"][0]["table_seq"]} if item["tables"] else {}
+        preview = client.get(f"/api/v1/agent/items/{item['id']}/preview", headers=who, params=params)
+        return detail, preview
+
+    # The text of a job that also holds 1-sex records shows 1-sex data, so it stays hidden ...
+    for job in (sheet, mixed):
+        assert source(job, scoped)[0]["items_detail"][0]["text_preview"] is None
+        assert source(job, operator)[1].status_code == 200
+    for item in (mixed["items_detail"][0]["id"], sheet["items_detail"][0]["id"]):
+        r = client.get(f"/api/v1/agent/items/{item}/preview", headers=scoped)
+        assert r.status_code == 403 and r.json()["code"] == "department_restricted"
+    # ... and of a sheet, only the rows of records the member may see are shown.
+    assert [row["cells"][2] for row in source(sheet, scoped)[1].json()["rows"]] == ["2-sex"]
+    assert [row["cells"][2:] for row in source(sheet, operator)[1].json()["rows"]] == [["1-sex", 777], ["2-sex", 5]]
+    assert source(mixed, scoped)[0]["title"] is None and source(sheet, scoped)[0]["title"] == "mixed.xlsx"
+    listed = {j["id"]: j["title"] for j in client.get("/api/v1/agent/jobs", headers=scoped).json()["items"]}
+    assert listed[mixed["id"]] is None and listed[sex2["id"]] == sex2["title"] and listed[own["id"]] == own["title"]
+    # Their own submissions and jobs of their departments only are shown in full.
+    for job in (own, sex2):
+        detail, preview = source(job, scoped)
+        assert detail["items_detail"][0]["text_preview"] and preview.status_code == 200
+
+    # Re-mapping the sheet would re-create its 1-sex rows too.
+    table = sheet["items_detail"][0]["tables"][0]
+    body = {"table_seq": table["table_seq"], "record_type": table["record_type"],
+            "mapping": {str(m["source_index"]): m["target_field"] for m in table["mapping"]}, "save_template": False}
+    r = client.put(f"/api/v1/agent/jobs/{sheet['id']}/items/{sheet['items_detail'][0]['id']}/mapping", headers=scoped, json=body)
+    assert r.status_code == 403 and r.json()["code"] == "department_restricted"
+    r = client.put(f"/api/v1/agent/jobs/{sheet['id']}/items/{sheet['items_detail'][0]['id']}/mapping", headers=operator, json=body)
+    assert r.status_code == 200, r.text
+
+
 # --------------------------------------------------------------------------- overview
 
 

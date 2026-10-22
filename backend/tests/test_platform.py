@@ -346,6 +346,10 @@ def test_every_job_gets_a_title(client, world):
     assert len(long) == 80 and long.endswith("…")
     assert title(payload={"record_type": "product", "fields": {"code": "P-78", "name": "Panel"}}) == "Product (form)"
     assert title(text="Bugun 5 dona A", title="Custom") == "Custom"
+    # Lines of invisible characters only (BOM, zero-width space, soft hyphen) are skipped like blank ones.
+    assert title(text="﻿​­\n50 dona A") == "50 dona A"
+    assert title(text="​", record_type="production_report") == "Production report (text)"
+    assert title(text="​") == "Text"
     r = client.post("/api/v1/agent/jobs", headers=headers, data={"force": "true"},
                     files=[("files", ("a.csv", b"Sana;Miqdor\n1;2\n")), ("files", ("b.csv", b"Sana;Miqdor\n3;4\n"))])
     assert r.status_code == 202 and r.json()["title"] == "a.csv, b.csv"

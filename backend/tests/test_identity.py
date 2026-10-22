@@ -51,6 +51,48 @@ def test_password_change_keeps_this_session_and_ends_all_others(client, world):
     _login(other, world.users["operator"], "New-Password-456")
 
 
+def test_a_refresh_in_flight_during_a_password_change_is_revoked_too(client, world, owner_engine):
+    import threading
+    import time
+
+    import pytest
+    from sqlalchemy import text
+
+    from app.config import get_settings
+    from app.core.errors import Unauthorized
+    from app.core.models import User
+    from app.core.services import identity
+    from app.db.session import SessionLocal
+
+    user_id = uuid.UUID(_login(client, world.users["operator"])["user"]["id"])
+    cookie = client.cookies.get(get_settings().refresh_cookie_name)
+    rotating, changing = SessionLocal(), SessionLocal()
+    try:
+        # A refresh request has written its new token but not committed yet ...
+        pair = identity.rotate_refresh(rotating, cookie, None, None)
+        rotating.flush()
+        # ... when the password change starts: it waits for that refresh and then revokes its token too.
+        pid = changing.execute(text("SELECT pg_backend_pid()")).scalar_one()
+        user = changing.get(User, user_id)
+        change = threading.Thread(target=lambda: (identity.change_password(changing, user, PASSWORD, "New-Password-456", None, None),
+                                                  changing.commit()))
+        change.start()
+        deadline = time.monotonic() + 15
+        with owner_engine.connect() as conn:
+            while not conn.execute(text("SELECT EXISTS (SELECT 1 FROM pg_locks WHERE pid = :pid AND NOT granted)"), {"pid": pid}).scalar():
+                assert time.monotonic() < deadline and change.is_alive(), "the password change did not wait for the refresh"
+                time.sleep(0.02)
+        rotating.commit()
+        change.join(15)
+        assert not change.is_alive()
+    finally:
+        rotating.close()
+        changing.close()
+    with SessionLocal() as s, pytest.raises(Unauthorized) as refused:
+        identity.rotate_refresh(s, pair.refresh_token, None, None)
+    assert refused.value.code == "session_expired"
+
+
 def test_logout_ends_only_its_own_session(client, world):
     from app.main import app
 

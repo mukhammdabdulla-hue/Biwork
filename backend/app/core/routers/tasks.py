@@ -67,7 +67,7 @@ def update_task(task_id: uuid.UUID, data: tasks.TaskUpdate, ctx: Ctx, db: DB, ex
 
 
 @router.get("/notifications")
-def list_notifications(ctx: Ctx, db: DB, unread: bool = False, limit: int = Query(50, le=200)) -> dict[str, Any]:
+def list_notifications(ctx: Ctx, db: DB, unread: bool = False, limit: int = Query(50, ge=1, le=200)) -> dict[str, Any]:
     stmt = select(Notification).where(Notification.company_id == ctx.company_id, Notification.user_id == ctx.user_id)
     if unread:
         stmt = stmt.where(Notification.read_at.is_(None))
