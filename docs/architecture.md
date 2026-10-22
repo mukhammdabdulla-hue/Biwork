@@ -1,6 +1,6 @@
 # BIWORK Platform Architecture
 
-> **Status:** Draft v0.1 · **Scope:** MVP (Phases 1–2) in detail; Phases 3–4 as direction
+> **Status:** v0.2 — implemented for Phases 1–3 (see [§15 Implementation status](#15-implementation-status)) · **Scope:** MVP (Phases 1–2) in detail; Phases 3–4 as direction
 > **Audience:** engineers building BIWORK Core, BIWORK Agent, and the first product modules
 
 BIWORK is an AI-powered management platform for manufacturing companies, factories, and
@@ -32,6 +32,7 @@ same pull request.
 12. [Testing strategy](#12-testing-strategy)
 13. [Roadmap mapping](#13-roadmap-mapping)
 14. [Decision log and open questions](#14-decision-log-and-open-questions)
+15. [Implementation status](#15-implementation-status)
 
 ---
 
@@ -633,19 +634,29 @@ arbitrarily.
 
 ### 7.1 Responsibilities and separation
 
+> The multi-provider engine (OpenAI primary, Gemini, Anthropic, labelled demo mode), task-based
+> routing, fallbacks, usage monitoring and evaluation are specified in detail in
+> [ai-engine.md](ai-engine.md); this section keeps the architectural view.
+
 ```
 app/ai/
 ├── providers/
-│   ├── base.py         # LLMProvider protocol
-│   ├── anthropic.py    # default production adapter
-│   ├── openai_compat.py# optional (self-hosted / other vendors)
-│   └── mock.py         # deterministic, clearly labelled development adapter
-├── ocr/                # OCRProvider protocol, tesseract adapter, optional cloud OCR adapter
+│   ├── base.py         # LLMProvider protocol, error kinds, untrusted-data wrapping
+│   ├── openai.py       # primary provider (Responses API, strict structured output)
+│   ├── gemini.py       # alternative provider (google-genai, JSON-schema output)
+│   ├── anthropic.py    # optional provider (messages.parse)
+│   └── demo.py         # deterministic, clearly labelled demo mode (no credentials)
+├── router.py           # task → tier → provider/model candidates; fallback order
+├── routing.default.json# routing rules (tiers, escalation), overridable with AI_ROUTING_FILE
+├── health.py           # per-provider circuit breaker
+├── cache.py            # company-scoped cache for classification / column mapping
+├── ocr/                # OCRProvider protocol, tesseract adapter
 ├── prompts/            # versioned prompt templates (files, not inline strings)
-├── extraction.py       # classify() and extract() use cases
+├── extraction.py       # classify(), extract() (with escalation), map_columns(); retries, fallback, usage rows
 ├── policy.py           # data-handling policy enforcement & redaction
-├── budget.py           # rate limits, cost tracking, per-company quotas
-└── evals/              # golden datasets and scoring
+└── budget.py           # rate limits, price table, cost estimation
+app/agent/usage.py      # usage monitoring report (cost per document / per validated record)
+app/agent/evaluation.py # provider/model evaluation on eval/dataset (python -m app.cli ai-eval)
 ```
 
 The concerns the spec lists are kept in separate code units:
@@ -687,13 +698,13 @@ class LLMProvider(Protocol):
 - **Extraction envelope:** the model returns, per field, `value`, `confidence`
   (0–1), `source_quote`, and `not_found: bool`. The envelope is generated from the record
   type schema so each module only defines its business fields.
-- **Model selection:** configured per task (classification can use a smaller, cheaper model;
-  complex document extraction a larger one). Defaults live in config, e.g.
-  `AI_PROVIDER=anthropic`, `AI_MODEL_EXTRACT=claude-opus-5-5`,
-  `AI_MODEL_CLASSIFY=claude-haiku-5-5`. Business logic never names a model.
-- **Mock adapter:** returns deterministic, rule-based results for known fixtures. Every job
-  processed with it is flagged `ai_provider=mock`, and the UI shows a persistent
-  "Mock AI — not real analysis" banner on the job and its records.
+- **Model selection:** a configurable router picks a tier per task (economy for classification
+  and column mapping, default for routine extraction, complex for escalation, vision for images)
+  and resolves it to `<PROVIDER>_MODEL_<TIER>` settings, in provider order with fallback
+  (ai-engine.md §3). Business logic never names a model or a vendor.
+- **Demo mode:** with no credentials, a deterministic rule-based provider stands in. Every job
+  processed with it is flagged (`ai_is_mock`, `ai_mode="demo"`) with a "Demo mode — not real AI
+  analysis" warning, and its records are never auto-approved.
 
 ### 7.3 Reliability, rate limits, and cost
 
@@ -821,7 +832,7 @@ Uploaded documents and extracted text are untrusted data:
 | `migrate` | `biwork-backend` | one-off `alembic upgrade head` before rollout | job |
 | `postgres` | PostgreSQL 16 (+ `pg_trgm`) | primary database | managed service in production |
 | `redis` | Redis 7 | broker, cache, rate limits, SSE pub/sub | managed service in production |
-| `minio` | MinIO (dev) / S3-compatible (prod) | file storage | managed |
+| `files` volume / S3 | shared volume (compose default) or any S3-compatible store | file storage | managed (S3) |
 | `clamav` | ClamAV daemon | malware scanning | 1–2 |
 
 One backend image serves api and all workers (different commands), so code versions never
@@ -831,7 +842,7 @@ drift between them.
 
 | Environment | How | Notes |
 |---|---|---|
-| **Local dev** | `docker compose up` (deploy/compose.dev.yml); hot reload for api and Vite | mock AI adapter by default; MinIO; seeded demo company flagged as sample data |
+| **Local dev** | native: `uvicorn` with `CELERY_ALWAYS_EAGER=true` + `npm run dev` (hot reload); or `docker compose up` (`docker-compose.yml`) | mock AI adapter by default; local file storage; seeded demo company flagged as sample data |
 | **CI** | GitHub Actions: lint, type check, unit + integration tests against real Postgres/Redis service containers, Playwright E2E against compose stack, eval suite (mock), image build | |
 | **Staging** | same images as prod, real AI provider with test credentials, anonymized data | migrations rehearsed here |
 | **Production** | Docker Compose on a single host for the first customers → Kubernetes (or a managed container platform) as load grows | data residency: deployable in-country / on-premises for customers that require it |
@@ -851,7 +862,7 @@ APP_ENV=dev|staging|prod
 DATABASE_URL=postgresql+asyncpg://biwork_app@postgres/biwork
 DATABASE_MIGRATION_URL=postgresql+psycopg://biwork_owner@postgres/biwork
 REDIS_URL=redis://redis:6379/0
-S3_ENDPOINT=http://minio:9000   S3_BUCKET=biwork-files   S3_ACCESS_KEY=…   S3_SECRET_KEY=…
+STORAGE_BACKEND=local|s3   S3_ENDPOINT=https://…   S3_BUCKET=biwork-files   S3_ACCESS_KEY=…   S3_SECRET_KEY=…
 JWT_SIGNING_KEY=…   FIELD_ENCRYPTION_KEY=…
 CLAMAV_HOST=clamav   CLAMAV_PORT=3310
 AI_PROVIDER=mock|anthropic|openai_compat
@@ -893,7 +904,7 @@ MAX_UPLOAD_MB=50
 | Level | Tooling | Covers |
 |---|---|---|
 | Unit | pytest | normalizers, validators, matchers, parsers (fixtures per format), confidence state machine, permission helpers |
-| Integration | pytest + real PostgreSQL/Redis (service containers), MinIO | services, RLS policies, pipeline stages end-to-end with the mock adapter, idempotency |
+| Integration | pytest + real PostgreSQL (service container), local file storage | services, RLS policies, pipeline stages end-to-end with the mock adapter, idempotency |
 | API contract | pytest + httpx, OpenAPI diff check | endpoint behaviour, error shapes, generated client freshness |
 | E2E | Playwright against the compose stack | Agent workspace flows, dashboard |
 | AI evals | `ai/evals` runner | extraction accuracy per record type and prompt/model version |
@@ -942,6 +953,30 @@ directly.
 | D6 | LLM only in the Interpret stage, tool-less, schema-constrained | containment of AI errors and prompt injection | |
 | D7 | Human approval by default; auto-approval only per record type, admin-enabled, all fields high-confidence and zero warnings | spec requirement; low-confidence values never become facts | |
 | D8 | Tesseract as default OCR with Uzbek/Russian packs; vision LLM optional and policy-gated | works offline and on-prem; privacy | OCR accuracy on real customer documents is insufficient |
+| D9 | Synchronous SQLAlchemy (psycopg 3) instead of asyncpg | the pipeline, rules and module services are CPU/DB-bound and shared with Celery workers; one sync code path is simpler to test and reason about. Only SSE uses async I/O | request concurrency becomes the bottleneck (then move hot read endpoints to async sessions) |
+| D10 | Identity tables (`users`, `memberships`, `roles` templates, refresh tokens) are not RLS-scoped | they are read before a tenant is known (sign-in, company switch); access is enforced in services. Every business table is RLS-scoped | a deployment needs DB-level isolation of identities too |
+| D11 | One Celery task per pipeline phase (parse → interpret → prepare → commit) with stage runs recorded inside each task | fewer broker round-trips for small jobs while keeping per-stage status, metrics and retries (`agent.stage_runs`) | very large jobs need per-item fan-out |
+| D12 | Files are streamed through the API (auth + tenant check per request) instead of pre-signed URLs | works identically for local disk and S3; no URL leakage | download volume makes the API a bottleneck |
+| D13 | Agent-created purchase requests are created in status `submitted` and routed to `supply.approve` holders with a task | reviewers approved the extraction; the business approval of the purchase itself stays a separate step | |
+| D14 | Added `core.department_aliases` and `agent.mapping_templates` | multilingual workshop names ("1-sex", "Цех №1") and repeat spreadsheet layouts are the main sources of manual correction | |
+| D15 | Column names: stock movements use `movement_date`; tasks use `due_date` (date, not timestamp) | matches how factories record them | |
+| D16 | Frontend response types are hand-written (`src/api/types.ts`); request types are generated from OpenAPI | most responses are assembled documents without Pydantic response models | response models are added to the API |
+| D17 | Session refresh is not counted in the strict sign-in rate limit | refresh presents an unguessable rotating token; counting it signed out offices behind one NAT address | |
+| D18 | The compose stack stores files on a shared volume (`STORAGE_BACKEND=local`); S3-compatible storage is a configuration switch | MinIO no longer publishes community container images; a volume keeps single-host installs dependency-free | multi-host deployments (use S3) |
+| D19 | Department scoping also covers BIWORK Agent jobs and records (by the record's department reference), the executive overview and production-order search. A restricted member sees a job they did not submit only through their own records; its source text, preamble and text-derived title are hidden, and table previews return only their rows | agent data must not bypass the same scope as module data | |
+| D20 | The audit trail is company-wide, so `/audit/*` returns 403 `department_restricted` to department-restricted members | filtering hash-chained events by department would leak through summaries and context | auditors need department-level audit views |
+| D21 | Original uploaded files stay company-wide under `files.read`, even for department-restricted members | `app.core` cannot depend on agent records to scope files | a customer needs file-level department isolation |
+| D22 | Password change rotates the current session and revokes every other session and earlier access token (`users.sessions_revoked_at` vs. a sub-second `iat`); single-session logout revokes only that refresh family, so its access token lives until expiry (≤ 15 min). Refresh and sign-out-everywhere are serialised per user with a row lock | immediate effect where it matters (password change) without a token deny-list | a "sign out everywhere" button is added (the service exists) |
+| D23 | MFA re-enrolment needs the current code or the password; the new secret is pending until confirmed and the old one stays active | a stolen access token must not be able to strip the second factor | |
+| D24 | Members: an existing account can be attached to a company only by a platform administrator or by an administrator who already administers that person; otherwise the response is the same as for an unknown email. Changing a member whose role holds permissions the actor lacks is refused | prevents cross-tenant user enumeration and privilege escalation by `admin.users` holders | |
+| D25 | A disabled company module's API routes return 403 `module_disabled` (core, agent and admin never). The executive overview stays available; the Analytics and Quality pages follow the `analytics` switch | switches must be enforced, while the home page must always work | |
+| D26 | Stock movements posted by a document (e.g. production output) are reversed only by cancelling or correcting that document; reversals are final and never make stock negative. A correction posts the new output before reversing the old one. Cancelling or correcting an approved report needs `production.approve`; `production.write` may cancel drafts | stock and documents must not diverge, and approval control must not be bypassed through inventory | |
+| D27 | Approved production output is posted to the company's finished-goods warehouse setting (`production_output_warehouse_id`, set by `seed-demo`, unset for new companies). Without it reports are still approved but the API returns warning `output_not_posted` and agent records carry warning `output_warehouse_missing`; setting it later does not post past reports | an unconfigured company must still be able to record production, but never silently | |
+| D28 | Auto-approval also requires that the source content is not flagged as possible prompt injection | injected instructions must never reach the database without a person | |
+| D29 | DOCX and PDF tables listing one record per row are mapped and read like spreadsheets when header rules, a saved template or a confirmed mapping cover every required field; item tables and unrecognised tables stay with the document text. In uz/ru, "1.500" is read as 1500 and flagged; fractional quantities of count units get warning `fractional_count` | documents from factories often contain report tables; ambiguous numbers must never pass silently | |
+| D30 | Idempotency keys are scoped to the caller (user or API client) | a replay must never return another user's response or skip a permission check | |
+| D31 | Production start-up refuses placeholder secrets (anything containing "change-me", the development key) and requires a valid Fernet `FIELD_ENCRYPTION_KEY` | a copied `.env.example` must not produce a server with forgeable tokens | |
+| D32 | Uzbek dates, relative times and numbers are formatted with built-in CLDR patterns (`src/i18n/uzFormat.ts`); labels for API codes (record types, fields, stages, decisions, audit actions, alerts) are translated on the frontend from the code with the API's English text as fallback | Chromium ships no Uzbek Intl data; translating by code keeps the API language-neutral | validation messages are translated too (they still come from the API in English unless a rule has a parameter-free translation) |
 
 ### Open questions
 
@@ -954,3 +989,27 @@ directly.
 4. **Approval matrix:** which record types need single vs multi-step approval, and which may
    ever be auto-approved?
 5. **Identity:** is SSO (e.g. corporate AD) needed for the first customer?
+
+---
+
+## 15. Implementation status
+
+What exists in this repository (October 2026). Setup, configuration and test commands are in
+the [README](../README.md); AI provider and privacy details in [ai-providers.md](ai-providers.md).
+
+| Area | Status | Where |
+|---|---|---|
+| Core: companies, users, memberships, roles/permissions, departments + aliases, units, products, tasks, notifications, files, workflows, number sequences | Implemented | `backend/app/core` |
+| Auth: argon2id, JWT access + rotating refresh cookie with reuse detection, TOTP MFA, lockout, API keys | Implemented | `core/services/identity.py`, `core/routers/auth.py` |
+| Tenant isolation: `company_id` + RLS on 37 tables, non-owner app role | Implemented | migration `0001` |
+| Audit: hash-chained, append-only events, chain verification, provenance trace | Implemented | `core/audit.py`, `api/audit.py` |
+| BIWORK Agent: 9 stages, parsers (text, pasted tables, CSV, XLSX/XLS, DOCX, PDF, images + OCR), column mapping + templates, normalization, validation, matching, duplicates, review groups, auto-approval, idempotent commit with import policies, error report, retry/watchdog | Implemented | `backend/app/agent` |
+| AI layer: provider-independent engine with OpenAI, Gemini and Anthropic adapters (structured outputs), config-driven routing tiers, fallback chain, health circuit breaker, escalation, caching, labelled demo mode, versioned prompts, policy (external AI off, image sending, redaction, minimisation, payload retention), injection detection, usage and cost tracking, evaluation runner (`ai-eval`) | Implemented | `backend/app/ai`, `docs/ai-engine.md` |
+| Modules: Production (orders, reports, corrections, plan vs actual, calendar), Inventory (movements, balances, reversals, shortages), Supply (suppliers, purchase requests, approvals) | Implemented | `backend/app/modules` |
+| Analytics: executive overview, agent statistics, interim quality analytics | Implemented | `backend/app/analytics` |
+| HR, EDO, Finance, Maintenance, Quality (full) | Planned (phase 4); shown as "Soon" with no placeholder data | `modules/planned` |
+| Web app: all screens above plus company creation for platform administrators, master data (product categories, shifts, production lines), uz/ru/en with Uzbek formatting, light/dark, responsive, accessible dialogs and drawer | Implemented | `frontend/` |
+| Tests: backend pytest suite (scenarios A–G, units, AI engine and adapters, identity, API conventions, configuration, platform), Playwright e2e (Scenario A through the UI, agent workspace uploads/mapping/failures, module screens and onboarding, Uzbek/Russian formatting, page smoke, read-only role) | Implemented | `backend/tests`, `frontend/e2e` |
+| Deployment: Dockerfiles, compose stack (Postgres, Redis, API, worker, beat, web; optional ClamAV), HTTPS overlay with Caddy, backup/restore scripts, server guide, CI | Implemented | `deploy/`, `docker-compose*.yml`, `docs/deploy-server.md`, `.github/workflows` |
+| Not yet built | OpenTelemetry tracing, SSO, multi-step approval chains, e-mail/Telegram channels, edit screens for product categories, shifts and production lines (create only), a live evaluation against real AI providers (needs API keys) | — |
+

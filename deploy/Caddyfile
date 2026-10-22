@@ -1,0 +1,13 @@
+# HTTPS entry point for production (docker-compose.prod.yml). Caddy obtains and renews the
+# TLS certificate for BIWORK_DOMAIN automatically; the domain's DNS A record must point here.
+{$BIWORK_DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+
+	# Server-sent events (/api/v1/events) are streamed without buffering by Caddy automatically.
+	reverse_proxy web:8080
+}
