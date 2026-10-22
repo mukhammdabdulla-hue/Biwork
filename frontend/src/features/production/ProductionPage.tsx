@@ -22,6 +22,7 @@ import { ifMatch, todayIso, useAction } from "@/lib/action";
 import { ReportFields, reportBody, useReportForm } from "./ReportForm";
 import { CalendarTab, PlanTab } from "./PlanTabs";
 import { ProductsTab } from "./ProductsTab";
+import { ShiftsTab } from "./ShiftsTab";
 
 const ORDER_TRANSITIONS: Record<string, string[]> = {
   planned: ["released", "in_progress", "cancelled"],
@@ -334,7 +335,7 @@ function OrdersTab() {
   );
 }
 
-const TABS = ["reports", "orders", "plan", "calendar", "products"] as const;
+const TABS = ["reports", "orders", "plan", "calendar", "products", "shifts"] as const;
 
 export default function ProductionPage() {
   const { t } = useI18n();
@@ -355,6 +356,7 @@ export default function ProductionPage() {
         <TabsContent value="plan"><PlanTab /></TabsContent>
         <TabsContent value="calendar"><CalendarTab /></TabsContent>
         <TabsContent value="products"><ProductsTab /></TabsContent>
+        <TabsContent value="shifts"><ShiftsTab /></TabsContent>
       </Tabs>
       {dialog === "report" && <NewReportDialog onClose={() => setDialog(null)} />}
       {dialog === "order" && <OrderDialog onClose={() => setDialog(null)} />}

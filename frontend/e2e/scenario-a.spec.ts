@@ -63,4 +63,16 @@ test.describe("Scenario A — text submitted to BIWORK Agent becomes a productio
     await page.getByRole("button", { name: "Save & approve" }).click();
     await expect(page.getByText("Record approved")).toBeVisible();
   });
+
+  test("a wrongly extracted optional reference can be cleared before approval", async ({ page }) => {
+    await login(page, "manager");
+    await submitText(page, `${uniqueDate()} kuni 1-sexda 300 dona A mahsulot ishlab chiqarildi. 290 dona sifat nazoratidan o'tdi, 10 donasi brak bo'ldi. 7-smena.`);
+    const panel = page.getByRole("region", { name: /Production report #1/ });
+    // No shift "7" exists, so the extracted value is invalid and blocks approval.
+    await expect(panel.getByRole("button", { name: "Approve", exact: true })).toBeDisabled();
+    await panel.getByRole("button", { name: "Clear: Shift" }).click();
+    await expect(panel.getByText("will be cleared when you save")).toBeVisible();
+    await panel.getByRole("button", { name: "Save & approve" }).click();
+    await expect(page.getByText("Record approved")).toBeVisible();
+  });
 });

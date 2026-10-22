@@ -58,14 +58,16 @@ function SubmitCard() {
   const inputRef = useRef<HTMLInputElement>(null);
   const maxBytes = (info?.max_upload_mb ?? 50) * 1024 * 1024;
   const maxFiles = info?.max_files_per_job ?? 20;
-  const accept = (info?.formats ?? []).map((f) => `.${f}`).join(",");
+  // /agent/info lists extensions with a leading dot (".xlsx"); accept bare ones too.
+  const formats = (info?.formats ?? []).map((f) => f.replace(/^\./, "").toLowerCase());
+  const accept = formats.map((f) => `.${f}`).join(",");
 
   const addFiles = (list: FileList | File[]) => {
     setProblem(null);
     const next = [...files];
     for (const f of Array.from(list)) {
       const ext = f.name.split(".").pop()?.toLowerCase() ?? "";
-      if (info && !info.formats.includes(ext)) {
+      if (info && !formats.includes(ext)) {
         setProblem(t("agent.submit.badFormat", { name: f.name }));
         continue;
       }
@@ -144,7 +146,7 @@ function SubmitCard() {
           <input ref={inputRef} type="file" multiple className="sr-only" accept={accept} aria-label={t("agent.submit.files")}
             onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }} />
           <p className="mt-1 text-2xs text-subtle">
-            {info && `${info.formats.map((f) => f.toUpperCase()).join(", ")} · ${t("agent.submit.limits", { files: maxFiles, mb: info.max_upload_mb })}`}
+            {info && `${formats.map((f) => f.toUpperCase()).join(", ")} · ${t("agent.submit.limits", { files: maxFiles, mb: info.max_upload_mb })}`}
             {info?.ocr_enabled && ` · ${t("agent.submit.ocr")}`}
           </p>
         </div>
@@ -251,7 +253,7 @@ function History() {
     {
       header: t("agent.col.submission"), accessorKey: "title", cell: ({ row }) => (
         <div className="min-w-0 max-w-[28rem]">
-          <p className="truncate font-medium text-fg">{row.original.title ?? row.original.id.slice(0, 8)}</p>
+          <p className="truncate font-medium text-fg">{row.original.title || `#${row.original.id.slice(0, 8)}`}</p>
           <p className="truncate text-2xs text-subtle">
             #{row.original.id.slice(0, 8)}
             {row.original.items ? ` · ${t("agent.col.items", { n: row.original.items })}` : ""}

@@ -90,4 +90,9 @@ export function useI18n() {
   return ctx;
 }
 
+/** Whether a key built at runtime from a backend code (e.g. `agent.decision.${code}`) has a message. */
+export function hasMessage(key: string): key is MessageKey {
+  return key in en;
+}
+
 export type { MessageKey };
