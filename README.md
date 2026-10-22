@@ -38,15 +38,18 @@ Requirements: Docker with Compose v2.
 
 ```bash
 cp .env.example .env
-# Edit .env: set every "change-me" value. For a quick local trial also set APP_ENV=dev
-# (staging/prod refuse to start with development secrets).
+# Edit .env: replace every "change-me" value. For a quick local trial set APP_ENV=dev instead
+# (staging/prod refuse to start with the placeholder secrets).
 docker compose up -d --build
 docker compose run --rm migrate python -m app.cli seed-demo     # optional sample company
 docker compose run --rm migrate python -m app.cli create-admin --email you@example.com --password 'A-strong-passw0rd'
 ```
 
 Open http://localhost:8080. With sample data, sign in as `admin@biwork.local` (or `manager@`,
-`operator@`, `viewer@`) with password `Biwork2026!demo`.
+`operator@`, `viewer@`) with password `Biwork2026!demo`. Without sample data, sign in with the
+account from `create-admin` (a platform administrator) and create the first company on the screen
+that follows ("New company"); you become its administrator. More companies are added under
+Administration → Companies.
 
 Services: `postgres` (data; owner role runs migrations, a separate non-owner role is used by the
 app so row-level security applies), `redis` (Celery broker, rate limits, live events), `migrate`
@@ -93,7 +96,8 @@ python -m venv .venv && . .venv/bin/activate
 pip install -e ".[dev]"
 alembic upgrade head
 python -m app.cli bootstrap
-python -m app.cli seed-demo                       # optional sample company
+python -m app.cli seed-demo                       # optional sample company (re-running it changes nothing)
+python -m app.cli create-admin --email you@example.com --password 'A-strong-passw0rd'   # without seed-demo
 CELERY_ALWAYS_EAGER=true uvicorn app.main:app --reload --port 8000
 # With Redis, run a real worker instead of eager mode:
 #   celery -A app.workers.celery_app worker -Q parse,ai,commit,default
@@ -152,16 +156,16 @@ them. Audit events and stock movements are append-only (UPDATE/DELETE revoked fr
 cd backend
 ruff check app tests scripts
 lint-imports                  # layering contracts: core <- ai <- modules <- agent
-pytest                        # 79 tests, about 90 s
+pytest                        # 210 tests, 3-4 min
 
 # Frontend
-cd frontend
+cd ../frontend
 npm run typecheck && npm run build
 
 # End-to-end: API running on :8000 with seed-demo data (CELERY_ALWAYS_EAGER=true is fine).
 # Starts Vite automatically unless E2E_BASE_URL points at a running app.
 npx playwright install chromium
-npm run e2e
+npm run e2e                   # scenario-a, agent-workspace, modules, i18n and smoke specs
 ```
 
 Acceptance scenarios from the specification and where they are tested:
@@ -169,11 +173,11 @@ Acceptance scenarios from the specification and where they are tested:
 | Scenario | Backend (`backend/tests`) | UI (`frontend/e2e`) |
 |---|---|---|
 | A — Uzbek text becomes a production report; missing values are not invented | `test_scenarios.py::test_scenario_a_*` | `scenario-a.spec.ts` |
-| B — Excel import, column mapping with approval, saved templates | `test_scenario_b_*` | — |
+| B — Excel import, column mapping with approval, saved templates | `test_scenario_b_*` | file upload and mapping in `agent-workspace.spec.ts` |
 | C — PDF purchase request with lines, routed for approval | `test_scenario_c_*` | — |
 | D — duplicates and existing records are detected, never saved twice | `test_scenario_d_*` | — |
 | E — company isolation and role/department permissions; approvals need the right permission | `test_scenario_e_*` | role checks in `scenario-a.spec.ts`, `smoke.spec.ts` |
-| F — failures are retried; commits are idempotent after a crash | `test_scenario_f_*` | — |
+| F — failures are retried; commits are idempotent after a crash | `test_scenario_f_*` | failed-job timeline in `agent-workspace.spec.ts` |
 | G — audit trace from source document to database change; tamper detection | `test_scenario_g_*` | provenance step in `scenario-a.spec.ts` |
 
 `test_platform.py` covers authentication, MFA, permission escalation, report corrections and stock
@@ -181,7 +185,8 @@ reversals, idempotency and optimistic locking, import policies, auto-approval, A
 AI payload retention; `test_units.py` covers normalization, parsers, OCR, matching and the mock
 adapter; `test_ai_adapter.py` and `test_ai_providers.py` exercise the OpenAI, Gemini and Claude
 adapters against a mock HTTP transport, and `test_ai_engine.py` covers routing, fallback, escalation,
-caching and health.
+caching and health. `test_identity.py`, `test_api_conventions.py` and `test_configuration.py` cover
+sessions and MFA re-enrolment, member administration, input hardening and production-safety checks.
 
 ## Using a real AI provider
 

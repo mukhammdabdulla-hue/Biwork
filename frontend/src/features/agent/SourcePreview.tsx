@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
-import { api } from "@/api/client";
+import { api, ApiError } from "@/api/client";
 import { useCompanyKey } from "@/api/hooks";
 import type { ItemPreview, RecordDetail, SourceRef } from "@/api/types";
 import { Button } from "@/components/ui/button";
@@ -58,8 +58,12 @@ export function SourcePreview({ record, source }: { record: RecordDetail; source
   const location = source && [source.sheet && t("agent.record.sheet", { name: source.sheet }), source.cell && t("agent.record.cell", { cell: source.cell }),
     source.page && t("agent.record.pageN", { n: source.page })].filter(Boolean).join(" · ");
 
+  const restricted = [preview.error, rows.error].some((e) => e instanceof ApiError && e.code === "department_restricted");
+
   let body: React.ReactNode = null;
-  if (isTable) {
+  if (restricted) {
+    body = <p className="text-xs text-muted">{t("common.departmentRestricted")}</p>;
+  } else if (isTable) {
     const col = columnIndex(source?.cell ?? null);
     const data = rows.data?.rows ?? [];
     body = rows.isLoading ? <Spinner /> : (

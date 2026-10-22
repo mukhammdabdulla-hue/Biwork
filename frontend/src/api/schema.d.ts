@@ -115,7 +115,11 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Change Password */
+        /**
+         * Change Password
+         * @description Change the password and sign out every session; the caller continues with the access token returned
+         *     here and a new refresh cookie.
+         */
         post: operations["change_password_api_v1_auth_password_post"];
         delete?: never;
         options?: never;
@@ -517,7 +521,8 @@ export interface paths {
         };
         /**
          * Search Entities
-         * @description Candidate entities for a reference field (used by the review UI to choose a match).
+         * @description Candidate entities for a reference field (used by the review UI to choose a match). Needs the read
+         *     permission of the module that owns the entity type; department-scoped entities follow the caller's scope.
          */
         get: operations["search_entities_api_v1_master_search__entity_type__get"];
         put?: never;
@@ -927,7 +932,8 @@ export interface paths {
         };
         /**
          * Item Preview
-         * @description Parsed content for source preview: pages with line boxes, or table rows.
+         * @description Parsed content for source preview: pages with line boxes, or table rows. When the job also holds records of
+         *     departments outside a restricted member's access, they get only the rows of records they may see (403 for pages).
          */
         get: operations["item_preview_api_v1_agent_items__item_id__preview_get"];
         put?: never;
@@ -1720,6 +1726,16 @@ export interface components {
             /** Code */
             code: string;
         };
+        /**
+         * MfaSetupIn
+         * @description Replacing an authenticator that is already active needs its current code or the account password.
+         */
+        MfaSetupIn: {
+            /** Code */
+            code?: string | null;
+            /** Password */
+            password?: string | null;
+        };
         /** ModuleToggle */
         ModuleToggle: {
             /** Enabled */
@@ -1963,6 +1979,18 @@ export interface components {
             description?: string | null;
             /** Permissions */
             permissions: string[];
+        };
+        /** SessionOut */
+        SessionOut: {
+            /** Access Token */
+            access_token: string;
+            /**
+             * Token Type
+             * @default bearer
+             */
+            token_type: string;
+            /** Expires In */
+            expires_in: number;
         };
         /** SettingsIn */
         SettingsIn: {
@@ -2324,11 +2352,13 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
-            204: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["SessionOut"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -2348,7 +2378,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["MfaSetupIn"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -2359,6 +2393,15 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

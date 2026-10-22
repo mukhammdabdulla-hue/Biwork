@@ -285,13 +285,13 @@ Demo-mode reference run (rule-based stand-in, **not AI**; all costs $0):
 
 | Metric | Demo |
 |---|---|
-| Record-type accuracy | 95.7 % |
-| Field accuracy | 87.2 % (en 81 %, ru 96 %, uz-Latn 97 %, uz-Cyrl 0 %) |
+| Record-type accuracy | 100 % |
+| Field accuracy | 96.2 % (en 87.5 %, ru 96.4 %, uz-Latn 100 %, uz-Cyrl 100 %) |
 | Duplicate precision / recall | 100 % / 100 % |
-| False-acceptance rate | 20 % |
+| False-acceptance rate | 12.5 % |
 
-The demo is weak exactly where real models are needed (Uzbek Cyrillic, free-form wording, document
-types), which is what the evaluation is for.
+The demo still struggles with free-form wording and with document types it has no rules for, which
+is what real models and the evaluation are for.
 
 ## 9. Demo mode
 
@@ -301,6 +301,11 @@ a model so the platform can be explored and tested. It is always labelled: jobs 
 `ai.is_demo` and the review label; fields are `extracted_by="demo"`; usage rows are `is_mock` with
 zero cost. Demo results are never auto-approved, and the demo provider is never used as a fallback
 for a failing real provider.
+
+How the demo rules read input: they work on a Latin transliteration of the text (Uzbek Cyrillic and
+Russian), while source quotes keep the original characters. A message with several reports gives
+one record per report, and header lines (workshop, shift, date) apply to every report below them.
+Labelled values are also read after a sentence break.
 
 ## 10. Deployment checklist
 
