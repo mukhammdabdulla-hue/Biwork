@@ -4,13 +4,14 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page";
 import { useI18n, type MessageKey } from "@/i18n";
+import { moduleDescription, moduleName } from "@/i18n/labels";
 
 /** Honest placeholder for a roadmap module: what it will cover, and no fake data. */
 export default function PlannedModulePage({ code }: { code: string }) {
   const { t } = useI18n();
   const { companyDetail } = useAuth();
   const module = companyDetail?.modules.find((m) => m.code === code);
-  const name = module?.name ?? t(`nav.${code}` as MessageKey);
+  const name = moduleName(t, code, module?.name);
   const scope = t(`planned.scope.${code}` as MessageKey).split(";").map((s) => s.trim()).filter(Boolean);
   return (
     <div className="space-y-4">
@@ -21,7 +22,7 @@ export default function PlannedModulePage({ code }: { code: string }) {
           <div className="space-y-3">
             <h2 className="text-lg font-semibold">{t("planned.title", { module: name })}</h2>
             <p className="text-sm text-muted">{t("planned.body", { phase: module?.phase ?? 4 })}</p>
-            {module?.description && <p className="text-sm">{module.description}</p>}
+            {module?.description && <p className="text-sm">{moduleDescription(t, code, module.description)}</p>}
             {scope.length > 0 && (
               <div>
                 <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-subtle">{t("planned.scope")}</p>

@@ -3,11 +3,11 @@ import { forwardRef, type ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 const variants = {
-  primary: "bg-primary text-white hover:bg-primary-hover shadow-card",
+  primary: "bg-primary-solid text-white hover:bg-primary-solid-hover shadow-card",
   secondary: "bg-surface text-fg border border-border hover:bg-surface-3 shadow-card",
   ghost: "text-muted hover:text-fg hover:bg-surface-3",
-  danger: "bg-danger text-white hover:opacity-90 shadow-card",
-  success: "bg-success text-white hover:opacity-90 shadow-card",
+  danger: "bg-danger-solid text-white hover:opacity-90 shadow-card",
+  success: "bg-success-solid text-white hover:opacity-90 shadow-card",
   outline: "border border-border-strong text-fg hover:bg-surface-3",
   link: "text-primary hover:underline px-0 h-auto",
 } as const;

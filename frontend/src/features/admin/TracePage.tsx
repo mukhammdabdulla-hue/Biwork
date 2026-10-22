@@ -12,6 +12,7 @@ import { ErrorState, Notice, Skeleton } from "@/components/ui/feedback";
 import { DefinitionList, PageHeader } from "@/components/ui/page";
 import { ConfidenceBar, FieldStateBadge, StatusBadge } from "@/components/ui/status";
 import { useI18n } from "@/i18n";
+import { auditActionLabel, codeLabel, entityLabel, fieldLabel, issueFieldLabel, issueMessage, stageLabel } from "@/i18n/labels";
 import { toastError } from "@/lib/notify";
 import { toNumber } from "@/lib/utils";
 import type { FieldState } from "@/api/types";
@@ -48,8 +49,8 @@ export default function TracePage() {
           <Step icon={<FileInput className="size-3.5" />} title={t("trace.input")}>
             <DefinitionList items={[
               [t("agent.col.submitted"), `${fmtDateTime(a.original_input.submitted_at)} · ${a.original_input.submitted_by ?? "—"}`],
-              [t("agent.col.source"), `${a.original_input.source_kind} · ${a.original_input.channel}`],
-              ["Job", <Link className="text-primary hover:underline" to={`/agent/jobs/${a.original_input.job_id}`}>{a.original_input.job_id.slice(0, 8)}</Link>],
+              [t("agent.col.source"), `${codeLabel(t, "agent.source", a.original_input.source_kind)} · ${codeLabel(t, "agent.channel", a.original_input.channel)}`],
+              [t("trace.job"), <Link className="text-primary hover:underline" to={`/agent/jobs/${a.original_input.job_id}`}>{a.original_input.job_id.slice(0, 8)}</Link>],
               [t("agent.submit.files"), a.original_input.file ? (
                 <span className="space-y-0.5">
                   <button type="button" className="text-primary hover:underline" onClick={() => api.download(`/files/${a.original_input.file!.id}`, a.original_input.file!.name).catch((e) => toastError(e, t))}>{a.original_input.file.name}</button>
@@ -66,11 +67,11 @@ export default function TracePage() {
               [t("agent.report.ai"), <span>{a.processing.ai_provider} · {a.processing.ai_model} {a.processing.ai_is_mock && <Badge tone="violet">{t("agent.mockBadge")}</Badge>}</span>],
             ]} />
             {a.processing.ai_calls.length > 0 && (
-              <div className="mt-3"><MiniTable head={[t("analytics.task"), t("analytics.model"), t("common.status"), t("analytics.tokens"), t("analytics.cost")]}
-                rows={a.processing.ai_calls.map((c) => [c.task, `${c.provider} · ${c.model}`, c.status, `${c.input_tokens ?? "—"} / ${c.output_tokens ?? "—"}`, c.cost_usd != null ? `$${Number(c.cost_usd).toFixed(4)}` : "—"])} /></div>
+              <div className="mt-3 overflow-x-auto scrollbar-thin"><MiniTable head={[t("analytics.task"), t("analytics.model"), t("common.status"), t("analytics.tokens"), t("analytics.cost")]}
+                rows={a.processing.ai_calls.map((c) => [c.task, `${c.provider} · ${c.model}`, c.status, `${fmtNumber(c.input_tokens)} / ${fmtNumber(c.output_tokens)}`, c.cost_usd != null ? fmtNumber(c.cost_usd, 4) : "—"])} /></div>
             )}
-            <div className="mt-3"><MiniTable head={[t("analytics.stage"), t("common.status"), t("agent.job.attemptShort"), t("analytics.avg")]}
-              rows={a.processing.stages.map((s) => [s.stage, <StatusBadge key={s.stage} status={s.status} />, s.attempt, s.duration_ms != null ? `${s.duration_ms} ms` : "—"])} /></div>
+            <div className="mt-3 overflow-x-auto scrollbar-thin"><MiniTable head={[t("analytics.stage"), t("common.status"), t("agent.job.attemptShort"), t("trace.duration")]}
+              rows={a.processing.stages.map((s, i) => [stageLabel(t, s.stage), <StatusBadge key={i} status={s.status} />, s.attempt, s.duration_ms != null ? `${fmtNumber(s.duration_ms)} ms` : "—"])} /></div>
           </Step>
           <Step icon={<ScanSearch className="size-3.5" />} title={t("trace.extracted")}>
             <div className="overflow-x-auto scrollbar-thin">
@@ -82,11 +83,11 @@ export default function TracePage() {
                 </tr></thead>
                 <tbody>{a.extracted_values.map((v) => (
                   <tr key={v.field} className="border-b border-border last:border-0 align-top">
-                    <td className="py-1.5 pr-3 font-medium">{v.field}</td>
+                    <td className="py-1.5 pr-3 font-medium">{fieldLabel(t, a.record.record_type, v.field)}</td>
                     <td className="py-1.5 pr-3">{v.raw_value ?? "—"}</td>
                     <td className="py-1.5 pr-3">{v.normalized_value == null ? "—" : String(v.normalized_value)}</td>
                     <td className="py-1.5 pr-3"><ConfidenceBar value={toNumber(v.confidence)} /></td>
-                    <td className="py-1.5 pr-3"><FieldStateBadge state={v.state as FieldState} /><p className="text-2xs text-subtle">{v.extracted_by}{v.edited_by ? ` · ${v.edited_by}` : ""}</p></td>
+                    <td className="py-1.5 pr-3"><FieldStateBadge state={v.state as FieldState} /><p className="text-2xs text-subtle">{v.extracted_by === "user" ? t("agent.record.byUser") : v.extracted_by === "derived" ? t("agent.record.derived") : v.extracted_by}{v.edited_by ? ` · ${v.edited_by}` : ""}</p></td>
                     <td className="max-w-64 py-1.5 text-2xs text-muted">{v.sources.map((s) => [s.sheet, s.cell, s.page && `p.${s.page}`].filter(Boolean).join(" ") || s.excerpt?.slice(0, 80)).join("; ") || "—"}</td>
                   </tr>
                 ))}</tbody>
@@ -96,18 +97,18 @@ export default function TracePage() {
           <Step icon={<ListChecks className="size-3.5" />} title={t("trace.validation")}>
             {a.validation_results.length === 0 ? <p className="text-xs text-muted">—</p> : (
               <ul className="space-y-1 text-xs">{a.validation_results.map((v, i) => (
-                <li key={i}><Badge tone={v.severity === "error" ? "danger" : v.severity === "warning" ? "warning" : "info"}>{v.severity}</Badge> <code className="text-2xs">{v.rule}</code>{v.field && ` · ${v.field}`}: {v.message}</li>
+                <li key={i}><Badge tone={v.severity === "error" ? "danger" : v.severity === "warning" ? "warning" : "info"}>{codeLabel(t, "agent.severity", v.severity)}</Badge> <code className="text-2xs">{v.rule}</code>{v.field && ` · ${issueFieldLabel(t, a.record.record_type, v.field)}`}: {issueMessage(t, v)}</li>
               ))}</ul>
             )}
             {a.matches.length > 0 && (
-              <div className="mt-3"><MiniTable head={[t("agent.mapping.field"), t("trace.entity"), t("agent.record.matched"), t("trace.score")]}
-                rows={a.matches.map((m) => [m.field ?? "—", m.entity_type, `${m.label} (${m.kind})`, `${Math.round(Number(m.score) * 100)}%`])} /></div>
+              <div className="mt-3 overflow-x-auto scrollbar-thin"><MiniTable head={[t("agent.mapping.field"), t("trace.entity"), t("agent.record.matched"), t("trace.score")]}
+                rows={a.matches.map((m) => [m.field ? issueFieldLabel(t, a.record.record_type, m.field) : "—", entityLabel(t, m.entity_type), `${m.label} (${codeLabel(t, "agent.matchKind", m.kind)})`, `${Math.round(Number(m.score) * 100)}%`])} /></div>
             )}
           </Step>
           <Step icon={<UserCheck className="size-3.5" />} title={t("trace.approvals")}>
             {a.approvals.length === 0 ? <p className="text-xs text-muted">—</p> : (
               <ul className="space-y-1 text-xs">{a.approvals.map((x, i) => (
-                <li key={i}><span className="font-medium">{x.decision}</span> · {x.by ?? "—"}{x.auto && <Badge className="ml-1" tone="info">{t("agent.record.auto")}</Badge>} · {fmtDateTime(x.at)}{x.comment && <span className="text-muted"> — “{x.comment}”</span>}</li>
+                <li key={i}><span className="font-medium">{codeLabel(t, "agent.decision", x.decision)}</span> · {x.by ?? "—"}{x.auto && <Badge className="ml-1" tone="info">{t("agent.record.auto")}</Badge>} · {fmtDateTime(x.at)}{x.comment && <span className="text-muted"> — “{x.comment}”</span>}</li>
               ))}</ul>
             )}
           </Step>
@@ -126,9 +127,9 @@ export default function TracePage() {
       {data && (
         <section>
           <h2 className="mb-2 flex items-center gap-2 text-base font-semibold"><ShieldCheck className="size-4 text-success" />{t("trace.events")}</h2>
-          <Card className="p-4">
+          <Card className="overflow-x-auto p-4 scrollbar-thin">
             <MiniTable head={["#", t("common.date"), t("admin.audit.action"), t("admin.audit.actor"), t("common.details")]}
-              rows={data.audit_events.map((e) => [e.id, fmtDateTime(e.occurred_at), <code key={e.id} className="text-2xs">{e.action}</code>, e.actor_name ?? e.actor_type, e.summary ?? "—"])} />
+              rows={data.audit_events.map((e) => [e.id, fmtDateTime(e.occurred_at), <span key={e.id} title={e.action}>{auditActionLabel(t, e.action)}</span>, e.actor_name ?? e.actor_type, e.summary ?? "—"])} />
           </Card>
         </section>
       )}

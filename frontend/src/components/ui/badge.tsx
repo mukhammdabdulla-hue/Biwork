@@ -8,7 +8,7 @@ export const tones = {
   danger: "bg-danger-soft text-danger",
   info: "bg-info-soft text-info",
   violet: "bg-violet-soft text-violet",
-  brand: "bg-brand-soft text-brand",
+  brand: "bg-brand-soft text-brand-strong",
 } as const;
 export type Tone = keyof typeof tones;
 

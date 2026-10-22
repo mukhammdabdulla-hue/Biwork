@@ -130,8 +130,9 @@ function MovementsTab() {
     { header: t("common.warehouse"), id: "wh", accessorFn: (m) => m.warehouse.code },
     { header: t("common.product"), id: "product", accessorFn: (m) => m.product.code, cell: ({ row }) => <span>{row.original.product.code} <span className="text-muted">{row.original.product.name}</span></span> },
     {
-      header: t("common.quantity"), id: "qty", accessorFn: (m) => Number(m.qty) * m.direction, meta: { align: "right" }, cell: ({ row }) => (
-        <span className={cn("font-medium", row.original.direction > 0 ? "text-success" : "text-danger")}>{row.original.direction > 0 ? "+" : "−"}{fmtNumber(row.original.qty)} {row.original.unit}</span>
+      // qty is already signed (negative for issues and reversals); the sign is drawn separately.
+      header: t("common.quantity"), id: "qty", accessorFn: (m) => Number(m.qty), meta: { align: "right" }, cell: ({ row }) => (
+        <span className={cn("font-medium", Number(row.original.qty) > 0 ? "text-success" : "text-danger")}>{Number(row.original.qty) > 0 ? "+" : "−"}{fmtNumber(Math.abs(Number(row.original.qty)))} {row.original.unit}</span>
       ),
     },
     { header: t("inventory.reference"), accessorKey: "reference", cell: ({ row }) => <span className="inline-flex items-center gap-1 text-muted">{row.original.reference ?? "—"}{row.original.source_record_id && <Bot className="size-3 text-brand" aria-label={t("production.fromAgent")} />}</span> },
@@ -154,13 +155,13 @@ function MovementsTab() {
       {query.error ? <ErrorState error={query.error} className="m-4" /> : <DataTable columns={columns} data={rows} loading={query.isLoading} empty={<EmptyState title={t("common.noData")} />} />}
       {query.hasNextPage && <div className="border-t border-border p-2 text-center"><Button size="sm" variant="ghost" loading={query.isFetchingNextPage} onClick={() => query.fetchNextPage()}>{t("common.loadMore")}</Button></div>}
       <ConfirmDialog open={!!reversing} onOpenChange={(o) => !o && setReversing(null)} title={`${t("inventory.reverse")} ${reversing?.number ?? ""}`} body={t("inventory.reverseHint")}
-        confirmLabel={t("inventory.reverse")} danger loading={busy === "reverse"}
+        confirmLabel={t("inventory.reverse")} danger loading={busy === "reverse"} disabled={reason.trim().length < 3}
         onConfirm={async () => {
-          if (!reversing || reason.trim().length < 3) return;
-          const ok = await run("reverse", () => api.post(`/inventory/movements/${reversing.id}/reverse`, { reason }), t("common.saved"));
+          if (!reversing) return;
+          const ok = await run("reverse", () => api.post(`/inventory/movements/${reversing.id}/reverse`, { reason: reason.trim() }), t("common.saved"));
           if (ok !== undefined) { setReversing(null); setReason(""); }
         }}>
-        <Field label={t("common.reason")} required className="mt-3">{(id) => <Textarea id={id} rows={2} value={reason} onChange={(e) => setReason(e.target.value)} />}</Field>
+        <Field label={t("common.reason")} required hint={t("common.reasonHint")} className="mt-3">{(id) => <Textarea id={id} rows={2} value={reason} onChange={(e) => setReason(e.target.value)} />}</Field>
       </ConfirmDialog>
     </Card>
   );
@@ -202,7 +203,7 @@ function WarehousesTab() {
   ], [t]);
   return (
     <Card>
-      {can("inventory.write") && (
+      {can("inventory.write", "master.write") && (
         <div className="flex justify-end border-b border-border px-4 py-2"><Button size="sm" onClick={() => setOpen(true)}><Plus className="size-3.5" />{t("inventory.newWarehouse")}</Button></div>
       )}
       {error ? <ErrorState error={error} className="m-4" /> : <DataTable columns={columns} data={data ?? []} loading={isLoading} empty={<EmptyState title={t("common.noData")} />} />}

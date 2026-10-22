@@ -3,8 +3,8 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Plus, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { api, newIdempotencyKey } from "@/api/client";
-import { useCompanyKey, useUnits } from "@/api/hooks";
-import type { Category, Page, Product } from "@/api/types";
+import { useCategories, useCompanyKey, useUnits } from "@/api/hooks";
+import type { Page, Product } from "@/api/types";
 import { useAuth } from "@/auth/AuthProvider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,9 +20,8 @@ const TYPES = ["finished_good", "semi_finished", "raw_material", "consumable", "
 
 function ProductDialog({ product, onClose }: { product: Product | null; onClose: () => void }) {
   const { t } = useI18n();
-  const company = useCompanyKey();
   const { data: units } = useUnits();
-  const { data: categories } = useQuery({ queryKey: [company, "categories"], queryFn: () => api.get<Category[]>("/master/product-categories") });
+  const { data: categories } = useCategories();
   const { run, busy } = useAction("products");
   const [v, setV] = useState({
     code: product?.code ?? "", name: product?.name ?? "", base_unit: product?.base_unit ?? "pcs", product_type: product?.product_type ?? "finished_good",

@@ -42,10 +42,10 @@ export default function QualityPage() {
           table={<MiniTable head={[t("common.date"), t("overview.produced"), t("overview.defective"), t("quality.defectRate")]}
             rows={(data?.daily ?? []).map((d) => [fmtDate(d.date), fmtNumber(d.produced), fmtNumber(d.defective), d.defect_rate == null ? "—" : pct(d.defect_rate)])} />}>
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data?.daily ?? []} margin={{ top: 6, right: 8, bottom: 0, left: -12 }}>
+            <LineChart data={data?.daily ?? []} margin={{ top: 6, right: 8, bottom: 0, left: 0 }}>
               <CartesianGrid vertical={false} stroke="var(--grid)" />
               <XAxis dataKey="date" {...axisProps} tickFormatter={(d: string) => fmtDate(d, { day: "2-digit", month: "short" })} minTickGap={24} />
-              <YAxis {...axisProps} width={44} tickFormatter={(v: number) => `${v}%`} />
+              <YAxis {...axisProps} width="auto" tickFormatter={(v: number) => `${fmtNumber(v)}%`} />
               <Tooltip content={<ChartTooltip series={[{ key: "defect_rate", label: t("quality.defectRate"), color: SERIES[1] }]} format={pct} labelFormat={(l) => fmtDate(l)} />} />
               <Line dataKey="defect_rate" stroke={SERIES[1]} strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: "var(--surface)" }} isAnimationActive={false} connectNulls />
             </LineChart>
@@ -68,7 +68,7 @@ export default function QualityPage() {
       <Card>
         <CardHeader title={t("quality.worst")} />
         {!data?.worst_reports.length ? <EmptyState title={t("common.noData")} /> : (
-          <div className="p-4 pt-2">
+          <div className="overflow-x-auto p-4 pt-2 scrollbar-thin">
             <MiniTable head={[t("common.number"), t("common.date"), t("common.product"), t("overview.produced"), t("overview.defective"), t("quality.defectRate")]}
               rows={data.worst_reports.map((r) => [<Link key={r.id} to={`/production?report=${r.id}`} className="text-primary hover:underline">{r.number}</Link>,
                 fmtDate(r.date), r.product, fmtNumber(r.produced), fmtNumber(r.defective), r.defect_rate == null ? "—" : pct(r.defect_rate)])} />

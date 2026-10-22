@@ -19,8 +19,10 @@ import { Switch } from "@/components/ui/switch";
 import { DataTable } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useI18n, type MessageKey } from "@/i18n";
+import { moduleName, recordTypeLabel, roleDescription, roleName } from "@/i18n/labels";
 import { useAction } from "@/lib/action";
 import { AuditTab, SystemTab } from "./AuditSystem";
+import { CompaniesTab } from "./Companies";
 
 function useRoles() {
   const company = useCompanyKey();
@@ -49,7 +51,7 @@ function MemberDialog({ member, onClose }: { member: Member | null; onClose: () 
           <Field label={t("admin.fullName")} required>{(id) => <Input id={id} value={v.full_name} onChange={(e) => setV({ ...v, full_name: e.target.value })} />}</Field>
           <Field label={t("admin.initialPassword")} hint={t("admin.initialPasswordHint")}>{(id) => <Input id={id} type="password" autoComplete="new-password" value={v.password} onChange={(e) => setV({ ...v, password: e.target.value })} />}</Field>
         </>}
-        <Field label={t("admin.role")}>{(id) => <Select id={id} value={v.role} onChange={(e) => setV({ ...v, role: e.target.value })}>{(roles ?? []).map((r) => <option key={r.id} value={r.code}>{r.name}</option>)}</Select>}</Field>
+        <Field label={t("admin.role")}>{(id) => <Select id={id} value={v.role} onChange={(e) => setV({ ...v, role: e.target.value })}>{(roles ?? []).map((r) => <option key={r.id} value={r.code}>{roleName(t, r)}</option>)}</Select>}</Field>
         <div>
           <p className="mb-1 text-xs font-medium text-muted">{t("admin.departmentScope")}</p>
           <div className="grid grid-cols-2 gap-1.5">
@@ -73,7 +75,7 @@ function MembersTab() {
   const depName = useMemo(() => new Map((departments ?? []).map((d) => [d.id, d.name])), [departments]);
   const columns = useMemo<ColumnDef<Member>[]>(() => [
     { header: t("common.name"), accessorKey: "full_name", cell: ({ row }) => <div><p className="font-medium">{row.original.full_name}</p><p className="text-2xs text-muted">{row.original.email}</p></div> },
-    { header: t("admin.role"), id: "role", accessorFn: (m) => m.role.name },
+    { header: t("admin.role"), id: "role", accessorFn: (m) => roleName(t, m.role) },
     { header: t("admin.departmentScope"), id: "deps", enableSorting: false, cell: ({ row }) => <span className="text-muted">{row.original.department_ids.length ? row.original.department_ids.map((d) => depName.get(d) ?? "?").join(", ") : t("admin.allDepartments")}</span> },
     { header: t("admin.mfa"), accessorKey: "mfa_enabled", cell: ({ getValue }) => (getValue() ? <Badge tone="success"><ShieldCheck className="size-3" />{t("common.yes")}</Badge> : <span className="text-subtle">—</span>) },
     { header: t("admin.lastLogin"), accessorKey: "last_login_at", cell: ({ getValue }) => <span className="text-muted">{getValue() ? fmtRelative(getValue() as string) : "—"}</span> },
@@ -117,8 +119,8 @@ function RolesTab() {
         <ul className="divide-y divide-border">
           {(data ?? []).map((r) => (
             <li key={r.id} className="px-4 py-3">
-              <div className="flex items-center gap-2"><span className="font-medium">{r.name}</span><code className="text-2xs text-subtle">{r.code}</code>{r.is_system && <Badge>{t("admin.systemRole")}</Badge>}</div>
-              {r.description && <p className="text-xs text-muted">{r.description}</p>}
+              <div className="flex items-center gap-2"><span className="font-medium">{r.is_system ? roleName(t, r) : r.name}</span><code className="text-2xs text-subtle">{r.code}</code>{r.is_system && <Badge>{t("admin.systemRole")}</Badge>}</div>
+              {r.description && <p className="text-xs text-muted">{r.is_system ? roleDescription(t, r) : r.description}</p>}
               <div className="mt-1.5 flex flex-wrap gap-1">{r.permissions.map((p) => <Badge key={p} tone={p === "*" ? "brand" : "neutral"}>{p === "*" ? t("admin.allPermissions") : p}</Badge>)}</div>
             </li>
           ))}
@@ -142,7 +144,7 @@ function RolesTab() {
               <fieldset key={g} className="rounded-md border border-border p-2">
                 <legend className="px-1 text-2xs font-semibold uppercase text-subtle">{g}</legend>
                 <div className="space-y-1">{perms.map((p) => (
-                  <Checkbox key={p} checked={v.permissions.includes(p)} label={<span className="text-xs">{p}</span>}
+                  <Checkbox key={p} checked={v.permissions.includes(p)} disabled={!can(p)} label={<span className="text-xs">{p}</span>}
                     onChange={(on) => setV((s) => ({ ...s, permissions: on ? [...s.permissions, p] : s.permissions.filter((x) => x !== p) }))} />
                 ))}</div>
               </fieldset>
@@ -211,6 +213,7 @@ function WorkflowsTab() {
       <div className="border-b border-border px-4 py-3"><Notice tone="info">{t("admin.workflowsHint")}</Notice></div>
       {error && <ErrorState error={error} className="m-4" />}
       {!isLoading && (
+        <div className="overflow-x-auto scrollbar-thin">
         <table className="w-full text-xs">
           <thead className="bg-surface-2 text-left text-muted"><tr className="border-b border-border">
             <th className="px-4 py-1.5 font-medium">{t("agent.submit.recordType")}</th><th className="px-3 py-1.5 font-medium">{t("admin.approver")}</th>
@@ -219,7 +222,7 @@ function WorkflowsTab() {
           <tbody>
             {(data ?? []).map((w) => (
               <tr key={w.record_type} className="border-b border-border last:border-0">
-                <td className="px-4 py-2"><p className="font-medium">{w.label}</p><p className="text-2xs text-subtle">{w.module}</p></td>
+                <td className="px-4 py-2"><p className="font-medium">{recordTypeLabel(t, w.record_type, w.label)}</p><p className="text-2xs text-subtle">{moduleName(t, w.module)}</p></td>
                 <td className="px-3 py-2"><code className="text-2xs">{w.approve_permission}</code></td>
                 <td className="px-3 py-2"><Switch checked={w.auto_approve} disabled={!can("admin.company")} label={t("admin.autoApprove")}
                   onCheckedChange={(on) => (on ? setConfirm(w) : void save(w, { auto_approve: false }))} /></td>
@@ -233,8 +236,9 @@ function WorkflowsTab() {
             ))}
           </tbody>
         </table>
+        </div>
       )}
-      <ConfirmDialog open={!!confirm} onOpenChange={(o) => !o && setConfirm(null)} title={t("admin.autoApproveConfirmTitle", { type: confirm?.label ?? "" })}
+      <ConfirmDialog open={!!confirm} onOpenChange={(o) => !o && setConfirm(null)} title={t("admin.autoApproveConfirmTitle", { type: confirm ? recordTypeLabel(t, confirm.record_type, confirm.label) : "" })}
         body={t("admin.autoApproveConfirm")} confirmLabel={t("admin.autoApprove")}
         onConfirm={async () => { if (confirm) await save(confirm, { auto_approve: true }); setConfirm(null); }} />
     </Card>
@@ -289,14 +293,14 @@ function ApiClientsTab() {
           </div>
         )}
       </Dialog>
-      <ConfirmDialog open={!!revoking} onOpenChange={(o) => !o && setRevoking(null)} title={`${t("admin.revoke")} ${revoking?.name ?? ""}`} danger confirmLabel={t("admin.revoke")}
+      <ConfirmDialog open={!!revoking} onOpenChange={(o) => !o && setRevoking(null)} title={t("admin.revokeTitle", { name: revoking?.name ?? "" })} danger confirmLabel={t("admin.revoke")}
         body={t("admin.revokeHint")} loading={busy === "revoke"}
         onConfirm={async () => { if (revoking) await run("revoke", () => api.delete(`/api-clients/${revoking.id}`), t("common.saved")); setRevoking(null); }} />
     </Card>
   );
 }
 
-const TABS: { key: string; label: MessageKey; perm: string[] }[] = [
+const TABS: { key: string; label: MessageKey; perm: string[]; platform?: boolean }[] = [
   { key: "members", label: "admin.tab.members", perm: ["admin.users"] },
   { key: "roles", label: "admin.tab.roles", perm: ["admin.roles", "admin.users"] },
   { key: "departments", label: "admin.tab.departments", perm: ["admin.company"] },
@@ -304,13 +308,14 @@ const TABS: { key: string; label: MessageKey; perm: string[] }[] = [
   { key: "api", label: "admin.tab.apiClients", perm: ["admin.api_clients"] },
   { key: "audit", label: "admin.tab.audit", perm: ["audit.read"] },
   { key: "system", label: "admin.tab.system", perm: ["admin.system"] },
+  { key: "companies", label: "admin.tab.companies", perm: [], platform: true },
 ];
 
 export default function AdminPage() {
   const { t } = useI18n();
-  const { can } = useAuth();
+  const { can, user } = useAuth();
   const [params, setParams] = useSearchParams();
-  const visible = TABS.filter((x) => x.perm.some((p) => can(p)));
+  const visible = TABS.filter((x) => (x.platform ? user?.is_platform_admin : x.perm.some((p) => can(p))));
   const tab = visible.find((x) => x.key === params.get("tab"))?.key ?? visible[0]?.key;
   if (!tab) return <EmptyState title={t("common.forbidden")} />;
   return (
@@ -325,6 +330,7 @@ export default function AdminPage() {
         <TabsContent value="api"><ApiClientsTab /></TabsContent>
         <TabsContent value="audit"><AuditTab /></TabsContent>
         <TabsContent value="system"><SystemTab /></TabsContent>
+        <TabsContent value="companies"><CompaniesTab /></TabsContent>
       </Tabs>
     </div>
   );

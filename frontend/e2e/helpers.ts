@@ -1,6 +1,7 @@
 import { expect, type Page } from "@playwright/test";
 
 export const PASSWORD = process.env.E2E_PASSWORD ?? "Biwork2026!demo";
+const DEMO_COMPANY = "BIWORK Demo Factory";
 
 export async function login(page: Page, who: "admin" | "manager" | "operator" | "viewer") {
   await page.goto("/login");
@@ -10,6 +11,13 @@ export async function login(page: Page, who: "admin" | "manager" | "operator" | 
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).not.toHaveURL(/\/login/);
+  // Other runs may have added the account to more companies; the specs work on the demo company.
+  const company = page.getByRole("button", { name: "Company" });
+  if (!(await company.textContent())?.includes(DEMO_COMPANY)) {
+    await company.click();
+    await page.getByRole("menuitem", { name: DEMO_COMPANY }).click();
+    await expect(company).toContainText(DEMO_COMPANY);
+  }
 }
 
 export async function logout(page: Page) {

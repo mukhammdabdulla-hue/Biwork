@@ -1,8 +1,9 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { KeyRound, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { api } from "@/api/client";
+import { api, session } from "@/api/client";
 import { useAgentInfo, useWarehouses } from "@/api/hooks";
 import type { AiPolicy, CompanySettings } from "@/api/types";
 import { useAuth } from "@/auth/AuthProvider";
@@ -15,6 +16,7 @@ import { PageHeader } from "@/components/ui/page";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LOCALES, useI18n, type MessageKey } from "@/i18n";
+import { moduleDescription, moduleName } from "@/i18n/labels";
 import { toastError } from "@/lib/notify";
 import { useTheme } from "@/lib/theme";
 
@@ -50,10 +52,13 @@ function CompanyTab() {
     date_order: s.date_order ?? "DMY", production_output_warehouse_id: s.production_output_warehouse_id ?? "",
   });
   const editable = can("admin.company");
+  const queryClient = useQueryClient();
   const toggleModule = async (code: string, enabled: boolean) => {
     try {
       await api.put(`/company/modules/${code}`, { enabled });
       await reloadCompany();
+      // Record types, pickers and dashboards depend on which modules are on.
+      await queryClient.invalidateQueries();
       toast.success(t("settings.saved"));
     } catch (e) {
       toastError(e, t);
@@ -82,10 +87,10 @@ function CompanyTab() {
           {(companyDetail?.modules ?? []).map((m) => (
             <li key={m.code} className="flex items-start gap-3 px-4 py-2.5">
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium">{m.name} {!m.available && <Badge className="ml-1">{t("settings.phase", { n: m.phase })}</Badge>}</p>
-                <p className="text-xs text-muted">{m.description}</p>
+                <p className="text-sm font-medium">{moduleName(t, m.code, m.name)} {!m.available && <Badge className="ml-1">{t("settings.phase", { n: m.phase })}</Badge>}</p>
+                <p className="text-xs text-muted">{moduleDescription(t, m.code, m.description)}</p>
               </div>
-              <Switch checked={m.enabled && m.available} disabled={!editable || !m.available} label={m.name} onCheckedChange={(on) => void toggleModule(m.code, on)} />
+              <Switch checked={m.enabled && m.available} disabled={!editable || !m.available} label={moduleName(t, m.code, m.name)} onCheckedChange={(on) => void toggleModule(m.code, on)} />
             </li>
           ))}
         </ul>
@@ -162,7 +167,9 @@ function ProfileTab() {
       <Card>
         <CardHeader title={t("settings.changePassword")} subtitle={`${user?.full_name} · ${user?.email}`} />
         <form className="grid gap-3 p-4" onSubmit={(e) => { e.preventDefault(); void run("pw", async () => {
-          await api.post("/auth/password", { current_password: pw.current, new_password: pw.next });
+          const res = await api.post<{ access_token?: string } | undefined>("/auth/password", { current_password: pw.current, new_password: pw.next });
+          // Every other session is signed out; this one continues with the token (and refresh cookie) issued with the change.
+          if (res?.access_token) session.setToken(res.access_token);
           setPw({ current: "", next: "" });
           toast.success(t("settings.passwordChanged"));
         }); }}>
