@@ -23,6 +23,62 @@ test.describe("Module screens", () => {
     await expect(page.getByRole("dialog").getByRole("button", { name: "Reopen" })).toBeVisible();
   });
 
+  test("a link to a task the user cannot find says so", async ({ page }) => {
+    await login(page, "manager");
+    await page.goto("/tasks?task=01a00000-0000-7000-8000-000000000000");
+    await expect(page.getByRole("dialog")).toContainText("This task was not found.");
+  });
+
+  test("approved output that did not reach stock is reported on the report", async ({ page }) => {
+    await login(page, "manager");
+    await page.route("**/api/v1/production/reports/*", async (route) => {
+      if (route.request().method() !== "GET") return route.continue();
+      const response = await route.fetch();
+      const report = await response.json();
+      await route.fulfill({ response, json: { ...report, warnings: [{ code: "output_not_posted", message: "fallback" }] } });
+    });
+    await page.goto("/production");
+    await page.getByRole("combobox", { name: "Status" }).selectOption("approved");
+    await page.getByRole("row").filter({ hasText: "Approved" }).first().click();
+    await expect(page.getByRole("dialog")).toContainText("The output was not added to stock: no finished goods warehouse was set");
+  });
+
+  test("the overview stays the home page when the Analytics module is off", async ({ page }) => {
+    await page.route("**/api/v1/company", async (route) => {
+      if (route.request().method() !== "GET") return route.continue();
+      const response = await route.fetch();
+      const company = await response.json();
+      for (const m of company.modules) if (m.code === "analytics") m.enabled = false;
+      await route.fulfill({ response, json: company });
+    });
+    await login(page, "admin");
+    await page.goto("/");
+    await expect(page.getByRole("heading", { level: 1, name: "Overview" })).toBeVisible();
+    const nav = page.getByRole("navigation", { name: "Main navigation" });
+    await expect(nav.getByRole("link", { name: "Overview" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Analytics" })).toHaveCount(0);
+  });
+
+  test("a revoked session refreshes, or signs out when the refresh is refused", async ({ page }) => {
+    await login(page, "viewer");
+    // The access token predates a password change elsewhere; this browser's refresh cookie still works.
+    let revoked = true;
+    await page.route("**/api/v1/tasks**", (route) => {
+      if (!revoked) return route.continue();
+      revoked = false;
+      return route.fulfill({ status: 401, json: { status: 401, code: "session_revoked", detail: "Session ended" } });
+    });
+    await page.getByRole("link", { name: "Tasks" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Tasks" })).toBeVisible();
+    await expect(page.getByRole("row").nth(1)).toBeVisible();
+    await page.unroute("**/api/v1/tasks**");
+    // Here the refresh cookie was revoked as well: the user is sent to the sign-in page.
+    await page.route("**/api/v1/auth/refresh", (route) => route.fulfill({ status: 401, json: { status: 401, code: "invalid_refresh" } }));
+    await page.route("**/api/v1/production/**", (route) => route.fulfill({ status: 401, json: { status: 401, code: "session_revoked", detail: "Session ended" } }));
+    await page.getByRole("link", { name: "Production" }).click();
+    await expect(page).toHaveURL(/\/login/);
+  });
+
   test("outgoing movements show a single minus sign", async ({ page }) => {
     await login(page, "manager");
     await page.goto("/inventory?tab=movements");

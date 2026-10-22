@@ -1,8 +1,9 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Bot, Plus } from "lucide-react";
+import { AlertTriangle, Bot, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 import { api, newIdempotencyKey } from "@/api/client";
 import { useCompanyKey, useDepartments, useProducts } from "@/api/hooks";
 import type { Page, ProductionOrder, ProductionReport } from "@/api/types";
@@ -17,7 +18,8 @@ import { DefinitionList, PageHeader, SectionTitle } from "@/components/ui/page";
 import { PriorityBadge, StatusBadge } from "@/components/ui/status";
 import { DataTable } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useI18n, type MessageKey } from "@/i18n";
+import { useI18n, type MessageKey, type TFunction } from "@/i18n";
+import { codeLabel } from "@/i18n/labels";
 import { ifMatch, todayIso, useAction } from "@/lib/action";
 import { ReportFields, reportBody, useReportForm } from "./ReportForm";
 import { CalendarTab, PlanTab } from "./PlanTabs";
@@ -45,6 +47,15 @@ function SourceBadge({ id }: { id: string | null }) {
   return id ? <Badge tone="brand"><Bot className="size-3" />{t("production.agentShort")}</Badge> : null;
 }
 
+type ReportWarning = NonNullable<ProductionReport["warnings"]>[number];
+
+const warningText = (t: TFunction, w: ReportWarning) => codeLabel(t, "production.warning", w.code, w.message);
+
+/** Approved output that did not reach stock is reported after the write as well as on the report. */
+function toastWarnings(t: TFunction, report: Pick<ProductionReport, "warnings"> | undefined) {
+  for (const w of report?.warnings ?? []) toast.warning(warningText(t, w));
+}
+
 function DraftEditor({ report, orders }: { report: ProductionReport; orders: ProductionOrder[] }) {
   const { t } = useI18n();
   const { run, busy } = useAction("production");
@@ -65,8 +76,8 @@ function CorrectDialog({ report, orders, onClose, onDone }: { report: Production
   const form = useReportForm(report);
   const [reason, setReason] = useState("");
   const submit = form.handleSubmit(async (v) => {
-    const ok = await run("correct", () => api.post(`/production/reports/${report.id}/correct`, { report: reportBody(v), reason: reason.trim() }), t("common.saved"));
-    if (ok !== undefined) { onClose(); onDone(); }
+    const ok = await run("correct", () => api.post<ProductionReport>(`/production/reports/${report.id}/correct`, { report: reportBody(v), reason: reason.trim() }), t("common.saved"));
+    if (ok !== undefined) { toastWarnings(t, ok); onClose(); onDone(); }
   });
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()} wide title={`${t("production.correct")} ${report.number}`} description={t("production.correctHint")}
@@ -91,8 +102,8 @@ function ReportSheet({ id, onClose }: { id: string; onClose: () => void }) {
   const { data: orders = [] } = useOrders("planned,released,in_progress");
   const [mode, setMode] = useState<"correct" | "cancel" | null>(null);
   const [reason, setReason] = useState("");
-  // Drafts can be discarded by their editors; approved reports are cancelled or corrected by approvers.
-  const canCancel = r && (r.status === "draft" ? can("production.write") : r.status === "approved" && can("production.approve"));
+  // Drafts can be discarded by their editors; cancelling an approved report also needs the approver permission.
+  const canCancel = r && (r.status === "draft" ? can("production.write") : r.status === "approved" && can("production.write", "production.approve"));
   const canCorrect = r?.status === "approved" && can("production.approve");
 
   if (error) return <Sheet open onOpenChange={onClose} title="—"><ErrorState error={error} /></Sheet>;
@@ -104,7 +115,8 @@ function ReportSheet({ id, onClose }: { id: string; onClose: () => void }) {
         {canCancel && <Button variant="ghost" className="text-danger" onClick={() => setMode("cancel")}>{t("production.cancelReport")}</Button>}
         {canCorrect && <Button onClick={() => setMode("correct")}>{t("production.correct")}</Button>}
         {r.status === "draft" && can("production.approve") && (
-          <Button variant="success" loading={busy === "approve"} onClick={() => run("approve", () => api.post(`/production/reports/${r.id}/approve`, {}, ifMatch(r.version)), t("status.approved"))}>
+          <Button variant="success" loading={busy === "approve"} onClick={async () =>
+            toastWarnings(t, await run("approve", () => api.post<ProductionReport>(`/production/reports/${r.id}/approve`, {}, ifMatch(r.version)), t("status.approved")))}>
             {t("common.approve")}
           </Button>
         )}
@@ -115,6 +127,7 @@ function ReportSheet({ id, onClose }: { id: string; onClose: () => void }) {
             {r.supersedes_id && <Badge tone="info">{t("production.supersedes")}</Badge>}
             {r.superseded_by && <Badge tone="warning">{t("production.supersededBy", { number: r.superseded_by.number })}</Badge>}
           </div>
+          {r.warnings?.map((w) => <Notice key={w.code} tone="warning" icon={<AlertTriangle className="size-3.5" />}>{warningText(t, w)}</Notice>)}
           <DefinitionList items={[
             [t("common.product"), `${r.product.code} · ${r.product.name}`],
             [t("common.department"), r.department.name],
@@ -163,8 +176,8 @@ function NewReportDialog({ onClose }: { onClose: () => void }) {
   const { data: orders = [] } = useOrders("planned,released,in_progress");
   const form = useReportForm(null);
   const submit = form.handleSubmit(async (v) => {
-    const ok = await run("create", () => api.post("/production/reports", { ...reportBody(v), approve: v.approve }, { "Idempotency-Key": newIdempotencyKey() }), t("common.saved"));
-    if (ok !== undefined) onClose();
+    const ok = await run("create", () => api.post<ProductionReport>("/production/reports", { ...reportBody(v), approve: v.approve }, { "Idempotency-Key": newIdempotencyKey() }), t("common.saved"));
+    if (ok !== undefined) { toastWarnings(t, ok); onClose(); }
   });
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()} wide title={t("production.newReport")}

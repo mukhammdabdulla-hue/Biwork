@@ -3,7 +3,7 @@ import { login } from "./helpers";
 
 const PAGES: [string, string][] = [
   ["/", "Overview"], ["/agent", "BIWORK Agent"], ["/tasks", "Tasks"], ["/production", "Production"], ["/production?tab=calendar", "Production"],
-  ["/inventory", "Inventory"], ["/supply", "Supply"], ["/quality", "Quality"], ["/analytics?tab=agent", "Analytics"], ["/hr", "BIWORK HR"],
+  ["/inventory", "Inventory"], ["/supply", "Supply"], ["/quality", "Quality"], ["/analytics?tab=agent", "Analytics"], ["/hr", "HR"],
   ["/admin", "Administration"], ["/admin?tab=audit", "Administration"], ["/settings", "Settings"],
 ];
 

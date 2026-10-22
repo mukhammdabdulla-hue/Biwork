@@ -23,13 +23,14 @@ interface NavItem {
   icon: ReactNode;
   module?: string;
   permissions?: string[];
-  /** Other modules the page reads from (Overview and Quality show figures through Analytics). */
+  /** Other modules the page reads from (Quality shows figures through Analytics). */
   needs?: string[];
 }
 
 const ICON = "size-4 shrink-0";
 const NAV: NavItem[] = [
-  { to: "/", key: "nav.overview", icon: <LayoutDashboard className={ICON} />, permissions: ["analytics.read"], needs: ["analytics"] },
+  // The Overview is the home dashboard: always available, whatever the Analytics module switch says.
+  { to: "/", key: "nav.overview", icon: <LayoutDashboard className={ICON} />, permissions: ["analytics.read"] },
   { to: "/agent", key: "nav.agent", icon: <Bot className={ICON} />, permissions: ["agent.read"] },
   { to: "/tasks", key: "nav.tasks", icon: <CheckSquare className={ICON} />, permissions: ["tasks.read"] },
   { to: "/production", key: "nav.production", icon: <Factory className={ICON} />, module: "production", permissions: ["production.read"] },
@@ -227,6 +228,14 @@ export function AppShell() {
   });
   const [mobileOpen, setMobileOpen] = useState(false);
   useEffect(() => setMobileOpen(false), [location.pathname]);
+  // The phone menu is a modal hidden from md up: close it when the screen widens (a phone turned to
+  // landscape), otherwise the invisible dialog keeps the page locked.
+  useEffect(() => {
+    const wide = window.matchMedia("(min-width: 768px)");
+    const close = () => wide.matches && setMobileOpen(false);
+    wide.addEventListener("change", close);
+    return () => wide.removeEventListener("change", close);
+  }, []);
   const toggle = () => {
     setCollapsed((c) => {
       try {

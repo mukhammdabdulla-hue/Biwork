@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Bot, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -26,6 +26,19 @@ const NEXT: Record<string, { status: string; key: MessageKey }[]> = {
   done: [{ status: "open", key: "common.reopen" }],
   cancelled: [{ status: "open", key: "common.reopen" }],
 };
+
+/** Finds a task across all statuses (there is no GET /tasks/{id}); null when it is not visible to the user. */
+async function findTask(id: string): Promise<Task | null> {
+  let cursor: string | null = null;
+  // Pages newest first; the cap (10,000 tasks) stops a runaway loop on very large task lists.
+  for (let page = 0; page < 20; page++) {
+    const result: Page<Task> = await api.get<Page<Task>>("/tasks", { limit: 500, cursor });
+    const task = result.items.find((x) => x.id === id);
+    if (task || !result.next_cursor) return task ?? null;
+    cursor = result.next_cursor;
+  }
+  return null;
+}
 
 function TaskDialog({ task, onClose }: { task: Task | null; onClose: () => void }) {
   const { t } = useI18n();
@@ -68,6 +81,7 @@ export default function TasksPage() {
   const { t, fmtDate, fmtDateTime } = useI18n();
   const { can } = useAuth();
   const company = useCompanyKey();
+  const queryClient = useQueryClient();
   const [params, setParams] = useSearchParams();
   const [status, setStatus] = useState("open,in_progress");
   const mine = params.get("mine") === "1";
@@ -85,8 +99,11 @@ export default function TasksPage() {
   const select = (task: Task | null) => {
     const next = new URLSearchParams(params);
     next.delete("id");
-    if (task) next.set("task", task.id);
-    else next.delete("task");
+    if (task) {
+      // A clicked row is already loaded: seed the open-task lookup instead of fetching it again.
+      queryClient.setQueryData([company, "tasks", "open-task", task.id], task);
+      next.set("task", task.id);
+    } else next.delete("task");
     setParams(next, { replace: true });
   };
   const { data, isLoading, error } = useQuery({
@@ -102,12 +119,12 @@ export default function TasksPage() {
     { header: t("common.status"), accessorKey: "status", cell: ({ getValue }) => <StatusBadge status={getValue() as string} /> },
   ], [t, fmtDate]);
   // The open task is looked up across all statuses: it may come from a link, or leave the filtered list once completed.
-  const { data: lookup } = useQuery({
+  const { data: lookup, error: lookupError } = useQuery({
     queryKey: [company, "tasks", "open-task", selectedId],
-    queryFn: async () => (await api.get<Page<Task>>("/tasks", { limit: 500 })).items.find((x) => x.id === selectedId) ?? null,
+    queryFn: () => findTask(selectedId!),
     enabled: !!selectedId,
   });
-  const sel = lookup ?? data?.items.find((x) => x.id === selectedId);
+  const sel = data?.items.find((x) => x.id === selectedId) ?? lookup;
   return (
     <div className="space-y-4">
       <PageHeader title={t("tasks.title")} subtitle={t("tasks.subtitle")}
@@ -148,6 +165,11 @@ export default function TasksPage() {
                 ? <Link className="text-primary hover:underline" to={REF_LINKS[sel.ref_type](sel.ref_id)}>{sel.ref_type.replace("_", " ")}</Link> : sel.ref_type) : "—"],
             ]} />
           </div>
+        </Sheet>
+      )}
+      {selectedId && !sel && (lookup === null || lookupError) && (
+        <Sheet open onOpenChange={(o) => !o && select(null)} title="—">
+          {lookupError ? <ErrorState error={lookupError} /> : <EmptyState title={t("tasks.notFound")} />}
         </Sheet>
       )}
       {editing && <TaskDialog task={editing === "new" ? null : editing} onClose={() => setEditing(null)} />}

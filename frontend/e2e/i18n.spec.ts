@@ -61,5 +61,22 @@ test.describe("Languages and accessibility", () => {
     await page.keyboard.press("Escape");
     await expect(drawer).toHaveCount(0);
     await expect(menu).toBeFocused();
+    // Turning the phone to landscape crosses the md breakpoint: the hidden drawer must not lock the page.
+    await menu.click();
+    await expect(drawer).toBeVisible();
+    await page.setViewportSize({ width: 844, height: 390 });
+    await expect(drawer).toHaveCount(0);
+    await page.getByRole("button", { name: "New task" }).click();
+    await expect(page.getByRole("dialog", { name: "New task" })).toBeVisible();
+  });
+
+  test("module names follow the interface language", async ({ page }) => {
+    await login(page, "admin");
+    await page.evaluate(() => localStorage.setItem("biwork.locale", "uz"));
+    await page.goto("/settings");
+    await expect(page.getByRole("switch", { name: "Ishlab chiqarish" })).toBeVisible();
+    await expect(page.getByText("BIWORK Production")).toHaveCount(0);
+    await page.goto("/maintenance");
+    await expect(page.getByRole("heading", { level: 1, name: "Texnik xizmat" })).toBeVisible();
   });
 });

@@ -522,6 +522,8 @@ export interface ProductionReport {
   source_record_id: string | null;
   stock_movements?: { id: string; number: string; type: string; qty: Num; unit: string; warehouse: string; reverses_id: string | null }[];
   superseded_by?: { id: string; number: string } | null;
+  /** Why approved output is not in stock (e.g. output_not_posted); returned on create, approve, correct and read. */
+  warnings?: { code: string; message: string }[];
 }
 
 export interface Shift {

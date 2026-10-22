@@ -114,7 +114,9 @@ export async function request<T>(method: string, path: string, opts: RequestOpti
   const response = await fetch(buildUrl(path, opts.query), { method, headers, body, signal: opts.signal, credentials: "same-origin" });
   if (response.status === 401 && opts.retry !== false && !path.startsWith("/auth/")) {
     const problem = await toProblem(response);
-    if (["token_expired", "invalid_token", "unauthorized"].includes(problem.code ?? "")) {
+    // session_revoked: the token predates a password change or "sign out everywhere"; the refresh
+    // cookie decides whether this browser still holds the current session.
+    if (["token_expired", "invalid_token", "unauthorized", "session_revoked"].includes(problem.code ?? "")) {
       const refreshed = await refreshSession();
       if (refreshed) return request<T>(method, path, { ...opts, retry: false });
       onSessionLost?.();

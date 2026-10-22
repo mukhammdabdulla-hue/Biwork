@@ -40,8 +40,9 @@ function RequireAuth({ children }: { children: ReactNode }) {
 
 /** Sends people without a permission to the first page they can use instead of showing an error. */
 function Home() {
-  const { can, moduleEnabled } = useAuth();
-  if (can("analytics.read") && moduleEnabled("analytics")) return <OverviewPage />;
+  const { can } = useAuth();
+  // The executive overview is the home dashboard; the Analytics module switch only hides the analytics pages.
+  if (can("analytics.read")) return <OverviewPage />;
   if (can("agent.read")) return <Navigate to="/agent" replace />;
   return <Navigate to="/tasks" replace />;
 }
