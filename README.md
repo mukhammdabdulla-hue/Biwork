@@ -59,6 +59,19 @@ and the workers; set `STORAGE_BACKEND=s3` and `S3_*` for object storage. Malware
 `COOKIE_SECURE=true` (required outside `dev`) needs HTTPS in front of the web container, except on
 `localhost`, which browsers treat as secure.
 
+### Production server
+
+[docs/deploy-server.md](docs/deploy-server.md) is a step-by-step guide (in Uzbek) for a VPS:
+Docker, firewall, `.env` with generated secrets, HTTPS, first administrator and company, daily
+backups, restore, updates and troubleshooting. In short:
+
+- `docker-compose.prod.yml` adds Caddy, which obtains and renews the TLS certificate for
+  `BIWORK_DOMAIN` and is the only service exposed (ports 80/443). Enable it with
+  `COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml` in `.env`.
+- `deploy/backup.sh` writes a `pg_dump` of the database and an archive of uploaded files to
+  `backups/` and keeps `BACKUP_KEEP_DAYS` days; run it from cron. `deploy/restore.sh` restores both
+  after a typed confirmation and re-runs migrations.
+
 ## Local development
 
 Requirements: Python 3.11+, Node.js 22, PostgreSQL 16, Redis 7 (optional in development),

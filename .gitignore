@@ -26,3 +26,4 @@ frontend/playwright-report/
 # Local services and build caches
 dump.rdb
 *.tsbuildinfo
+backups/

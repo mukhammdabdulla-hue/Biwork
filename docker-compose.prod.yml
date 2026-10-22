@@ -1,0 +1,23 @@
+# Production overlay: Caddy terminates HTTPS and is the only service exposed to the internet.
+# Enable it by adding this line to .env (every `docker compose` command then uses both files):
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml
+# See docs/deploy-server.md.
+services:
+  web:
+    ports: !reset []
+
+  caddy:
+    image: caddy:2.10-alpine
+    environment:
+      BIWORK_DOMAIN: ${BIWORK_DOMAIN:?set BIWORK_DOMAIN to the site's domain name}
+    ports: ["80:80", "443:443", "443:443/udp"]
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [web]
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
