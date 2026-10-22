@@ -14,11 +14,19 @@ from sqlalchemy import select
 from app.agent.models import ExtractedRecord, IngestionJob, MatchCandidate
 from app.agent.pipeline.normalize import Env, normalize_value, spec_for
 from app.core.manifest import Issue, RecordTypeSpec, RuleInput
-from app.core.matching import choose, get_resolver
+from app.core.matching import AMBIGUITY_MARGIN, Candidate, choose, get_resolver
 from app.core.text import normalize_key
 
 # Record types whose fingerprint is a natural key: a repeat inside one file is an error, not a warning.
 UNIQUE_FINGERPRINT = {"production_report", "product"}
+# Below this score a candidate is only "the closest", not a plausible reading of the text.
+PLAUSIBLE_CANDIDATE = 0.6
+
+
+def close_call(candidates: list[Candidate]) -> bool:
+    """Two or more plausible candidates within the ambiguity margin: the text could mean either."""
+    plausible = [c for c in candidates if c.score >= PLAUSIBLE_CANDIDATE]
+    return len({c.entity_id for c in plausible}) > 1 and plausible[0].score - plausible[1].score < AMBIGUITY_MARGIN
 
 
 def _resolve(env: Env, entity_type: str, value: str):
@@ -63,13 +71,14 @@ def resolve_references(record: ExtractedRecord, rt: RecordTypeSpec, env: Env) ->
         refs[f.field] = {"id": None, "text": text, "reason": choice.reason}
         if not spec.match_required:
             continue
-        if choice.reason == "ambiguous" and choice.candidates:
-            options = "; ".join(c.label for c in choice.candidates[:3])
+        if choice.reason == "ambiguous" and close_call(choice.candidates):
+            options = "; ".join(c.label for c in choice.candidates[:3] if c.score >= PLAUSIBLE_CANDIDATE)
             issues.append(Issue("reference_ambiguous", "error",
                                 f"'{text}' could match several {spec.label.lower()} records ({options}); choose one", f.field))
         else:
+            closest = f" Closest: {'; '.join(c.label for c in choice.candidates[:3])}." if choice.candidates else ""
             issues.append(Issue("reference_not_found", "error",
-                                f"No {spec.label.lower()} matches '{text}'. Choose an existing one or add it to master data first",
+                                f"No {spec.label.lower()} matches '{text}'.{closest} Choose an existing one or add it to master data first",
                                 f.field))
     record.references = refs
     return issues

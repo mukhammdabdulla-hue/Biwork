@@ -418,6 +418,7 @@ def commit(job_id: uuid.UUID, ctx: Ctx, db: DB, idem: Idem, data: CommitIn | Non
     job.stats = {**job.stats, "commit_requested_by": str(ctx.user_id or ctx.api_client_id),
                  "commit_requested_at": datetime.now(UTC).isoformat()}
     audit.record(db, "agent.job.commit_requested", ctx=ctx, entity_type="ingestion_job", entity_id=job.id,
+                 summary=f"Save requested for {approved} approved record(s) of '{(job.title or '')[:80]}'",
                  changes={"approved_records": approved, "record_ids": body.get("record_ids")})
     out = {"job_id": str(job.id), "queued_records": approved, "status": "committing"}
     idem.store(db, ctx, 202, out)
@@ -477,6 +478,7 @@ def retry(job_id: uuid.UUID, ctx: Ctx, db: DB, data: RetryIn | None = None) -> d
         raise ValidationFailed(f"Record type '{target}' is not available")
     what = prepare_retry(db, job, target)
     audit.record(db, "agent.job.retried", ctx=ctx, entity_type="ingestion_job", entity_id=job.id,
+                 summary=f"Job '{(job.title or '')[:80]}' retried (attempt {job.attempt})",
                  changes={"attempt": job.attempt, "resume": what, "record_type": target})
     company_id = ctx.company_id
     after_commit(db, (lambda: tasks.enqueue_commit(company_id, job_id)) if what == "commit" else (lambda: tasks.enqueue_process(company_id, job_id)))
@@ -500,7 +502,9 @@ def cancel(job_id: uuid.UUID, ctx: Ctx, db: DB) -> dict[str, Any]:
         discarded += 1
     job.status = "cancelled"
     job.finished_at = datetime.now(UTC)
-    audit.record(db, "agent.job.cancelled", ctx=ctx, entity_type="ingestion_job", entity_id=job.id, changes={"discarded_records": discarded})
+    audit.record(db, "agent.job.cancelled", ctx=ctx, entity_type="ingestion_job", entity_id=job.id,
+                 summary=f"Job '{(job.title or '')[:80]}' cancelled; {discarded} pending record(s) discarded",
+                 changes={"discarded_records": discarded})
     db.commit()
     return job_out(job)
 

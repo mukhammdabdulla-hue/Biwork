@@ -31,9 +31,9 @@ from app.agent.models import (
     ValidationResult,
 )
 from app.agent.pipeline import match as matching
-from app.agent.pipeline.interpret import header_signature, interpret_table, save_mapping
+from app.agent.pipeline.interpret import header_signature, interpret_table, mapping_warning, save_mapping
 from app.agent.pipeline.normalize import Env, normalize_record, normalize_value, spec_for
-from app.agent.pipeline.validate import validate_record
+from app.agent.pipeline.validate import fractional_counts, validate_record
 from app.config import get_settings
 from app.core import audit
 from app.core.context import RequestContext
@@ -99,6 +99,7 @@ def ai_quality_issues(record: ExtractedRecord) -> list[Issue]:
 def step_match(record: ExtractedRecord, rt: RecordTypeSpec, env: Env) -> list[Issue]:
     issues = matching.resolve_references(record, rt, env)
     issues += matching.default_units(record, rt, env)
+    issues += fractional_counts(record, rt)  # after default units: the unit may be the product's
     issues += matching.run_rules(record, rt, env)  # business rules need resolved references
     issues += matching.detect_duplicates(record, rt, env)
     return issues
@@ -107,7 +108,9 @@ def step_match(record: ExtractedRecord, rt: RecordTypeSpec, env: Env) -> list[Is
 def finalize(record: ExtractedRecord, rt: RecordTypeSpec, env: Env, issues: list[Issue], set_status: bool = True) -> None:
     matching.assign_states(record, rt, issues, env)
     record.review_group = matching.review_group(record, issues)
-    summary = rt.summary(record.payload) if rt.summary else None
+    # The summary names what will be saved: a matched or chosen reference, not the text as extracted.
+    chosen = {k: ref["label"] for k, ref in (record.references or {}).items() if "." not in k and ref.get("id") and ref.get("label")}
+    summary = rt.summary({**record.payload, **chosen}) if rt.summary else None
     record.summary = summary[:300] if summary else None
     if set_status and record.status in EDITABLE:
         record.status = "needs_review"
@@ -300,7 +303,9 @@ def correct_record(session: Session, ctx: RequestContext, record_id: uuid.UUID, 
     record.payload_version += 1
     session.add(Approval(company_id=record.company_id, record_id=record.id, decided_by=ctx.user_id, decision="correct",
                          diff=audit.canonical(changes), payload_version=record.payload_version))
+    edited = ", ".join(dict.fromkeys(k.split("#")[0] for k in changes))
     audit.record(session, "agent.record.corrected", ctx=ctx, entity_type="extracted_record", entity_id=record.id,
+                 summary=f"Record #{record.seq} corrected ({edited}): {record.summary or rt.label}",
                  changes=audit.diff(before, _snapshot(record)) | {"edits": audit.canonical(changes)},
                  context={"ingestion_job_id": str(record.job_id)})
     _update_job_after_review(session, job)
@@ -400,7 +405,8 @@ def reopen_record(session: Session, ctx: RequestContext, record_id: uuid.UUID) -
     job = session.get(IngestionJob, record.job_id)
     record.status = "needs_review"
     refresh_record(session, record, build_env(session, record.company_id, job, record_type(record.record_type)))
-    audit.record(session, "agent.record.reopened", ctx=ctx, entity_type="extracted_record", entity_id=record.id)
+    audit.record(session, "agent.record.reopened", ctx=ctx, entity_type="extracted_record", entity_id=record.id,
+                 summary=f"Record #{record.seq} reopened for review: {record.summary or record.record_type}")
     _update_job_after_review(session, job)
     return record
 
@@ -475,6 +481,9 @@ def update_mapping(session: Session, ctx: RequestContext, job_id: uuid.UUID, ite
     session.flush()
     full = {i: (mapping.get(i), 1.0, "user") for i in range(len(headers))}
     save_mapping(session, item, table_seq, rt, headers, full, confirmed_by=ctx.user_id)
+    # The table's "no column was mapped" warning reflects the mapping now in force.
+    stale = f"{table.content['name']}: no column was mapped"
+    item.warnings = [w for w in item.warnings or [] if not w.startswith(stale)] + list(filter(None, [mapping_warning(table, rt, full)]))
     seq = (max((r.seq for r in existing), default=0)) + 1
     created = interpret_table(session, job, item, table, rows_segments, rt, full, seq, job.created_at.date())
     session.flush()
@@ -493,6 +502,7 @@ def update_mapping(session: Session, ctx: RequestContext, job_id: uuid.UUID, ite
         template.headers = headers
         template.mapping = {normalize_key(h): mapping.get(i) for i, h in enumerate(headers)}
     audit.record(session, "agent.mapping.updated", ctx=ctx, entity_type="ingestion_item", entity_id=item.id,
+                 summary=f"Column mapping of {table.content['name']} set as {rt.label}; {created} record(s) re-read",
                  changes={"record_type": rt.code, "mapping": {headers[i]: t for i, t in mapping.items() if i < len(headers)},
                           "saved_template": save_template})
     job.status = "awaiting_review"

@@ -60,7 +60,7 @@ def authenticate(session: Session, email: str, password: str, otp: str | None, i
     now = datetime.now(UTC)
     if user is not None and user.locked_until and user.locked_until > now:
         audit.record(session, "auth.login_blocked", actor_type="user", actor_id=user.id, entity_type="user",
-                     entity_id=user.id, context={"ip": ip})
+                     entity_id=user.id, summary="Sign-in refused: account temporarily locked", context={"ip": ip})
         raise Unauthorized("Account temporarily locked after repeated failed sign-ins", code="account_locked")
     ok = verify_password(user.password_hash if user else None, password)
     if not ok or user is None or not user.is_active:
@@ -70,19 +70,21 @@ def authenticate(session: Session, email: str, password: str, otp: str | None, i
                 user.locked_until = now + timedelta(minutes=settings.login_lockout_minutes)
                 user.failed_login_count = 0
         audit.record(session, "auth.login_failed", actor_type="user", actor_id=user.id if user else None,
+                     summary="Sign-in failed: wrong email or password",
                      context={"ip": ip, "email_hash": token_hash(email.strip().lower())[:16]})
         raise Unauthorized("Invalid email or password", code="invalid_credentials")
     if user.mfa_enabled:
         if not otp:
             raise Unauthorized("Enter the code from your authenticator app", code="mfa_required")
         if not pyotp.TOTP(decrypt_field(user.mfa_secret)).verify(otp, valid_window=1):
-            audit.record(session, "auth.mfa_failed", actor_type="user", actor_id=user.id, context={"ip": ip})
+            audit.record(session, "auth.mfa_failed", actor_type="user", actor_id=user.id,
+                         summary="Sign-in failed: wrong authenticator code", context={"ip": ip})
             raise Unauthorized("Invalid authentication code", code="mfa_invalid")
     user.failed_login_count = 0
     user.locked_until = None
     user.last_login_at = now
     audit.record(session, "auth.login", actor_type="user", actor_id=user.id, entity_type="user", entity_id=user.id,
-                 context={"ip": ip})
+                 summary="Signed in", context={"ip": ip})
     return user
 
 
@@ -110,6 +112,7 @@ def rotate_refresh(session: Session, refresh_token: str, ip: str | None, user_ag
         # A consumed refresh token was presented again: assume theft, revoke the whole family.
         revoke_family(session, row.family_id)
         audit.record(session, "auth.refresh_reuse_detected", actor_type="user", actor_id=row.user_id,
+                     summary="Reused session token detected; the session was signed out",
                      context={"ip": ip, "family_id": str(row.family_id)})
         raise Unauthorized("Session invalidated for security reasons; please sign in again", code="refresh_reuse")
     user = session.get(User, row.user_id)
@@ -131,7 +134,7 @@ def logout(session: Session, refresh_token: str | None) -> None:
     row = session.execute(select(RefreshToken).where(RefreshToken.token_hash == token_hash(refresh_token))).scalar_one_or_none()
     if row is not None:
         revoke_family(session, row.family_id)
-        audit.record(session, "auth.logout", actor_type="user", actor_id=row.user_id)
+        audit.record(session, "auth.logout", actor_type="user", actor_id=row.user_id, summary="Signed out")
 
 
 def revoke_sessions(session: Session, user: User) -> None:
@@ -298,7 +301,7 @@ def create_role(session: Session, ctx: RequestContext, data: RoleIn) -> Role:
                 permissions=[RolePermission(permission=p) for p in sorted(set(data.permissions))])
     session.add(role)
     session.flush()
-    audit.record(session, "role.created", ctx=ctx, entity_type="role", entity_id=role.id,
+    audit.record(session, "role.created", ctx=ctx, entity_type="role", entity_id=role.id, summary=f"Role {role.name} created",
                  changes={"code": role.code, "permissions": sorted(set(data.permissions))})
     return role
 
@@ -376,8 +379,9 @@ def update_company_settings(session: Session, ctx: RequestContext, values: dict[
         merged["ai_policy"] = {**company.settings.get("ai_policy", {}), **values["ai_policy"]}
     company.settings = merged
     session.flush()
+    changes = audit.diff(before, merged)
     audit.record(session, "company.settings_updated", ctx=ctx, entity_type="company", entity_id=company.id,
-                 changes=audit.diff(before, merged))
+                 summary=f"Company settings updated: {', '.join(changes) or 'no change'}", changes=changes)
     return company
 
 
@@ -483,7 +487,9 @@ def update_member(session: Session, ctx: RequestContext, membership_id: uuid.UUI
         m.departments = [MembershipDepartment(department_id=d) for d in data.department_ids]
     session.flush()
     after = {"role": m.role.code, "is_active": m.is_active, "departments": sorted(str(d.department_id) for d in m.departments)}
-    audit.record(session, "membership.updated", ctx=ctx, entity_type="membership", entity_id=m.id, changes=audit.diff(before, after))
+    changes = audit.diff(before, after)
+    audit.record(session, "membership.updated", ctx=ctx, entity_type="membership", entity_id=m.id,
+                 summary=f"Member {session.get(User, m.user_id).email} updated: {', '.join(changes) or 'no change'}", changes=changes)
     return m
 
 
@@ -514,6 +520,7 @@ def create_api_client(session: Session, ctx: RequestContext, data: ApiClientIn) 
     session.add(client)
     session.flush()
     audit.record(session, "api_client.created", ctx=ctx, entity_type="api_client", entity_id=client.id,
+                 summary=f"API client {client.name} created",
                  changes={"name": client.name, "scopes": client.scopes})
     return client, key
 
@@ -537,4 +544,5 @@ def revoke_api_client(session: Session, ctx: RequestContext, client_id: uuid.UUI
     if client is None:
         raise NotFound("API client not found")
     client.revoked_at = datetime.now(UTC)
-    audit.record(session, "api_client.revoked", ctx=ctx, entity_type="api_client", entity_id=client.id)
+    audit.record(session, "api_client.revoked", ctx=ctx, entity_type="api_client", entity_id=client.id,
+                 summary=f"API client {client.name} revoked")

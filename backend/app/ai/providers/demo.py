@@ -19,21 +19,44 @@ from pydantic import BaseModel
 from app.ai.policy import detect_injection
 from app.ai.providers.base import ContentBlock, LLMResult, PromptTask, TextBlock
 from app.core.locale_data import DATE_SPAN
-from app.core.text import normalize_key
+from app.core.text import normalize_key, transliterate
+
+
+def _lat(pattern: str) -> str:
+    """The rules read a Latin view of the input (see `_Source`), so Cyrillic words in a pattern are
+    written naturally and transliterated once here ("выпущено" -> "vipusheno")."""
+    return transliterate(pattern)
+
 
 UNIT_WORDS = (
     "dona", "ta", "шт", "штук", "pcs", "pc", "pieces", "kg", "кг", "kilogramm", "tonna", "тонн", "t", "litr", "литр", "l", "л",
     "metr", "метр", "m", "м", "qop", "мешков", "мешка", "мешок", "bags", "quti", "коробок", "коробки", "boxes", "komplekt",
     "комплект", "rulon", "рулон", "m2", "м2", "m3", "м3", "pachka", "упаковок",
 )
-_UNIT = r"(?:" + "|".join(sorted(map(re.escape, UNIT_WORDS), key=len, reverse=True)) + r")\.?"
+_UNIT = r"(?:" + "|".join(sorted({re.escape(_lat(u)) for u in UNIT_WORDS}, key=len, reverse=True)) + r")\.?"
 _QTY = r"\d[\d\s.,]*\d|\d"
 
 # OCR often confuses q/g in Uzbek Latin text ("chigarildi"), so the verbs tolerate it.
-PRODUCED = r"ishlab\s+chi[qg]arildi|ishlab\s+chi[qg]arilgan|tayyorlandi|produced|manufactured|выпущено|произведено|изготовлено"
-ACCEPTED = r"sifat\s+nazoratidan\s+o['ʻ’`]?tdi|sifatdan\s+o['ʻ’`]?tdi|[qg]abul\s+[qg]ilindi|accepted|passed(?:\s+qc)?|принято|годн\w*|прошл\w*\s+отк"
-DEFECTIVE = r"brak|yaroqsiz|nuqsonli|defective|rejected|scrap|брак\w*|дефект\w*"
-WORKSHOP = r"sex|цех|workshop|uchastka|участок"
+PRODUCED = _lat(r"ishlab\s+chi[qg]arildi|ishlab\s+chi[qg]arilgan|tayyorlandi|produced|manufactured|выпущено|произведено|изготовлено")
+ACCEPTED = _lat(r"sifat\s+nazoratidan\s+o['ʻ’`]?tdi|sifatdan\s+o['ʻ’`]?tdi|[qg]abul\s+[qg]ilindi|accepted|passed(?:\s+qc)?|"
+                r"принят\w*|годн\w*|прошл\w*\s+отк")
+DEFECTIVE = _lat(r"brak|yaroqsiz|nuqsonli|defective|rejected|scrap|брак\w*|дефект\w*")
+WORKSHOP = _lat(r"sex|цех|workshop|uchastka|участок")
+WAREHOUSE = _lat(r"ombor|склад|warehouse")
+# Words that end a product name in a stock movement sentence ("120 qop Sement M400 kirim qilindi").
+_PRODUCT_END = _lat(r"kirim|chiqim|omborga|ombordan|qabul|received|issued|на|в|со|из|from|to|into|uchun|"
+                    r"выдан\w*|получен\w*|поступил\w*|принят\w*")
+
+_DEP_LABEL = re.compile(rf"(?:mas['ʻ’]?ul\s+)?(?<![\w-])(?:{WORKSHOP})\s*(?:№\s*)?[—–:\-]\s*([^\n.;,]+)", re.IGNORECASE)
+_DEP_NUMBERED = re.compile(rf"(\d+\s*-?\s*(?:{WORKSHOP}))(?:dagi|da|dan|ning|ga|i)?(?!\w)", re.IGNORECASE)  # "3-sexda"
+_DEP_NAMED = re.compile(rf"((?:{WORKSHOP})\s*№?\s*\d+)", re.IGNORECASE)  # "Цех №2", "workshop 3"
+_SHIFT = re.compile(r"(\d+)\s*-?\s*(?:smena|shift)|(?:smena|shift)\s*№?\s*(\d+)", re.IGNORECASE)
+_ORDER = re.compile(_lat(r"(?:buyurtma|заказ\w*|order)\s*(?:№|no\.?|#)?\s*([A-Z]{1,4}-?\d[\w\-/]*)"), re.IGNORECASE)
+_ACCEPTED_QTY = re.compile(rf"({_QTY})\s*(?:{_UNIT})?\s*(?:\w+\s+){{0,3}}?(?:{ACCEPTED})"
+                           rf"|(?:{ACCEPTED})(?:\s+otk)?\s*[:—–-]?\s*({_QTY})", re.IGNORECASE)
+_DEFECTIVE_QTY = re.compile(rf"({_QTY})\s*(?:{_UNIT})?\s*(?:\w+\s+){{0,3}}?(?:{DEFECTIVE})|(?:{DEFECTIVE})\w*\s*[:—–-]?\s*({_QTY})",
+                            re.IGNORECASE)
+_PRODUCT_PREFIX = re.compile(_lat(r"(?:(?:kuni|da|day|of|продукц\w*|издели\w*)\s+)*"), re.IGNORECASE)
 
 _DOC_KEYWORDS = {
     "production_report": ("ishlab chi", "produced", "выпущено", "произведено", "brak", "брак", "sifat", "отк", "accepted",
@@ -56,6 +79,38 @@ _DOC_KEYWORDS = {
 _DOC_NUMBER = re.compile(r"(?:№|\bNo\.?|#)\s*([A-Za-zА-Яа-я0-9][\w\-/.]*\d[\w\-/]*)", re.UNICODE)
 
 
+class _Source:
+    """The input as the rules read it: dates blanked out (they look like quantities) and Cyrillic
+    (Uzbek or Russian) transliterated to Latin, so one set of Latin rules reads both scripts
+    ("ишлаб чиқарилди" -> "ishlab chiqarildi"). Values and quotes are always cut from the original."""
+
+    def __init__(self, text: str):
+        self.text = text
+        masked = DATE_SPAN.sub(lambda d: "#" * len(d.group(0)), text)
+        out: list[str] = []
+        self._at: list[int] = []  # original offset of each character of `view`
+        for i, ch in enumerate(masked):
+            lat = transliterate(ch.lower())
+            if lat == ch.lower():
+                lat = ch
+            elif ch.isupper():
+                lat = lat[:1].upper() + lat[1:]
+            out.append(lat)
+            self._at += [i] * len(lat)
+        self.view = "".join(out)
+
+    def offset(self, pos: int) -> int:
+        """Original offset of a view position."""
+        return self._at[pos] if pos < len(self._at) else len(self.text)
+
+    def cut(self, start: int, end: int) -> str:
+        """Original text behind view[start:end]."""
+        return self.text[self._at[start]:self._at[end - 1] + 1] if end > start else ""
+
+    def group(self, m: re.Match, n: int = 0) -> str | None:
+        return self.cut(m.start(n), m.end(n)) if m.start(n) >= 0 else None
+
+
 def _fv(value: str | None, confidence: float = 0.9, quote: str | None = None) -> dict[str, Any]:
     if value is None or str(value).strip() == "":
         return {"value": None, "confidence": 0.0, "source_quote": None, "not_found": True, "alternatives": []}
@@ -64,14 +119,33 @@ def _fv(value: str | None, confidence: float = 0.9, quote: str | None = None) ->
             "alternatives": []}
 
 
-def _label_value(text: str, aliases: list[str]) -> tuple[str, str] | None:
-    """Find 'Alias: value' / 'Alias — value' on a line."""
-    for alias in sorted(aliases, key=len, reverse=True):
-        if len(alias) < 2:
-            continue
-        m = re.search(rf"(?im)^[ \t*\-•]*{re.escape(alias)}\s*(?:№\s*)?[:—–=\-]\s*(.+?)\s*$", text)
+def _alias_re(alias: str) -> str:
+    """An alias as it reads in the Latin view: apostrophes optional ("o'tdi" / "ўтди"), any spacing."""
+    pattern = re.sub(r"['ʻ’`ʼ]", "['ʻ’`ʼ]?", re.escape(_lat(alias.lower())))
+    return pattern.replace(r"\ ", r"\s+")
+
+
+# A labelled value ends at the line end, or where the next "Label:" starts after a sentence break
+# ("Muddat: 25.10.2026 gacha. Mas'ul: ..."); a mid-sentence label's value ends with its sentence.
+_LINE_VALUE_END = r"(?=\s*[.;!]\s+[^\W\d_][\w'ʻ’`ʼ \-]{0,30}?\s*(?:№\s*)?[:—–]|\s*$)"
+_INLINE_VALUE_END = r"(?=\.(?:\s|$)|[;!\n]|$)"
+
+
+def _label_value(src: _Source, aliases: list[str], start: int = 0, end: int | None = None) -> tuple[str, str] | None:
+    """Find 'Alias: value' / 'Alias — value' at the start of a line, or after a sentence break
+    ("... Nakladnoy: NK-5521", "Накладная № RS-3301")."""
+    end = len(src.view) if end is None else end
+    usable = [a for a in sorted(aliases, key=len, reverse=True) if len(a) >= 2]
+    for alias in usable:
+        m = re.compile(rf"(?im)^[ \t*\-•]*{_alias_re(alias)}\s*(?:№\s*)?[:—–=\-]\s*(.+?){_LINE_VALUE_END}").search(src.view, start, end)
         if m and m.group(1).strip():
-            return m.group(1).strip(), m.group(0).strip()
+            return src.group(m, 1).strip(), src.group(m).strip()
+    for alias in usable:
+        if len(alias) < 3:
+            continue
+        m = re.compile(rf"(?i)(?<=[.;!,]\s){_alias_re(alias)}\s*(?:№|[:—–])\s*(.+?){_INLINE_VALUE_END}").search(src.view, start, end)
+        if m and m.group(1).strip():
+            return src.group(m, 1).strip(), src.group(m).strip()
     return None
 
 
@@ -129,10 +203,10 @@ class DemoProvider:
     # ------------------------------------------------------------------ classify
 
     def _classify(self, text: str, params: dict[str, Any]) -> dict[str, Any]:
-        lowered = text.lower()
+        lowered = _Source(text).view.lower()
         results = []
         for rt in params["record_types"]:
-            hits = [k for k in _DOC_KEYWORDS.get(rt["code"], ()) if k in lowered]
+            hits = list(dict.fromkeys(k for k in map(_lat, _DOC_KEYWORDS.get(rt["code"], ())) if k in lowered))
             if hits:
                 count = 1
                 if rt["code"] == "production_report":
@@ -149,28 +223,31 @@ class DemoProvider:
 
     def _extract(self, text: str, params: dict[str, Any]) -> dict[str, Any]:
         rt = params["record_type"]
-        if rt["code"] == "production_report":
-            records = self._production_reports(text, rt)
+        src = _Source(text)
+        record = self._labelled_record(src, rt)
+        labelled_form = not record.get("product", {}).get("not_found", True) and not record["qty_produced"]["not_found"] \
+            if rt["code"] == "production_report" else False
+        if rt["code"] == "production_report" and not labelled_form:  # a "Mahsulot: ... / Ishlab chiqarildi: ..." form reads as labels
+            records = self._production_reports(src, rt)
             if records:
                 return {"records": records}
-        record = self._labelled_record(text, rt)
         if rt.get("line_fields"):
             record["lines"] = self._lines(text, rt["line_fields"])
         if rt["code"] in ("production_order", "stock_movement", "task"):
-            self._narrative_fill(text, rt, record)
+            self._narrative_fill(src, rt, record)
         found = any(not v["not_found"] for k, v in record.items() if k != "lines") or record.get("lines")
         return {"records": [record] if found else []}
 
-    def _labelled_record(self, text: str, rt: dict[str, Any]) -> dict[str, Any]:
+    def _labelled_record(self, src: _Source, rt: dict[str, Any]) -> dict[str, Any]:
         record: dict[str, Any] = {}
         for f in rt["fields"]:
-            hit = _label_value(text, [f["label"], *f.get("aliases", [])])
+            hit = _label_value(src, [f["label"], *f.get("aliases", [])])
             if hit and f["type"] == "date":
                 span = DATE_SPAN.search(hit[0])
                 record[f["name"]] = _fv(span.group(0) if span else hit[0], 0.9 if span else 0.5, hit[1])
             elif hit:
                 record[f["name"]] = _fv(hit[0], 0.88, hit[1])
-            elif "№" in f.get("aliases", []) and (m := _DOC_NUMBER.search(text)):
+            elif "№" in f.get("aliases", []) and (m := _DOC_NUMBER.search(src.text)):
                 record[f["name"]] = _fv(m.group(1), 0.85, m.group(0))
             else:
                 record[f["name"]] = _fv(None)
@@ -192,45 +269,55 @@ class DemoProvider:
                     lines.append(line)
         return lines
 
-    def _production_reports(self, text: str, rt: dict[str, Any]) -> list[dict[str, Any]]:
-        # Dates ("13.02.2026") look like quantities; blank them out (keeping offsets) before searching.
-        masked = DATE_SPAN.sub(lambda d: "#" * len(d.group(0)), text)
-        pattern = re.compile(rf"({_QTY})(?!\s*(?:kuni|yil|г\.|года|year))\s*({_UNIT})?\s+(.{{1,80}}?)\s+(?:{PRODUCED})",
+    def _production_reports(self, src: _Source, rt: dict[str, Any]) -> list[dict[str, Any]]:
+        view, text = src.view, src.text
+        # The product sits between the quantity and the verb, within one statement ("480 qabul qilindi;
+        # 2-sex: 300 dona B ..." is not a product).
+        pattern = re.compile(rf"({_QTY})(?!\s*(?:kuni|yil|g\.|goda|year))\s*({_UNIT})?\s+((?:[^\n;:.]|\.(?!\s)){{1,80}}?)\s+(?:{PRODUCED})",
                              re.IGNORECASE | re.UNICODE)
-        matches = list(pattern.finditer(masked))
+        matches = list(pattern.finditer(view))
         if not matches:  # "Выпущено 1200 шт изделия Б-12" (verb first)
             pattern = re.compile(rf"(?:{PRODUCED})\s*[:—–-]?\s*({_QTY})\s*({_UNIT})?\s+([^,.;\n]{{1,80}})", re.IGNORECASE)
-            matches = list(pattern.finditer(masked))
+            matches = list(pattern.finditer(view))
         if not matches:
             return []
+        # Each report reads only its own text: from the start of its line up to where the next report
+        # begins (the next report's line, or else its sentence). Lines above the first report are a
+        # header shared by all of them ("Sex: 2-sex", "Цех №1, смена 1.").
+        bounds = [view.rfind("\n", 0, matches[0].start()) + 1]
+        for prev, nxt in zip(matches, matches[1:], strict=False):
+            gap = view[prev.end():nxt.start()]
+            breaks = [b.end() for b in re.finditer(r"\n|[.;!]\s", gap)]
+            newline = gap.rfind("\n")
+            bounds.append(prev.end() + (newline + 1 if newline >= 0 else breaks[-1] if breaks else len(gap)))
+        bounds.append(len(view))
+        header = (0, bounds[0])
         records = []
         dates_all = DATE_SPAN.findall(text)
         for idx, m in enumerate(matches):
-            start = m.start()
-            end = matches[idx + 1].start() if idx + 1 < len(matches) else len(text)
-            seg_start = text.rfind("\n", 0, start) + 1 if idx == 0 else matches[idx - 1].end()
-            segment = text[seg_start:end]
-            masked_segment = masked[seg_start:end]
+            start, end = bounds[idx], bounds[idx + 1]
 
-            def grp(n: int, mm: re.Match = m) -> str | None:  # group text from the original (unmasked) input
-                return text[mm.start(n):mm.end(n)] if mm.start(n) >= 0 else None
+            def find(*regexes: re.Pattern, start: int = start, end: int = end) -> re.Match | None:
+                for lo, hi in ((start, end), header):  # the report's own text wins over the header
+                    for regex in regexes:
+                        if found := regex.search(view, lo, hi):
+                            return found
+                return None
 
-            quote = text[m.start():m.end()]
-            product = re.sub(r"^(?:kuni|da|day|of|продукции|изделий)\s+", "", grp(3).strip(), flags=re.IGNORECASE)
+            quote = src.group(m)
+            prefix = _PRODUCT_PREFIX.match(m.group(3))
             rec = {f["name"]: _fv(None) for f in rt["fields"]}
-            rec["qty_produced"] = _fv(grp(1).strip(), 0.92, quote)
-            if grp(2):
-                rec["unit"] = _fv(grp(2).strip("."), 0.9, quote)
-            rec["product"] = _fv(product, 0.85, quote)
-            acc = re.search(rf"({_QTY})\s*(?:{_UNIT})?\s*(?:\w+\s+){{0,3}}?(?:{ACCEPTED})|(?:{ACCEPTED})\s*[:—–-]?\s*({_QTY})",
-                            masked_segment, re.IGNORECASE)
+            rec["qty_produced"] = _fv(src.group(m, 1).strip(), 0.92, quote)
+            if m.group(2):
+                rec["unit"] = _fv(src.group(m, 2).strip("."), 0.9, quote)
+            rec["product"] = _fv(src.cut(m.start(3) + prefix.end(), m.end(3)).strip(), 0.85, quote)
+            acc = _ACCEPTED_QTY.search(view, start, end)
             if acc:
-                rec["qty_accepted"] = _fv((acc.group(1) or acc.group(2)).strip(), 0.9, segment[acc.start():acc.end()])
-            dfc = re.search(rf"({_QTY})\s*(?:{_UNIT})?\s*(?:\w+\s+){{0,3}}?(?:{DEFECTIVE})|(?:{DEFECTIVE})\w*\s*[:—–-]?\s*({_QTY})",
-                            masked_segment, re.IGNORECASE)
+                rec["qty_accepted"] = _fv(src.group(acc, 1 if acc.group(1) else 2).strip(), 0.9, src.group(acc))
+            dfc = _DEFECTIVE_QTY.search(view, start, end)
             if dfc:
-                rec["qty_defective"] = _fv((dfc.group(1) or dfc.group(2)).strip(), 0.88, segment[dfc.start():dfc.end()])
-            local_dates = DATE_SPAN.findall(segment)
+                rec["qty_defective"] = _fv(src.group(dfc, 1 if dfc.group(1) else 2).strip(), 0.88, src.group(dfc))
+            local_dates = DATE_SPAN.findall(text[src.offset(start):src.offset(end)])
             date_source = local_dates or (dates_all if len(set(dates_all)) == 1 else [])
             if date_source:
                 rec["production_date"] = _fv(date_source[0], 0.9 if local_dates else 0.7)
@@ -238,25 +325,27 @@ class DemoProvider:
                 if distinct:
                     rec["production_date"]["alternatives"] = distinct
                     rec["production_date"]["confidence"] = 0.5
-            dep = re.search(rf"(?:mas['ʻ’]?ul\s+)?(?:{WORKSHOP})\s*(?:№\s*)?[—–:\-]\s*([^\n.;,]+)", text, re.IGNORECASE) or \
-                re.search(rf"(\d+\s*-?\s*(?:{WORKSHOP}))(?:da|dan|ning|ga|i)?\b|((?:{WORKSHOP})\s*№?\s*\d+)", text, re.IGNORECASE)
+            dep = find(_DEP_LABEL, _DEP_NUMBERED, _DEP_NAMED)
             if dep:
-                value = next(g for g in dep.groups() if g)
-                rec["department"] = _fv(value.strip(), 0.88, dep.group(0))
-            shift = re.search(r"(\d+)\s*-?\s*(?:smena|смена|shift)|(?:smena|смена|shift)\s*№?\s*(\d+)", segment, re.IGNORECASE)
+                rec["department"] = _fv(src.group(dep, 1).strip(), 0.88, src.group(dep))
+            shift = find(_SHIFT)
             if shift:
-                rec["shift"] = _fv(shift.group(1) or shift.group(2), 0.85, shift.group(0))
-            order = re.search(r"(?:buyurtma|заказ\w*|order)\s*(?:№|no\.?|#)?\s*([A-Z]{1,4}-?\d[\w\-/]*)", segment, re.IGNORECASE)
+                rec["shift"] = _fv(src.group(shift, 1 if shift.group(1) else 2), 0.85, src.group(shift))
+            order = find(_ORDER)
             if order:
-                rec["order"] = _fv(order.group(1), 0.85, order.group(0))
+                rec["order"] = _fv(src.group(order, 1), 0.85, src.group(order))
+            notes = next((f for f in rt["fields"] if f["name"] == "notes"), None)
+            if notes and (hit := _label_value(src, [notes["label"], *notes.get("aliases", [])], start, end)):
+                rec["notes"] = _fv(hit[0], 0.85, hit[1])
             records.append(rec)
         return records
 
-    def _narrative_fill(self, text: str, rt: dict[str, Any], record: dict[str, Any]) -> None:
+    def _narrative_fill(self, src: _Source, rt: dict[str, Any], record: dict[str, Any]) -> None:
         def empty(name: str) -> bool:
             return name in record and record[name]["not_found"]
 
-        qty = re.search(rf"({_QTY})\s*({_UNIT})\s+([^\n,.;]{{2,60}})", text, re.IGNORECASE)
+        text, view = src.text, src.view
+        qty = re.search(rf"({_QTY})\s*({_UNIT})\s+([^\n,.;]{{2,60}})", view, re.IGNORECASE)
         if rt["code"] == "task":
             first = re.split(r"(?<=[.!?])\s+|\n", text.strip(), maxsplit=1)[0]
             if empty("title") and first:
@@ -266,31 +355,37 @@ class DemoProvider:
             if empty("due_date") and due:
                 span = DATE_SPAN.search(due.group(0))
                 record["due_date"] = _fv(span.group(0), 0.85, due.group(0))
-            who = re.search(r"(?:mas['ʻ’]?ul|ответственн\w*|responsible|assignee|ijrochi)\s*[:—–-]\s*([^\n,.;]+)", text, re.IGNORECASE)
+            who = re.search(_lat(r"(?:mas['ʻ’]?ul|ответственн\w*|responsible|assignee|ijrochi)\s*[:—–-]\s*([^\n,.;]+)"), view,
+                            re.IGNORECASE)
             if empty("assignee") and who:
-                record["assignee"] = _fv(who.group(1), 0.8, who.group(0))
-            if empty("priority") and re.search(r"shoshilinch|срочно|urgent", text, re.IGNORECASE):
-                record["priority"] = _fv(re.search(r"shoshilinch|срочно|urgent", text, re.IGNORECASE).group(0), 0.85)
+                record["assignee"] = _fv(src.group(who, 1), 0.8, src.group(who))
+            urgent = re.search(_lat(r"shoshilinch|срочно|urgent"), view, re.IGNORECASE)
+            if empty("priority") and urgent:
+                record["priority"] = _fv(src.group(urgent), 0.85)
             return
         if qty:
             q_field = "planned_qty" if rt["code"] == "production_order" else "quantity"
             if empty(q_field):
-                record[q_field] = _fv(qty.group(1), 0.88, qty.group(0))
+                record[q_field] = _fv(src.group(qty, 1), 0.88, src.group(qty))
             if empty("unit"):
-                record["unit"] = _fv(qty.group(2).strip("."), 0.88, qty.group(0))
+                record["unit"] = _fv(src.group(qty, 2).strip("."), 0.88, src.group(qty))
             if empty("product"):
-                record["product"] = _fv(re.split(r"\s+(?:kirim|chiqim|omborga|ombordan|на|в|со|from|to|uchun)\b",
-                                                 qty.group(3), maxsplit=1, flags=re.IGNORECASE)[0], 0.8, qty.group(0))
+                stop = re.search(rf"\s+(?:{_PRODUCT_END})\b", qty.group(3), re.IGNORECASE)
+                record["product"] = _fv(src.cut(qty.start(3), qty.start(3) + (stop.start() if stop else len(qty.group(3)))), 0.8,
+                                        src.group(qty))
         dates = DATE_SPAN.findall(text)
         if rt["code"] == "stock_movement":
             if empty("movement_type"):
-                kind = re.search(r"kirim|chiqim|приход|расход|receipt|issue[sd]?", text, re.IGNORECASE)
+                kind = re.search(_lat(r"kirim|chiqim|приход|расход|receipt|issue[sd]?"), view, re.IGNORECASE)
                 if kind:
-                    record["movement_type"] = _fv(kind.group(0), 0.85)
+                    record["movement_type"] = _fv(src.group(kind), 0.85)
             if empty("warehouse"):
-                wh = re.search(r"((?:\d+\s*-?\s*)?(?:ombor|склад|warehouse)\w*(?:\s*№?\s*\d+)?)", text, re.IGNORECASE)
+                # A warehouse code next to the word: "RM omboriga", "со склада RM", "warehouse FG", else "2-ombor", "склад №1".
+                wh = re.search(rf"\b([A-Z][A-Z0-9-]{{0,9}})\s+(?i:{WAREHOUSE})\w*", view) or \
+                    re.search(rf"(?i:{WAREHOUSE})\w*\s*(?:№\s*)?([A-Z][A-Z0-9-]{{0,9}}|\d+)\b", view) or \
+                    re.search(rf"((?:\d+\s*-?\s*)?(?i:{WAREHOUSE})\w*(?:\s*№?\s*\d+)?)", view)
                 if wh:
-                    record["warehouse"] = _fv(wh.group(1), 0.75)
+                    record["warehouse"] = _fv(src.group(wh, 1), 0.75, src.group(wh))
             if empty("movement_date") and dates:
                 record["movement_date"] = _fv(dates[0], 0.85)
         if rt["code"] == "production_order":

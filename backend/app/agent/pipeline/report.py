@@ -23,6 +23,7 @@ SUGGESTIONS = {
     "date_in_future": "Correct the date",
     "conflicting_values": "Confirm which of the conflicting values is correct",
     "unit_incompatible": "Use a unit compatible with the product's base unit",
+    "fractional_count": "Check the quantity: a count unit takes whole numbers (a thousands separator may have been misread)",
     "output_warehouse_missing": "Set the finished-goods warehouse in Settings before saving, or post the output to stock manually",
 }
 

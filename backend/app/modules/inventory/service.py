@@ -44,6 +44,7 @@ def create_warehouse(session: Session, ctx: RequestContext, data: WarehouseIn) -
     session.add(wh)
     session.flush()
     audit.record(session, "warehouse.created", ctx=ctx, entity_type="warehouse", entity_id=wh.id,
+                 summary=f"Warehouse {wh.code} — {wh.name} created",
                  changes={"code": wh.code, "name": wh.name, "kind": wh.kind})
     return wh
 

@@ -47,6 +47,7 @@ def create_employee(session: Session, ctx: RequestContext, data: EmployeeIn, sou
     session.add(employee)
     session.flush()
     audit.record(session, "employee.created", ctx=ctx, entity_type="employee", entity_id=employee.id,
+                 summary=f"Employee {employee.full_name} created",
                  changes={"personnel_number": employee.personnel_number, "full_name": employee.full_name,
                           "position": employee.position})
     return employee

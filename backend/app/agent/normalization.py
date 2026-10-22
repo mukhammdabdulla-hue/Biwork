@@ -42,6 +42,10 @@ def parse_decimal(raw: Any, *, comma_decimal: bool = True) -> Normalized:
         return Normalized(error=f"'{text[:40]}' is not a number")
     token = m.group(0)
     rest = (text[: m.start()] + " " + text[m.end():]).strip()
+    # Spaces and apostrophes only group thousands ("1 200 300"); "50 50 0" is several numbers, not 50500.
+    groups = re.split(r"[\s  '’]+", token.strip())
+    if len(groups) > 1 and not (re.fullmatch(r"[-+]?\d{1,3}", groups[0]) and all(re.match(r"\d{3}(?!\d)", g) for g in groups[1:])):
+        return Normalized(error=f"'{text[:40]}' contains more than one number")
     compact = re.sub(r"[\s  '’]", "", token)
     notes: list[str] = []
     low = False
@@ -63,6 +67,12 @@ def parse_decimal(raw: Any, *, comma_decimal: bool = True) -> Normalized:
             compact = compact.replace(",", ".")
     elif compact.count(".") > 1:
         compact = compact.replace(".", "")
+    elif comma_decimal and re.fullmatch(r"[-+]?[1-9]\d{0,2}\.\d{3}", compact):
+        # With a comma decimal separator a lone dot before three digits groups thousands ("1.500"), but
+        # it may be a decimal point: flagged like "1,500".
+        compact = compact.replace(".", "")
+        notes.append(f"'{token.strip()}' read as {compact} (dot as thousands separator)")
+        low = True
     try:
         value = Decimal(compact)
     except InvalidOperation:

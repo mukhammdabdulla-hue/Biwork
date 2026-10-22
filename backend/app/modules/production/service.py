@@ -53,7 +53,8 @@ def create_shift(session: Session, ctx: RequestContext, data: ShiftIn) -> Shift:
     shift = Shift(company_id=ctx.company_id, **data.model_dump())
     session.add(shift)
     session.flush()
-    audit.record(session, "shift.created", ctx=ctx, entity_type="shift", entity_id=shift.id, changes=data.model_dump())
+    audit.record(session, "shift.created", ctx=ctx, entity_type="shift", entity_id=shift.id,
+                 summary=f"Shift {shift.code} — {shift.name} created", changes=data.model_dump())
     return shift
 
 
@@ -74,6 +75,7 @@ def create_line(session: Session, ctx: RequestContext, data: LineIn) -> Producti
     session.add(line)
     session.flush()
     audit.record(session, "production_line.created", ctx=ctx, entity_type="production_line", entity_id=line.id,
+                 summary=f"Production line {line.code} — {line.name} created",
                  changes={"code": line.code, "name": line.name})
     return line
 
@@ -190,6 +192,7 @@ def set_order_status(session: Session, ctx: RequestContext, order_id: uuid.UUID,
     order.updated_by = ctx.user_id
     session.flush()
     audit.record(session, "production_order.status_changed", ctx=ctx, entity_type="production_order", entity_id=order.id,
+                 summary=f"Production order {order.number} status changed from {before} to {status}",
                  changes={"status": {"from": before, "to": status}})
     return order
 
@@ -358,6 +361,7 @@ def approve_report(session: Session, ctx: RequestContext, report_id: uuid.UUID, 
     report.updated_by = ctx.user_id
     session.flush()
     audit.record(session, "production_report.approved", ctx=ctx, entity_type="production_report", entity_id=report.id,
+                 summary=f"Production report {report.number} approved",
                  changes={"status": {"from": "draft", "to": "approved"}})
     _post_output(session, ctx, report)
     return report
@@ -382,6 +386,7 @@ def _mark_cancelled(session: Session, ctx: RequestContext, report: ProductionRep
     report.updated_by = ctx.user_id
     session.flush()
     audit.record(session, "production_report.cancelled", ctx=ctx, entity_type="production_report", entity_id=report.id,
+                 summary=f"Production report {report.number} cancelled",
                  changes={"status": {"from": before, "to": "cancelled"}}, context={"reason": reason})
 
 
@@ -422,6 +427,7 @@ def update_draft(session: Session, ctx: RequestContext, report_id: uuid.UUID, da
     report.updated_by = ctx.user_id
     session.flush()
     audit.record(session, "production_report.updated", ctx=ctx, entity_type="production_report", entity_id=report.id,
+                 summary=f"Production report {report.number} updated",
                  changes=audit.diff(before, report_snapshot(report)))
     return report
 

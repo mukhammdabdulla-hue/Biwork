@@ -156,7 +156,8 @@ def interpret_table(session: Session, job: IngestionJob, item: IngestionItem, ta
     def cell_input(row: ParsedSegment, i: int, conf: float, by: str) -> FieldInput:
         cells = row.content["cells"]
         value = cells[i] if i < len(cells) else None
-        ref = {"sheet": sheet, "cell": f"{column_letter(i)}{row.content['row_number']}", "excerpt": f"{headers[i]}: {value}"}
+        ref = {"sheet": sheet, "cell": f"{column_letter(i)}{row.content['row_number']}", "excerpt": f"{headers[i]}: {value}",
+               **({"page": table.page} if table.page else {})}
         return FieldInput(raw=value, confidence=conf, extracted_by="mapping",
                           model_value={"value": value, "column": headers[i], "mapped_by": by}, refs=[ref])
 
@@ -198,6 +199,32 @@ def existing_mapping(session: Session, item_id, table_seq: int):
     if not rows:
         return None
     return rows[0].record_type, {r.source_index: (r.target_field, float(r.confidence), "user") for r in rows}, rows[0].confirmed_by
+
+
+def table_mapping(session: Session, ai_ctx: extraction.AIContext | None, item: IngestionItem, table: ParsedSegment,
+                  rows: list[ParsedSegment], candidates: list[RecordTypeSpec], warnings: list[str],
+                  ) -> tuple[RecordTypeSpec, dict[int, tuple[str | None, float, str]], Any]:
+    """(record type, mapping, confirmed_by) for a table: a person's confirmed mapping, else resolved."""
+    confirmed = existing_mapping(session, item.id, table.seq)
+    if confirmed:
+        return record_type(confirmed[0]), confirmed[1], confirmed[2]
+    rt, mapping = resolve_mapping(session, ai_ctx, item.company_id, table.content["headers"],
+                                  [r.content["cells"] for r in rows], candidates, warnings)
+    return rt, mapping, None
+
+
+def unmapped_required(rt: RecordTypeSpec, mapping: dict[int, tuple[str | None, float, str]]) -> list[str]:
+    """Labels of required fields no column is mapped to (none when the table holds line items)."""
+    mapped = {m[0] for m in mapping.values() if m[0]}
+    if rt.has_lines and mapped & {f.name for f in rt.line_fields}:
+        return []
+    return [f.label for f in rt.fields if f.required and f.name not in mapped]
+
+
+def mapping_warning(table: ParsedSegment, rt: RecordTypeSpec, mapping: dict[int, tuple[str | None, float, str]]) -> str | None:
+    missing = unmapped_required(rt, mapping)
+    return (f"{table.content['name']}: no column was mapped to required field(s) {', '.join(missing)} — check the column mapping"
+            if missing else None)
 
 
 # --------------------------------------------------------------------------- documents
@@ -346,23 +373,30 @@ def interpret_item(session: Session, item: IngestionItem, provider=None) -> dict
             if not rows:
                 warnings.append(f"{table.content['name']}: the table has no data rows")
                 continue
-            confirmed = existing_mapping(session, item.id, table.seq)
-            if confirmed:
-                rt, mapping = record_type(confirmed[0]), confirmed[1]
-            else:
-                rt, mapping = resolve_mapping(session, ai_ctx, item.company_id, table.content["headers"],
-                                              [r.content["cells"] for r in rows], candidates, warnings)
-            save_mapping(session, item, table.seq, rt, table.content["headers"], mapping,
-                         confirmed_by=confirmed[2] if confirmed else None)
-            unmapped_required = [f.label for f in rt.fields if f.required and f.name not in {m[0] for m in mapping.values()}]
-            if unmapped_required and not (rt.has_lines and any(m[0] in {f.name for f in rt.line_fields} for m in mapping.values())):
-                warnings.append(f"{table.content['name']}: no column was mapped to required field(s) "
-                                f"{', '.join(unmapped_required)} — check the column mapping")
+            rt, mapping, confirmed_by = table_mapping(session, ai_ctx, item, table, rows, candidates, warnings)
+            save_mapping(session, item, table.seq, rt, table.content["headers"], mapping, confirmed_by=confirmed_by)
+            if warning := mapping_warning(table, rt, mapping):
+                warnings.append(warning)
             created += interpret_table(session, job, item, table, rows, rt, mapping, seq + created, job.created_at.date())
             detected.append(rt.code)
     else:
-        pages = {s.page or 1: s.content for s in segments if s.kind == "text"}
-        created, detected = interpret_document(session, job, item, candidates, ai_ctx, seq, pages, warnings)
+        # Tables inside a document (DOCX/PDF) that list one record per row are read like a spreadsheet:
+        # a column for every required field, recognised by header rules or a saved mapping (no AI call).
+        # Item tables (purchase request lines) and unrecognised tables stay part of the document text.
+        for table in (s for s in segments if s.kind == "table"):
+            rows = [s for s in segments if s.kind == "row" and s.table_seq == table.seq]
+            if not rows:
+                continue
+            rt, mapping, confirmed_by = table_mapping(session, None, item, table, rows, candidates, warnings)
+            mapped = {m[0] for m in mapping.values() if m[0]}
+            if confirmed_by is None and (not mapped - {f.name for f in rt.line_fields} or unmapped_required(rt, mapping)):
+                continue
+            save_mapping(session, item, table.seq, rt, table.content["headers"], mapping, confirmed_by=confirmed_by)
+            created += interpret_table(session, job, item, table, rows, rt, mapping, seq + created, job.created_at.date())
+            detected.append(rt.code)
+        if not created:
+            pages = {s.page or 1: s.content for s in segments if s.kind == "text"}
+            created, detected = interpret_document(session, job, item, candidates, ai_ctx, seq, pages, warnings)
 
     item.warnings = list(dict.fromkeys(warnings))
     item.detected_record_type = ",".join(dict.fromkeys(detected)) or None

@@ -171,6 +171,20 @@ def test_plan_vs_actual_and_dashboard(client, world):
     assert overview["kpis"]["plan_completion"]["value"] == 25.0 and overview["is_sample_data"] is False
     assert client.get("/api/v1/analytics/quality", headers=headers).json()["by_product"][0]["defect_rate"] == round(10 / 260 * 100, 1)
 
+    # Alerts keep English title/detail and carry the parameters the web app translates them from.
+    client.post("/api/v1/tasks", headers=headers, json={"title": "Check the press", "due_date": (today - timedelta(days=2)).isoformat()})
+    client.post("/api/v1/production/reports", headers=headers, json={
+        "production_date": (today - timedelta(days=1)).isoformat(), "product_id": str(world.a.products["B-001"]),
+        "department_id": str(world.a.departments["SEX-2"]), "qty_produced": "100", "qty_accepted": "80", "qty_defective": "20",
+        "approve": True})
+    alerts = {a["kind"]: a for a in client.get("/api/v1/analytics/overview", headers=headers).json()["alerts"]}
+    expected = {"shortage": {"code", "name", "on_hand", "unit", "reorder_level"}, "task_overdue": {"number", "title", "due_date"},
+                "defect_rate": {"code", "rate"}}
+    assert expected.keys() <= alerts.keys(), alerts
+    for kind, keys in expected.items():
+        assert set(alerts[kind]["params"]) == keys and alerts[kind]["title"] and alerts[kind]["detail"]
+    assert alerts["task_overdue"]["params"]["title"] == "Check the press" and alerts["defect_rate"]["params"] == {"code": "B-001", "rate": 20.0}
+
 
 # --------------------------------------------------------------------------- import policies & auto-approval
 
@@ -316,6 +330,25 @@ def test_image_docx_csv_and_structured_payload_ingestion(client, world):
     assert client.post(f"/api/v1/agent/records/{rec['id']}/approve", headers=headers).status_code == 200
     commit(client, headers, job["id"])
     assert any(p["code"] == "P-77" for p in client.get("/api/v1/master/products", headers=headers, params={"q": "P-77"}).json()["items"])
+
+
+def test_every_job_gets_a_title(client, world):
+    headers = world.login(client, "manager")
+
+    def title(**kwargs):
+        r = client.post("/api/v1/agent/jobs/json", headers=headers, json={"force": True, **kwargs})
+        assert r.status_code == 202, r.text
+        return r.json()["title"]
+
+    assert title(text="\n  Kecha 1-sex:  50 dona A mahsulot ishlab chiqarildi.\n3-sex: 60 dona C-010") == \
+        "Kecha 1-sex: 50 dona A mahsulot ishlab chiqarildi."
+    long = title(text="Hisobot " + "juda uzun matn " * 20)
+    assert len(long) == 80 and long.endswith("…")
+    assert title(payload={"record_type": "product", "fields": {"code": "P-78", "name": "Panel"}}) == "Product (form)"
+    assert title(text="Bugun 5 dona A", title="Custom") == "Custom"
+    r = client.post("/api/v1/agent/jobs", headers=headers, data={"force": "true"},
+                    files=[("files", ("a.csv", b"Sana;Miqdor\n1;2\n")), ("files", ("b.csv", b"Sana;Miqdor\n3;4\n"))])
+    assert r.status_code == 202 and r.json()["title"] == "a.csv, b.csv"
 
 
 def test_rejects_unsupported_and_mismatched_files(client, world):

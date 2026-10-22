@@ -127,6 +127,28 @@ def test_every_purchase_request_decision_keeps_its_comment(client, world):
     assert closed["decision_comment"] == "Delivered and closed" and closed["status"] == "closed"
 
 
+def test_purchase_request_without_currency_uses_the_company_default(client, world):
+    manager = world.login(client, "manager")
+    text = ("Xarid uchun ariza № ZK-2026-091\nSana: " + date.today().strftime("%d.%m.%Y") + "\nBo'lim: 2-sex\n\n"
+            "| Nomi | Miqdor | Birlik | Narx |\n|---|---|---|---|\n| Sement M400 | 200 | qop | 65000 |")
+    job = submit_text(client, manager, text)
+    rec_id = records(client, manager, job["id"])["items"][0]["id"]
+    assert client.post(f"/api/v1/agent/records/{rec_id}/approve", headers=manager).status_code == 200
+    r = client.post(f"/api/v1/agent/jobs/{job['id']}/commit", headers=manager)
+    assert r.status_code == 202
+    prs = client.get("/api/v1/supply/purchase-requests", headers=manager, params={"q": "ZK-2026-091"}).json()["items"]
+    pr = next(p for p in prs if p["external_number"] == "ZK-2026-091")
+    assert pr["currency"] == "UZS" and float(pr["total_estimated"]) == 13_000_000
+
+
+def test_purchase_request_without_items_is_reported_once(client, world):
+    manager = world.login(client, "manager")
+    job = submit_text(client, manager, "Xarid uchun ariza № ZK-2026-092\nSana: " + date.today().strftime("%d.%m.%Y") +
+                      "\nBo'lim: 2-sex\nYetkazib beruvchi: Qizilqum Sement", record_type="purchase_request")
+    rec = client.get(f"/api/v1/agent/records/{records(client, manager, job['id'])['items'][0]['id']}", headers=manager).json()
+    assert [i["rule_code"] for i in rec["issues"]].count("no_lines") == 1
+
+
 def test_reopened_task_clears_and_restamps_its_completion(client, world):
     manager = world.login(client, "manager")
     task = client.post("/api/v1/tasks", headers=manager, json={"title": "Check the press"}).json()

@@ -129,20 +129,28 @@ def overview(db: Session, ctx: RequestContext, days: int = 30) -> dict[str, Any]
                ProductionReport.production_date.between(start, today)), ProductionReport.department_id, ctx)
         .group_by(Department.name).order_by(Department.name)).all()
 
+    # Each alert carries English title/detail plus `params`, from which the web app renders it in the
+    # reader's language (by `kind`).
     alerts: list[dict[str, Any]] = []
     for s in shortage_list[:5]:
         alerts.append({"severity": "warning", "kind": "shortage", "title": f"Low stock: {s['code']} {s['name']}",
-                       "detail": f"{fmt_qty(s['on_hand'])} {s['unit']} on hand, reorder level {fmt_qty(s['reorder_level'])}", "link": "/inventory?tab=shortages"})
+                       "detail": f"{fmt_qty(s['on_hand'])} {s['unit']} on hand, reorder level {fmt_qty(s['reorder_level'])}", "link": "/inventory?tab=shortages",
+                       "params": {"code": s["code"], "name": s["name"], "on_hand": _f(s["on_hand"]), "unit": s["unit"],
+                                  "reorder_level": _f(s["reorder_level"])}})
     for o in pva:
         if o["planned_end"] and o["planned_end"] < today and o["status"] not in ("completed", "cancelled"):
             alerts.append({"severity": "danger", "kind": "order_late", "title": f"Order {o['number']} is past its deadline",
-                           "detail": f"{o['completion_pct'] or 0}% complete, planned end {o['planned_end']}", "link": "/production?tab=orders"})
+                           "detail": f"{o['completion_pct'] or 0}% complete, planned end {o['planned_end']}", "link": "/production?tab=orders",
+                           "params": {"number": o["number"], "completion_pct": o["completion_pct"] or 0, "planned_end": o["planned_end"]}})
     for t in overdue[:5]:
         alerts.append({"severity": "warning", "kind": "task_overdue", "title": f"Overdue task {t.number}",
-                       "detail": f"{t.title} (due {t.due_date})", "link": "/tasks"})
+                       "detail": f"{t.title} (due {t.due_date})", "link": "/tasks",
+                       "params": {"number": t.number, "title": t.title, "due_date": t.due_date}})
     for j in failed_now:
+        message = (j.error or {}).get("message", "")[:120]
         alerts.append({"severity": "danger", "kind": "job_failed", "title": "BIWORK Agent job failed",
-                       "detail": f"{j.title or j.id}: {(j.error or {}).get('message', '')[:120]}", "link": f"/agent/jobs/{j.id}"})
+                       "detail": f"{j.title or j.id}: {message}", "link": f"/agent/jobs/{j.id}",
+                       "params": {"title": j.title or "", "message": message, "job_id": str(j.id)}})
     week = today - timedelta(days=6)
     for code, produced, defective in db.execute(_scoped(
         select(Product.code, func.sum(ProductionReport.qty_produced), func.sum(func.coalesce(ProductionReport.qty_defective, 0)))
@@ -152,7 +160,7 @@ def overview(db: Session, ctx: RequestContext, days: int = 30) -> dict[str, Any]
         rate = _pct(_f(defective), _f(produced))
         if rate is not None and rate >= 5:
             alerts.append({"severity": "warning", "kind": "defect_rate", "title": f"High defect rate for {code}",
-                           "detail": f"{rate}% defective over the last 7 days", "link": "/quality"})
+                           "detail": f"{rate}% defective over the last 7 days", "link": "/quality", "params": {"code": code, "rate": rate}})
 
     activity = []
     if ctx.has("audit.read") and ctx.department_ids is None:  # the audit trail is company-wide

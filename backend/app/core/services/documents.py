@@ -65,6 +65,7 @@ def create_document(session: Session, ctx: RequestContext, data: DocumentIn, sou
     session.add(doc)
     session.flush()
     audit.record(session, "document.registered", ctx=ctx, entity_type="business_document", entity_id=doc.id,
+                 summary=f"Document {doc.number} ({doc.doc_type}) registered",
                  changes={"doc_type": doc.doc_type, "number": doc.number, "doc_date": doc.doc_date.isoformat(),
                           "counterparty": doc.counterparty, "total_amount": _json(doc.total_amount), "currency": doc.currency})
     return doc

@@ -11,7 +11,7 @@ from sqlalchemy import text
 
 from app.agent.normalization import parse_date
 from tests.conftest import owner_query, records, wait_job
-from tests.files import purchase_request_pdf, xlsx
+from tests.files import docx_with_table, pdf_with_table, purchase_request_pdf, xlsx
 
 UZ_TEXT = ("21-oktabr kuni 500 dona A mahsulot ishlab chiqarildi. 480 dona sifat nazoratidan o'tdi, "
            "20 donasi brak bo'ldi. Mas'ul sex — 1-sex.")
@@ -105,7 +105,20 @@ def test_scenario_a_low_confidence_and_missing_values_are_not_invented(client, w
     body = r.json()
     assert body["review_group"] in ("ready", "needs_approval"), body["issues"]
     assert {f["field"]: f["match"]["match_kind"] for f in body["fields"] if f["match"]}["product"] == "manual"
+    # The summary shows what will be saved, not the text as extracted.
+    summary = records(client, manager, job["id"])["items"][0]["summary"]
+    assert summary.startswith(f"{product['label']} · 120 pcs · {dep['label']}") and "Noma'lum" not in summary
     assert client.post(f"/api/v1/agent/records/{rec_id}/approve", headers=manager).status_code == 200
+
+
+def test_scenario_a_a_single_weak_candidate_is_not_called_ambiguous(client, world):
+    manager = world.login(client, "manager")
+    day = (date.today() - timedelta(days=1)).strftime("%d.%m.%Y")
+    job = submit_text(client, manager, f"{day} 2-sex 1-smenada 120 dona A-002 ishlab chiqarildi")
+    rec = client.get(f"/api/v1/agent/records/{records(client, manager, job['id'])['items'][0]['id']}", headers=manager).json()
+    issue = next(i for i in rec["issues"] if i["field"] == "product")
+    assert issue["rule_code"] == "reference_not_found" and "several" not in issue["message"]
+    assert issue["message"].startswith("No product matches 'A-002'. Closest: A-001")
 
 
 # --------------------------------------------------------------------------- Scenario B
@@ -198,6 +211,8 @@ def test_scenario_b_column_mapping_correction_and_template(client, world):
     assert r.status_code == 200, r.text
     recs = records(client, manager, job["id"])
     assert recs["total"] == 2 and all(r["review_group"] == "ready" for r in recs["items"]), recs
+    item = client.get(f"/api/v1/agent/jobs/{job['id']}", headers=manager).json()["items_detail"][0]
+    assert not any("required field" in w for w in item["warnings"])  # the fixed mapping clears its warning
 
     # The same layout next time (another day's report) is mapped from the saved template.
     other_day = (date.today() - timedelta(days=2)).isoformat()
@@ -205,6 +220,46 @@ def test_scenario_b_column_mapping_correction_and_template(client, world):
     job2 = submit_file(client, manager, "custom-2.xlsx", xlsx(rows))
     assert {m["mapped_by"] for m in job2["items_detail"][0]["tables"][0]["mapping"]} == {"template"}
     assert all(r["review_group"] == "ready" for r in records(client, manager, job2["id"])["items"])
+
+
+@pytest.mark.parametrize("fmt", ["docx", "pdf"])
+def test_scenario_b_tables_in_documents_become_one_record_per_row(client, world, fmt):
+    manager = world.login(client, "manager")
+    d1, d2 = ((date.today() - timedelta(days=n)).strftime("%d.%m.%Y") for n in (1, 2))
+    rows = [["Sana", "Mahsulot", "Sex", "Smena", "Ishlab chiqarildi", "Sifatli", "Brak"],
+            [d1, "A-001", "1-sex", "1-smena", "610", "600", "10"], [d2, "B-001", "2-sex", "2-smena", "50", "50", "0"]]
+    build = docx_with_table if fmt == "docx" else pdf_with_table
+    job = submit_file(client, manager, f"jadval.{fmt}", build("Ishlab chiqarish jadvali", rows))
+    assert job["status"] == "awaiting_review", job
+    item = job["items_detail"][0]
+    assert item["detected_record_type"] == "production_report" and item["tables"][0]["record_type"] == "production_report"
+    recs = records(client, manager, job["id"])["items"]
+    assert len(recs) == 2
+    for rec_id, (_, product, dep, _, produced, accepted, defective) in zip((r["id"] for r in recs), rows[1:], strict=True):
+        rec = client.get(f"/api/v1/agent/records/{rec_id}", headers=manager).json()
+        fields = {f["field"]: f for f in rec["fields"]}
+        assert fields["product"]["match"]["label"].startswith(product) and fields["department"]["match"]["label"].startswith(dep)
+        assert [fields[k]["normalized_value"] for k in ("qty_produced", "qty_accepted", "qty_defective")] == [produced, accepted, defective]
+        assert fields["qty_produced"]["sources"][0]["cell"]
+        assert rec["review_group"] != "needs_correction", rec["issues"]
+
+
+def test_scenario_b_ambiguous_numbers_and_fractional_counts_need_approval(client, world):
+    manager = world.login(client, "manager")
+    days = [(date.today() - timedelta(days=n)).strftime("%d.%m.%Y") for n in (1, 2, 3)]
+    tsv = ("Sana\tMahsulot\tSex\tSmena\tIshlab chiqarildi\tSifatli\tBrak\tBirlik\n"
+           f"{days[0]}\tA-001\t1-sex\t1-smena\t1.500\t1.500\t0\tdona\n"  # '1.500': 1500 or 1.5?
+           f"{days[1]}\tB-001\t2-sex\t2-smena\t612,5\t600\t12,5\tdona\n"  # half a piece
+           f"{days[2]}\tA-001\t1-sex\t2-smena\t300\t300\t0\tdona")
+    job = submit_text(client, manager, tsv)
+    recs = {r["seq"]: r for r in records(client, manager, job["id"])["items"]}
+    assert [recs[n]["review_group"] for n in (1, 2, 3)] == ["needs_approval", "needs_approval", "ready"]
+    first = client.get(f"/api/v1/agent/records/{recs[1]['id']}", headers=manager).json()
+    fields = {f["field"]: f for f in first["fields"]}
+    assert fields["qty_produced"]["normalized_value"] == "1500" and fields["qty_produced"]["state"] == "low_confidence"
+    second = client.get(f"/api/v1/agent/records/{recs[2]['id']}", headers=manager).json()
+    flagged = {i["field"] for i in second["issues"] if i["rule_code"] == "fractional_count"}
+    assert flagged == {"qty_produced", "qty_defective"}
 
 
 # --------------------------------------------------------------------------- Scenario C
@@ -384,6 +439,20 @@ def test_scenario_f_processing_failure_and_retry(client, world, monkeypatch, own
     assert records(client, manager, job["id"])["total"] == 1
 
 
+def test_scenario_f_unreadable_file_fails_at_parse_and_later_stages_do_not_run(client, world):
+    manager = world.login(client, "manager")
+    job = submit_file(client, manager, "broken.pdf", b"%PDF-1.4 garbage")
+    assert job["status"] == "failed"
+    assert job["error"]["stage"] == "parse" and job["error"]["retryable"] is False, job["error"]
+    assert [(r["stage"], r["status"]) for r in job["stage_runs"]] == [("ingest", "succeeded"), ("parse", "failed")]
+
+    # Retrying fails the same way, still at parse, without recording later stages as succeeded.
+    assert client.post(f"/api/v1/agent/jobs/{job['id']}/retry", headers=manager).status_code == 202
+    job = wait_job(client, manager, job["id"])
+    assert job["status"] == "failed" and job["error"]["stage"] == "parse" and job["attempt"] == 2
+    assert {r["stage"] for r in job["stage_runs"]} == {"ingest", "parse"}
+
+
 def test_scenario_f_commit_crash_mid_batch_is_resumed_without_duplicates(client, world, monkeypatch, owner_engine):
     from app.config import get_settings
     from app.modules.production import service as production
@@ -475,6 +544,13 @@ def test_scenario_g_auditability(client, world, owner_engine):
     created = next(e for e in trace["audit_events"] if e["action"] == "production_report.created")
     assert created["changes"]["qty_produced"] == "500.0000" or float(created["changes"]["qty_produced"]) == 500
     assert created["context"]["ingestion_job_id"] == job["id"] and created["context"]["approved_by"]
+
+    # Every event has a readable summary (the overview's recent activity shows it).
+    activity = client.get("/api/v1/analytics/overview", headers=admin).json()["recent_activity"]
+    by_action = {a["action"]: a["summary"] for a in activity}
+    assert {"agent.record.corrected", "agent.job.commit_requested", "agent.record.approved"} <= by_action.keys()
+    assert all(a["summary"] for a in activity), activity
+    assert by_action["agent.record.corrected"].startswith("Record #1 corrected (notes): A-001")
 
     # The audit chain verifies, and tampering is detected.
     assert client.get("/api/v1/audit/verify", headers=admin).json()["ok"] is True

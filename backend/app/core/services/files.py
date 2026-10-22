@@ -249,7 +249,7 @@ def store_upload(session: Session, ctx: RequestContext, filename: str, data: byt
     )
     session.add(record)
     session.flush()
-    audit.record(session, "file.uploaded", ctx=ctx, entity_type="file", entity_id=record.id,
+    audit.record(session, "file.uploaded", ctx=ctx, entity_type="file", entity_id=record.id, summary=f"File {record.original_name} uploaded",
                  changes={"name": record.original_name, "size": record.size, "sha256": sha, "format": detected})
     return record
 

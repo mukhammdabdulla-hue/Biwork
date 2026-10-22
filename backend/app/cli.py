@@ -92,7 +92,8 @@ def seed_demo(password: str) -> None:
         for code, name, kind, aliases in [
             ("SEX-1", "1-sex", "workshop", ["Sex 1", "1 sex", "Цех №1", "Цех 1", "Workshop 1", "Birinchi sex"]),
             ("SEX-2", "2-sex", "workshop", ["Sex 2", "Цех №2", "Цех 2", "Workshop 2", "Ikkinchi sex"]),
-            ("SEX-3", "3-sex (qadoqlash)", "workshop", ["3-sex", "Цех №3", "Packaging workshop", "Qadoqlash sexi"]),
+            ("SEX-3", "3-sex (qadoqlash)", "workshop", ["3-sex", "Sex 3", "Цех №3", "Цех 3", "Workshop 3", "Packaging workshop",
+                                                         "Qadoqlash sexi"]),
             ("OMBOR", "Ombor xo'jaligi", "warehouse", ["Ombor", "Склад", "Warehouse"]),
             ("TAMINOT", "Ta'minot bo'limi", "office", ["Ta'minot", "Снабжение", "Procurement"]),
             ("SIFAT", "Sifat nazorati bo'limi", "office", ["OTK", "ОТК", "Quality control"]),

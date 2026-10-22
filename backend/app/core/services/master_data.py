@@ -297,6 +297,7 @@ def update_department_aliases(session: Session, ctx: RequestContext, department_
     _sync_department_aliases(session, dep, aliases)
     session.flush()
     audit.record(session, "department.aliases_updated", ctx=ctx, entity_type="department", entity_id=dep.id,
+                 summary=f"Aliases of department {dep.code} — {dep.name} updated",
                  changes={"aliases": aliases})
     return dep
 
