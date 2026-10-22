@@ -4450,6 +4450,122 @@
     }
    }
   },
+  "/api/v1/agent/ai/status": {
+   "get": {
+    "tags": [
+     "agent"
+    ],
+    "summary": "Ai Status",
+    "description": "Effective routing (provider order, models per tier) and provider health. No secrets.",
+    "operationId": "ai_status_api_v1_agent_ai_status_get",
+    "parameters": [
+     {
+      "name": "X-Company-Id",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Company-Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "additionalProperties": true,
+         "title": "Response Ai Status Api V1 Agent Ai Status Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/agent/ai/usage": {
+   "get": {
+    "tags": [
+     "agent"
+    ],
+    "summary": "Ai Usage",
+    "description": "Usage monitoring: calls, tokens, estimated cost, latency, retries, fallbacks, outcomes.",
+    "operationId": "ai_usage_api_v1_agent_ai_usage_get",
+    "parameters": [
+     {
+      "name": "days",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 365,
+       "minimum": 1,
+       "default": 30,
+       "title": "Days"
+      }
+     },
+     {
+      "name": "X-Company-Id",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Company-Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "additionalProperties": true,
+         "title": "Response Ai Usage Api V1 Agent Ai Usage Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/agent/stats": {
    "get": {
     "tags": [
@@ -7593,7 +7709,8 @@
         "exclusiveMinimum": 0.0
        },
        {
-        "type": "string"
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
        }
       ],
       "title": "Quantity"
@@ -7664,7 +7781,8 @@
         "exclusiveMinimum": 0.0
        },
        {
-        "type": "string"
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
        }
       ],
       "title": "Planned Qty"
@@ -7830,7 +7948,8 @@
         "minimum": 0.0
        },
        {
-        "type": "string"
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
        },
        {
         "type": "null"
@@ -7911,7 +8030,8 @@
         "minimum": 0.0
        },
        {
-        "type": "string"
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
        },
        {
         "type": "null"
@@ -8123,7 +8243,8 @@
         "minimum": 0.0
        },
        {
-        "type": "string"
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
        }
       ],
       "title": "Qty Produced"
@@ -8135,7 +8256,8 @@
         "minimum": 0.0
        },
        {
-        "type": "string"
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
        },
        {
         "type": "null"
@@ -8150,7 +8272,8 @@
         "minimum": 0.0
        },
        {
-        "type": "string"
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
        },
        {
         "type": "null"
@@ -8256,7 +8379,8 @@
         "minimum": 0.0
        },
        {
-        "type": "string"
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
        }
       ],
       "title": "Qty Produced"
@@ -8268,7 +8392,8 @@
         "minimum": 0.0
        },
        {
-        "type": "string"
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
        },
        {
         "type": "null"
@@ -8283,7 +8408,8 @@
         "minimum": 0.0
        },
        {
-        "type": "string"
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
        },
        {
         "type": "null"
@@ -9004,7 +9130,8 @@
         "minimum": 0.0
        },
        {
-        "type": "string"
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
        },
        {
         "type": "null"
@@ -9072,7 +9199,8 @@
         "exclusiveMinimum": 0.0
        },
        {
-        "type": "string"
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
        }
       ],
       "title": "Quantity"
@@ -9100,7 +9228,8 @@
         "minimum": 0.0
        },
        {
-        "type": "string"
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
        },
        {
         "type": "null"

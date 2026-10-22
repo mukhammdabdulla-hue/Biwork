@@ -11,7 +11,8 @@ implemented). AI providers and data handling are described in [docs/ai-providers
 
 > **Mock AI by default.** Without an API key the agent uses a rule-based mock adapter. It is
 > labelled "Mock AI — not real analysis" everywhere it appears (banner, job pages, reports and
-> provenance). Set `AI_PROVIDER=anthropic` and `ANTHROPIC_API_KEY` for real extraction.
+> provenance). Set `OPENAI_API_KEY`, `GEMINI_API_KEY` or `ANTHROPIC_API_KEY` (with `AI_PROVIDER=auto`)
+> for real extraction; see [docs/ai-engine.md](docs/ai-engine.md).
 >
 > **Sample data is labelled.** `seed-demo` creates the company "BIWORK Demo Factory", flagged as
 > sample data; the dashboard says so on every page view.
@@ -104,13 +105,13 @@ The important groups:
 | Database | `DATABASE_URL` (app role), `DATABASE_MIGRATION_URL` (owner), `DATABASE_APP_ROLE`, `REDIS_URL` |
 | Security | `JWT_SIGNING_KEY`, `FIELD_ENCRYPTION_KEY` (Fernet, encrypts MFA secrets), `COOKIE_SECURE`, `CORS_ORIGINS`, lockout and rate-limit settings |
 | Files | `STORAGE_BACKEND` (`local`/`s3`), `STORAGE_DIR`, `S3_*`, `MAX_UPLOAD_MB`, `MAX_FILES_PER_JOB`, `CLAMAV_HOST` |
-| AI | `AI_PROVIDER` (`mock`/`anthropic`), `ANTHROPIC_API_KEY`, `AI_MODEL_EXTRACT`, `AI_MODEL_CLASSIFY`, `AI_EFFORT`, timeouts, retries, `AI_MAX_CALLS_PER_MINUTE`, `AI_MAX_INPUT_CHARS` |
+| AI | `AI_PROVIDER` (`auto`/`openai`/`gemini`/`anthropic`/`demo`), `AI_PRIMARY_PROVIDER`, `AI_FALLBACK_PROVIDERS`, `<PROVIDER>_API_KEY`, `<PROVIDER>_MODEL_{DEFAULT,COMPLEX,ECONOMY,VISION}`, `AI_ROUTING_ENABLED`, `AI_REVIEW_REQUIRED`, timeouts, retries, `AI_MAX_CALLS_PER_MINUTE`, `AI_MAX_INPUT_TOKENS` ([docs/ai-engine.md](docs/ai-engine.md)) |
 | OCR | `OCR_ENABLED`, `OCR_LANGS`, `TESSERACT_CMD` |
 | Processing | `CELERY_ALWAYS_EAGER` (dev/tests only), `STAGE_TIMEOUT_SECONDS`, `AGENT_COMMIT_BATCH_SIZE`, `AGENT_CONFIDENCE_THRESHOLD` |
 
 With `APP_ENV=staging` or `prod` the API refuses to start with the development JWT key, without
-`FIELD_ENCRYPTION_KEY`, with insecure cookies, in eager mode, or with `AI_PROVIDER=anthropic` and
-no API key. Secrets belong in the environment or a secrets manager, never in the repository.
+`FIELD_ENCRYPTION_KEY`, with insecure cookies, in eager mode, with an explicit `AI_PROVIDER` whose
+API key is missing, or with `AI_PROVIDER=auto` and no provider key at all. Secrets belong in the environment or a secrets manager, never in the repository.
 
 Per-company settings (language, time zone, currency, date order, finished-goods warehouse, AI
 data-handling policy, enabled modules, auto-approval per record type) are edited in the app under
@@ -165,27 +166,33 @@ Acceptance scenarios from the specification and where they are tested:
 `test_platform.py` covers authentication, MFA, permission escalation, report corrections and stock
 reversals, idempotency and optimistic locking, import policies, auto-approval, AI policy, prompt injection, file formats and
 AI payload retention; `test_units.py` covers normalization, parsers, OCR, matching and the mock
-adapter; `test_ai_adapter.py` exercises the Claude adapter against a mock HTTP transport.
+adapter; `test_ai_adapter.py` and `test_ai_providers.py` exercise the OpenAI, Gemini and Claude
+adapters against a mock HTTP transport, and `test_ai_engine.py` covers routing, fallback, escalation,
+caching and health.
 
-## Using Claude
+## Using a real AI provider
 
 ```bash
-AI_PROVIDER=anthropic
-ANTHROPIC_API_KEY=sk-ant-...
-AI_MODEL_EXTRACT=claude-opus-5-5      # documents and free text
-AI_MODEL_CLASSIFY=claude-haiku-5-5    # document classification
+AI_PROVIDER=auto                 # use whichever keys are set
+AI_PRIMARY_PROVIDER=openai
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL_DEFAULT=<model id>  # required for OpenAI and Gemini; see `python -m app.cli ai-models`
+GEMINI_API_KEY=...               # optional fallback
+ANTHROPIC_API_KEY=sk-ant-...     # optional fallback (models default to Claude Sonnet/Opus/Haiku 5.5)
 ```
 
-The adapter uses structured outputs, so responses are validated against the record type's schema
-before they reach validation. Read [docs/ai-providers.md](docs/ai-providers.md) before enabling an
-external provider for real company data.
+`python -m app.cli ai-check` validates the configuration and makes one small call per provider.
+Every adapter uses structured outputs, so responses are validated against the record type's schema
+before they reach validation. Read [docs/ai-engine.md](docs/ai-engine.md) and
+[docs/ai-providers.md](docs/ai-providers.md) before enabling an external provider for real company data.
 
 ## Known limitations
 
 - HR, EDO, Finance, Maintenance and the full Quality module are planned (phase 4) and shown as
   "Soon" without placeholder data. Quality shows defect analytics from production reports meanwhile.
-- One AI adapter (Anthropic) besides the mock; an OpenAI-compatible adapter, OpenTelemetry tracing,
-  offline prompt evaluations, SSO and multi-step approval chains are not built yet.
+- The OpenAI, Gemini and Anthropic adapters are tested against stubbed HTTP only; no real-provider
+  evaluation has been run yet (`python -m app.cli ai-eval` does it once keys exist). OpenTelemetry
+  tracing, SSO and multi-step approval chains are not built yet.
 - The Docker images were built and the compose stack was run end to end, except that the Tesseract
   packages could not be fetched in the build sandbox; the OCR code path is covered by the backend
   tests running against a local Tesseract installation.

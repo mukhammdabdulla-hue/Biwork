@@ -563,7 +563,7 @@ export const ru: Partial<Record<MessageKey, string>> = {
   "settings.ai.retain": "Хранить запросы и ответы AI (дней)",
   "settings.ai.retainHint": "0 — хранить только метаданные (модель, токены, стоимость), без содержимого.",
   "settings.ai.provider": "Активный провайдер",
-  "settings.ai.mockWarning": "Включён тестовый (mock) адаптер: результаты формируются по заданным правилам, а не реальным AI. Для настоящего извлечения данных настройте AI_PROVIDER=anthropic и API-ключ.",
+  "settings.ai.mockWarning": "Включён тестовый (mock) адаптер: результаты формируются по заданным правилам, а не реальным AI. Для настоящего извлечения данных настройте на сервере API-ключ OpenAI, Gemini или Anthropic.",
   "settings.redact.phone": "Номера телефонов",
   "settings.redact.email": "Адреса электронной почты",
   "settings.redact.passport": "Номера паспортов",

@@ -9,20 +9,26 @@ how each company controls it.
 
 ## Providers
 
-| `AI_PROVIDER` | What it is | When to use |
+| Provider | What it is | When to use |
 |---|---|---|
-| `mock` (default) | Rule-based extraction for Uzbek, Russian and English, written for development and tests. Runs inside BIWORK; nothing leaves the system. | Local development, demos, CI, installations where external AI is not allowed. |
-| `anthropic` | Claude through the Anthropic API (`ANTHROPIC_API_KEY`, optional `ANTHROPIC_BASE_URL`). | Real extraction from text, documents and scans. |
+| `demo` (alias `mock`) | Rule-based extraction for Uzbek, Russian and English, written for development and tests. Runs inside BIWORK; nothing leaves the system. | Local development, demos, CI, installations where external AI is not allowed. |
+| `openai` | OpenAI Responses API (`OPENAI_API_KEY`). Primary by default. | Real extraction from text, documents and scans. |
+| `gemini` | Google Gemini API (`GEMINI_API_KEY`). | Alternative or fallback. |
+| `anthropic` | Claude through the Anthropic API (`ANTHROPIC_API_KEY`, optional `ANTHROPIC_BASE_URL`). | Optional, or fallback. |
 
-The mock adapter is **never presented as AI analysis**. Its results are labelled "Mock AI — not
+`AI_PROVIDER=auto` uses every provider with a key, in `AI_PRIMARY_PROVIDER` /
+`AI_FALLBACK_PROVIDERS` order, falling back when one is down. Routing, model tiers, escalation and
+fallback are described in [ai-engine.md](ai-engine.md).
+
+The demo provider is **never presented as AI analysis**. Its results are labelled "Mock AI — not
 real analysis" in the app banner, on every job, in processing reports, in provenance traces and in
-the `ai_calls` log (`is_mock = true`).
+the `ai_calls` log (`is_mock = true`), and they are never auto-approved.
 
-Models are configurable: `AI_MODEL_EXTRACT` (documents and free text, default `claude-opus-5-5`)
-and `AI_MODEL_CLASSIFY` (deciding which record type a document contains, default
-`claude-haiku-5-5`). `AI_EFFORT` trades depth of reasoning for latency and cost.
+Models are configured per provider and tier (`<PROVIDER>_MODEL_DEFAULT`, `_COMPLEX`, `_ECONOMY`,
+`_VISION`); the task-to-tier mapping lives in `backend/app/ai/routing.default.json` and can be
+overridden with `AI_ROUTING_FILE`. `AI_EFFORT` trades depth of reasoning for latency and cost.
 
-Adding a provider means implementing `LLMProvider` (`backend/app/ai/providers/base.py`): one
+Adding a provider means implementing `LLMProvider` (`backend/app/ai/providers/base.py`) and registering it in `backend/app/ai/router.py`: one
 `complete()` call that takes content blocks and a Pydantic output model and returns a validated
 instance. Pipeline code depends only on that interface.
 

@@ -1040,6 +1040,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agent/ai/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ai Status
+         * @description Effective routing (provider order, models per tier) and provider health. No secrets.
+         */
+        get: operations["ai_status_api_v1_agent_ai_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agent/ai/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ai Usage
+         * @description Usage monitoring: calls, tokens, estimated cost, latency, retries, fallbacks, outcomes.
+         */
+        get: operations["ai_usage_api_v1_agent_ai_usage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/agent/stats": {
         parameters: {
             query?: never;
@@ -4512,6 +4552,74 @@ export interface operations {
     info_api_v1_agent_info_get: {
         parameters: {
             query?: never;
+            header?: {
+                "X-Company-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ai_status_api_v1_agent_ai_status_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Company-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ai_usage_api_v1_agent_ai_usage_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
             header?: {
                 "X-Company-Id"?: string | null;
             };
