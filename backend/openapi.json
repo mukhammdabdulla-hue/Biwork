@@ -7709,8 +7709,7 @@
         "exclusiveMinimum": 0.0
        },
        {
-        "type": "string",
-        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+        "type": "string"
        }
       ],
       "title": "Quantity"
@@ -7781,8 +7780,7 @@
         "exclusiveMinimum": 0.0
        },
        {
-        "type": "string",
-        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+        "type": "string"
        }
       ],
       "title": "Planned Qty"
@@ -7948,8 +7946,7 @@
         "minimum": 0.0
        },
        {
-        "type": "string",
-        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+        "type": "string"
        },
        {
         "type": "null"
@@ -8030,8 +8027,7 @@
         "minimum": 0.0
        },
        {
-        "type": "string",
-        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+        "type": "string"
        },
        {
         "type": "null"
@@ -8243,8 +8239,7 @@
         "minimum": 0.0
        },
        {
-        "type": "string",
-        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+        "type": "string"
        }
       ],
       "title": "Qty Produced"
@@ -8256,8 +8251,7 @@
         "minimum": 0.0
        },
        {
-        "type": "string",
-        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+        "type": "string"
        },
        {
         "type": "null"
@@ -8272,8 +8266,7 @@
         "minimum": 0.0
        },
        {
-        "type": "string",
-        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+        "type": "string"
        },
        {
         "type": "null"
@@ -8379,8 +8372,7 @@
         "minimum": 0.0
        },
        {
-        "type": "string",
-        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+        "type": "string"
        }
       ],
       "title": "Qty Produced"
@@ -8392,8 +8384,7 @@
         "minimum": 0.0
        },
        {
-        "type": "string",
-        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+        "type": "string"
        },
        {
         "type": "null"
@@ -8408,8 +8399,7 @@
         "minimum": 0.0
        },
        {
-        "type": "string",
-        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+        "type": "string"
        },
        {
         "type": "null"
@@ -9130,8 +9120,7 @@
         "minimum": 0.0
        },
        {
-        "type": "string",
-        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+        "type": "string"
        },
        {
         "type": "null"
@@ -9199,8 +9188,7 @@
         "exclusiveMinimum": 0.0
        },
        {
-        "type": "string",
-        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+        "type": "string"
        }
       ],
       "title": "Quantity"
@@ -9228,8 +9216,7 @@
         "minimum": 0.0
        },
        {
-        "type": "string",
-        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+        "type": "string"
        },
        {
         "type": "null"
