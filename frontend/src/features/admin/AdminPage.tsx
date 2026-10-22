@@ -21,6 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useI18n, type MessageKey } from "@/i18n";
 import { useAction } from "@/lib/action";
 import { AuditTab, SystemTab } from "./AuditSystem";
+import { CompaniesTab } from "./Companies";
 
 function useRoles() {
   const company = useCompanyKey();
@@ -142,7 +143,7 @@ function RolesTab() {
               <fieldset key={g} className="rounded-md border border-border p-2">
                 <legend className="px-1 text-2xs font-semibold uppercase text-subtle">{g}</legend>
                 <div className="space-y-1">{perms.map((p) => (
-                  <Checkbox key={p} checked={v.permissions.includes(p)} label={<span className="text-xs">{p}</span>}
+                  <Checkbox key={p} checked={v.permissions.includes(p)} disabled={!can(p)} label={<span className="text-xs">{p}</span>}
                     onChange={(on) => setV((s) => ({ ...s, permissions: on ? [...s.permissions, p] : s.permissions.filter((x) => x !== p) }))} />
                 ))}</div>
               </fieldset>
@@ -296,7 +297,7 @@ function ApiClientsTab() {
   );
 }
 
-const TABS: { key: string; label: MessageKey; perm: string[] }[] = [
+const TABS: { key: string; label: MessageKey; perm: string[]; platform?: boolean }[] = [
   { key: "members", label: "admin.tab.members", perm: ["admin.users"] },
   { key: "roles", label: "admin.tab.roles", perm: ["admin.roles", "admin.users"] },
   { key: "departments", label: "admin.tab.departments", perm: ["admin.company"] },
@@ -304,13 +305,14 @@ const TABS: { key: string; label: MessageKey; perm: string[] }[] = [
   { key: "api", label: "admin.tab.apiClients", perm: ["admin.api_clients"] },
   { key: "audit", label: "admin.tab.audit", perm: ["audit.read"] },
   { key: "system", label: "admin.tab.system", perm: ["admin.system"] },
+  { key: "companies", label: "admin.tab.companies", perm: [], platform: true },
 ];
 
 export default function AdminPage() {
   const { t } = useI18n();
-  const { can } = useAuth();
+  const { can, user } = useAuth();
   const [params, setParams] = useSearchParams();
-  const visible = TABS.filter((x) => x.perm.some((p) => can(p)));
+  const visible = TABS.filter((x) => (x.platform ? user?.is_platform_admin : x.perm.some((p) => can(p))));
   const tab = visible.find((x) => x.key === params.get("tab"))?.key ?? visible[0]?.key;
   if (!tab) return <EmptyState title={t("common.forbidden")} />;
   return (
@@ -325,6 +327,7 @@ export default function AdminPage() {
         <TabsContent value="api"><ApiClientsTab /></TabsContent>
         <TabsContent value="audit"><AuditTab /></TabsContent>
         <TabsContent value="system"><SystemTab /></TabsContent>
+        <TabsContent value="companies"><CompaniesTab /></TabsContent>
       </Tabs>
     </div>
   );

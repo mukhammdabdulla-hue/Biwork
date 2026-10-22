@@ -11,16 +11,27 @@ interface AuthValue {
   company: CompanyMembership | null;
   companyDetail: CompanyDetail | null;
   can: (...permissions: string[]) => boolean;
+  /** Whether a module is switched on for the current company (its API answers 403 module_disabled otherwise). */
+  moduleEnabled: (code: string) => boolean;
   login: (email: string, password: string, otp?: string) => Promise<void>;
   logout: () => Promise<void>;
   switchCompany: (id: string) => void;
   reloadCompany: () => Promise<void>;
-  reloadUser: () => Promise<void>;
+  /** Reload the user's memberships; `selectId` switches into that company (e.g. one just created). */
+  reloadUser: (selectId?: string) => Promise<void>;
   sessionExpired: boolean;
 }
 
 const AuthContext = createContext<AuthValue | null>(null);
 const COMPANY_KEY = "biwork.company";
+
+function saveCompany(id: string | null) {
+  try {
+    if (id) localStorage.setItem(COMPANY_KEY, id);
+  } catch {
+    /* ignore */
+  }
+}
 
 function pickCompany(user: Me): CompanyMembership | null {
   let saved: string | null = null;
@@ -41,9 +52,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [sessionExpired, setSessionExpired] = useState(false);
 
   const loadCompany = useCallback(async (membership: CompanyMembership | null) => {
+    // Remember the choice, also the default one, so a reload never lands in another company.
+    saveCompany(membership?.id ?? null);
     session.setCompany(membership?.id ?? null);
     setCompany(membership);
-    setCompanyDetail(membership ? await api.get<CompanyDetail>("/company") : null);
+    setCompanyDetail(null);
+    const detail = membership ? await api.get<CompanyDetail>("/company") : null;
+    // A later switch wins over a slower response for the previous company.
+    if (session.getCompany() === (membership?.id ?? null)) setCompanyDetail(detail);
   }, []);
 
   const adopt = useCallback(
@@ -96,11 +112,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const switchCompany = useCallback(
     (id: string) => {
       const membership = user?.companies.find((c) => c.id === id) ?? null;
-      try {
-        localStorage.setItem(COMPANY_KEY, id);
-      } catch {
-        /* ignore */
-      }
       queryClient.clear();
       void loadCompany(membership);
     },
@@ -111,17 +122,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (company) setCompanyDetail(await api.get<CompanyDetail>("/company"));
   }, [company]);
 
-  const reloadUser = useCallback(async () => {
+  const reloadUser = useCallback(async (selectId?: string) => {
     const me = await api.get<Me>("/auth/me");
     setUser(me);
-    setCompany(me.companies.find((c) => c.id === company?.id) ?? pickCompany(me));
-  }, [company]);
+    if (selectId) saveCompany(selectId);
+    const current = me.companies.find((c) => c.id === company?.id);
+    if (current && (!selectId || selectId === current.id)) setCompany(current);
+    else {
+      queryClient.clear();
+      await loadCompany(pickCompany(me));
+    }
+  }, [company, loadCompany, queryClient]);
 
   const value = useMemo<AuthValue>(() => {
     const perms = new Set(company?.permissions ?? []);
     return {
       status, user, company, companyDetail, sessionExpired, login, logout, switchCompany, reloadCompany, reloadUser,
       can: (...permissions: string[]) => permissions.every((p) => perms.has(p)),
+      moduleEnabled: (code: string) => {
+        // The company detail follows module switches; the membership list covers the moment while it loads.
+        const m = companyDetail?.modules.find((x) => x.code === code);
+        return m ? m.enabled : (company?.modules ?? []).includes(code);
+      },
     };
   }, [status, user, company, companyDetail, sessionExpired, login, logout, switchCompany, reloadCompany, reloadUser]);
 

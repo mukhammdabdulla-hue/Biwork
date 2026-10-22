@@ -1,9 +1,10 @@
 import { lazy, Suspense, type ReactNode } from "react";
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { Toaster } from "sonner";
 import { useAuth } from "@/auth/AuthProvider";
 import { AppShell } from "@/components/layout/AppShell";
 import { EmptyState, Spinner } from "@/components/ui/feedback";
+import { NoCompany } from "@/features/admin/Companies";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { useI18n } from "@/i18n";
 import { useLiveEvents } from "@/lib/live";
@@ -29,21 +30,26 @@ function PageFallback() {
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { status, company } = useAuth();
-  const { t } = useI18n();
   const location = useLocation();
-  useLiveEvents(status === "authenticated" && !!company);
+  useLiveEvents(status === "authenticated" ? company?.id ?? null : null);
   if (status === "loading") return <div className="flex h-full items-center justify-center"><Spinner className="size-5" /></div>;
   if (status === "anonymous") return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
-  if (!company) return <EmptyState title="BIWORK" className="h-full">{t("auth.noCompany")}</EmptyState>;
+  if (!company) return <NoCompany />;
   return <>{children}</>;
 }
 
 /** Sends people without a permission to the first page they can use instead of showing an error. */
 function Home() {
-  const { can } = useAuth();
-  if (can("analytics.read")) return <OverviewPage />;
+  const { can, moduleEnabled } = useAuth();
+  if (can("analytics.read") && moduleEnabled("analytics")) return <OverviewPage />;
   if (can("agent.read")) return <Navigate to="/agent" replace />;
   return <Navigate to="/tasks" replace />;
+}
+
+/** Older notifications linked purchase requests to a page that never existed. */
+function LegacyRequestLink() {
+  const { id } = useParams();
+  return <Navigate to={`/supply?request=${id}`} replace />;
 }
 
 function NotFound() {
@@ -66,6 +72,7 @@ export function App() {
             ["production", <ProductionPage />],
             ["inventory", <InventoryPage />],
             ["supply", <SupplyPage />],
+            ["supply/purchase-requests/:id", <LegacyRequestLink />],
             ["quality", <QualityPage />],
             ["analytics", <AnalyticsPage />],
             ["hr", <PlannedModulePage code="hr" />],

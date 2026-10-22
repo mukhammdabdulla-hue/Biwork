@@ -2,6 +2,7 @@ import { AlertTriangle, Inbox, Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { ApiError } from "@/api/client";
 import { useI18n } from "@/i18n";
+import { errorMessage } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 
 export function Spinner({ className }: { className?: string }) {
@@ -29,7 +30,7 @@ export function ErrorState({ error, className }: { error: unknown; className?: s
     <div role="alert" className={cn("flex items-start gap-2 rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger", className)}>
       <AlertTriangle className="mt-0.5 size-4 shrink-0" />
       <div>
-        <p className="font-medium">{apiError?.status === 403 ? t("common.forbidden") : apiError?.message ?? t("common.error")}</p>
+        <p className="font-medium">{errorMessage(error, t)}</p>
         {apiError?.problem.request_id && <p className="text-2xs opacity-75">Request {apiError.problem.request_id}</p>}
       </div>
     </div>

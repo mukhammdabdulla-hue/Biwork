@@ -22,7 +22,7 @@ import { ifMatch, todayIso, useAction } from "@/lib/action";
 import { ReportFields, reportBody, useReportForm } from "./ReportForm";
 import { CalendarTab, PlanTab } from "./PlanTabs";
 import { ProductsTab } from "./ProductsTab";
-import { ShiftsTab } from "./ShiftsTab";
+import { MasterDataTab } from "./MasterDataTab";
 
 const ORDER_TRANSITIONS: Record<string, string[]> = {
   planned: ["released", "in_progress", "cancelled"],
@@ -65,18 +65,18 @@ function CorrectDialog({ report, orders, onClose, onDone }: { report: Production
   const form = useReportForm(report);
   const [reason, setReason] = useState("");
   const submit = form.handleSubmit(async (v) => {
-    const ok = await run("correct", () => api.post(`/production/reports/${report.id}/correct`, { report: reportBody(v), reason }), t("common.saved"));
+    const ok = await run("correct", () => api.post(`/production/reports/${report.id}/correct`, { report: reportBody(v), reason: reason.trim() }), t("common.saved"));
     if (ok !== undefined) { onClose(); onDone(); }
   });
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()} wide title={`${t("production.correct")} ${report.number}`} description={t("production.correctHint")}
       footer={<>
         <Button onClick={onClose}>{t("common.cancel")}</Button>
-        <Button variant="primary" loading={busy === "correct"} disabled={!reason.trim()} onClick={submit}>{t("production.correct")}</Button>
+        <Button variant="primary" loading={busy === "correct"} disabled={reason.trim().length < 3} onClick={submit}>{t("production.correct")}</Button>
       </>}>
       <div className="space-y-3">
         <ReportFields form={form} orders={orders} showApprove={false} />
-        <Field label={t("common.reason")} required>{(fid) => <Textarea id={fid} rows={2} value={reason} onChange={(e) => setReason(e.target.value)} />}</Field>
+        <Field label={t("common.reason")} required hint={t("common.reasonHint")}>{(fid) => <Textarea id={fid} rows={2} value={reason} onChange={(e) => setReason(e.target.value)} />}</Field>
       </div>
     </Dialog>
   );
@@ -91,6 +91,9 @@ function ReportSheet({ id, onClose }: { id: string; onClose: () => void }) {
   const { data: orders = [] } = useOrders("planned,released,in_progress");
   const [mode, setMode] = useState<"correct" | "cancel" | null>(null);
   const [reason, setReason] = useState("");
+  // Drafts can be discarded by their editors; approved reports are cancelled or corrected by approvers.
+  const canCancel = r && (r.status === "draft" ? can("production.write") : r.status === "approved" && can("production.approve"));
+  const canCorrect = r?.status === "approved" && can("production.approve");
 
   if (error) return <Sheet open onOpenChange={onClose} title="—"><ErrorState error={error} /></Sheet>;
   return (
@@ -98,8 +101,8 @@ function ReportSheet({ id, onClose }: { id: string; onClose: () => void }) {
       description={r && `${fmtDate(r.production_date)} · ${r.department.name}`}
       footer={r && <>
         {can("audit.read") && <Link className="mr-auto self-center text-xs text-primary hover:underline" to={`/trace/production_report/${r.id}`}>{t("common.trace")}</Link>}
-        {r.status !== "cancelled" && can("production.write") && <Button variant="ghost" className="text-danger" onClick={() => setMode("cancel")}>{t("production.cancelReport")}</Button>}
-        {r.status === "approved" && can("production.write") && <Button onClick={() => setMode("correct")}>{t("production.correct")}</Button>}
+        {canCancel && <Button variant="ghost" className="text-danger" onClick={() => setMode("cancel")}>{t("production.cancelReport")}</Button>}
+        {canCorrect && <Button onClick={() => setMode("correct")}>{t("production.correct")}</Button>}
         {r.status === "draft" && can("production.approve") && (
           <Button variant="success" loading={busy === "approve"} onClick={() => run("approve", () => api.post(`/production/reports/${r.id}/approve`, {}, ifMatch(r.version)), t("status.approved"))}>
             {t("common.approve")}
@@ -141,13 +144,13 @@ function ReportSheet({ id, onClose }: { id: string; onClose: () => void }) {
       )}
       {r && mode === "correct" && <CorrectDialog report={r} orders={orders} onClose={() => setMode(null)} onDone={onClose} />}
       <ConfirmDialog open={mode === "cancel"} onOpenChange={(o) => !o && setMode(null)} title={t("production.cancelReport")} danger confirmLabel={t("production.cancelReport")}
-        loading={busy === "cancel"} body={r?.status === "approved" ? t("production.cancelHint") : undefined}
+        loading={busy === "cancel"} disabled={reason.trim().length < 3} body={r?.status === "approved" ? t("production.cancelHint") : undefined}
         onConfirm={async () => {
-          if (!r || !reason.trim()) return;
-          const ok = await run("cancel", () => api.post(`/production/reports/${r.id}/cancel`, { reason }), t("status.cancelled"));
+          if (!r) return;
+          const ok = await run("cancel", () => api.post(`/production/reports/${r.id}/cancel`, { reason: reason.trim() }), t("status.cancelled"));
           if (ok !== undefined) { setMode(null); setReason(""); }
         }}>
-        <Field label={t("common.reason")} required className="mt-3">{(fid) => <Textarea id={fid} rows={2} value={reason} onChange={(e) => setReason(e.target.value)} />}</Field>
+        <Field label={t("common.reason")} required hint={t("common.reasonHint")} className="mt-3">{(fid) => <Textarea id={fid} rows={2} value={reason} onChange={(e) => setReason(e.target.value)} />}</Field>
       </ConfirmDialog>
     </Sheet>
   );
@@ -177,7 +180,7 @@ function ReportsTab() {
   const [params, setParams] = useSearchParams();
   const { data: products } = useProducts();
   const { data: departments } = useDepartments();
-  const [filters, setFilters] = useState({ date_from: "", date_to: "", product_id: "", department_id: "", status: "" });
+  const [filters, setFilters] = useState({ date_from: "", date_to: "", product_id: "", department_id: "", status: params.get("status") ?? "" });
   const selected = params.get("report");
   const open = (id: string | null) => {
     const next = new URLSearchParams(params);
@@ -213,7 +216,7 @@ function ReportsTab() {
           <option value="">{t("production.filterProduct")}</option>
           {(products ?? []).filter((p) => p.product_type !== "raw_material").map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
         </Select>
-        <Select value={filters.department_id} onChange={(e) => set("department_id", e.target.value)} className="w-40" aria-label={t("common.department")}>
+        <Select value={filters.department_id} onChange={(e) => set("department_id", e.target.value)} className="w-48" aria-label={t("common.department")}>
           <option value="">{t("production.filterDepartment")}</option>
           {(departments ?? []).filter((d) => d.kind === "workshop").map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
         </Select>
@@ -335,7 +338,7 @@ function OrdersTab() {
   );
 }
 
-const TABS = ["reports", "orders", "plan", "calendar", "products", "shifts"] as const;
+const TABS = ["reports", "orders", "plan", "calendar", "products", "master"] as const;
 
 export default function ProductionPage() {
   const { t } = useI18n();
@@ -356,7 +359,7 @@ export default function ProductionPage() {
         <TabsContent value="plan"><PlanTab /></TabsContent>
         <TabsContent value="calendar"><CalendarTab /></TabsContent>
         <TabsContent value="products"><ProductsTab /></TabsContent>
-        <TabsContent value="shifts"><ShiftsTab /></TabsContent>
+        <TabsContent value="master"><MasterDataTab /></TabsContent>
       </Tabs>
       {dialog === "report" && <NewReportDialog onClose={() => setDialog(null)} />}
       {dialog === "order" && <OrderDialog onClose={() => setDialog(null)} />}

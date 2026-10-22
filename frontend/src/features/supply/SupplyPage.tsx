@@ -160,7 +160,7 @@ function RequestsTab() {
   const { t, fmtNumber, fmtDate } = useI18n();
   const company = useCompanyKey();
   const [params, setParams] = useSearchParams();
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState(params.get("status") ?? "");
   const selected = params.get("request");
   const open = (id: string | null) => {
     const next = new URLSearchParams(params);

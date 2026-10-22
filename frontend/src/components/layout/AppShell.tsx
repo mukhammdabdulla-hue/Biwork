@@ -20,23 +20,25 @@ interface NavItem {
   key: MessageKey;
   icon: ReactNode;
   module?: string;
-  permission?: string;
+  permissions?: string[];
+  /** Other modules the page reads from (Overview and Quality show figures through Analytics). */
+  needs?: string[];
 }
 
 const ICON = "size-4 shrink-0";
 const NAV: NavItem[] = [
-  { to: "/", key: "nav.overview", icon: <LayoutDashboard className={ICON} />, permission: "analytics.read" },
-  { to: "/agent", key: "nav.agent", icon: <Bot className={ICON} />, permission: "agent.read" },
-  { to: "/tasks", key: "nav.tasks", icon: <CheckSquare className={ICON} />, permission: "tasks.read" },
-  { to: "/production", key: "nav.production", icon: <Factory className={ICON} />, module: "production", permission: "production.read" },
-  { to: "/inventory", key: "nav.inventory", icon: <Warehouse className={ICON} />, module: "inventory", permission: "inventory.read" },
-  { to: "/supply", key: "nav.supply", icon: <Truck className={ICON} />, module: "supply", permission: "supply.read" },
+  { to: "/", key: "nav.overview", icon: <LayoutDashboard className={ICON} />, permissions: ["analytics.read"], needs: ["analytics"] },
+  { to: "/agent", key: "nav.agent", icon: <Bot className={ICON} />, permissions: ["agent.read"] },
+  { to: "/tasks", key: "nav.tasks", icon: <CheckSquare className={ICON} />, permissions: ["tasks.read"] },
+  { to: "/production", key: "nav.production", icon: <Factory className={ICON} />, module: "production", permissions: ["production.read"] },
+  { to: "/inventory", key: "nav.inventory", icon: <Warehouse className={ICON} />, module: "inventory", permissions: ["inventory.read"] },
+  { to: "/supply", key: "nav.supply", icon: <Truck className={ICON} />, module: "supply", permissions: ["supply.read"] },
   { to: "/hr", key: "nav.hr", icon: <Users className={ICON} />, module: "hr" },
   { to: "/edo", key: "nav.edo", icon: <FileText className={ICON} />, module: "edo" },
   { to: "/finance", key: "nav.finance", icon: <Landmark className={ICON} />, module: "finance" },
   { to: "/maintenance", key: "nav.maintenance", icon: <Wrench className={ICON} />, module: "maintenance" },
-  { to: "/quality", key: "nav.quality", icon: <ShieldCheck className={ICON} />, module: "quality" },
-  { to: "/analytics", key: "nav.analytics", icon: <BarChart3 className={ICON} />, permission: "analytics.read" },
+  { to: "/quality", key: "nav.quality", icon: <ShieldCheck className={ICON} />, module: "quality", permissions: ["analytics.read", "production.read"], needs: ["analytics", "production"] },
+  { to: "/analytics", key: "nav.analytics", icon: <BarChart3 className={ICON} />, module: "analytics", permissions: ["analytics.read"] },
 ];
 const NAV_BOTTOM: NavItem[] = [
   { to: "/admin", key: "nav.administration", icon: <UserCog className={ICON} /> },
@@ -54,15 +56,16 @@ function Logo({ collapsed }: { collapsed: boolean }) {
 
 function Sidebar({ collapsed, onToggle, onNavigate }: { collapsed: boolean; onToggle?: () => void; onNavigate?: () => void }) {
   const { t } = useI18n();
-  const { companyDetail, can } = useAuth();
+  const { user, companyDetail, can, moduleEnabled } = useAuth();
   const modules = new Map((companyDetail?.modules ?? []).map((m) => [m.code, m]));
-  const isAdmin = can("admin.users") || can("admin.company") || can("audit.read") || can("admin.system");
+  const isAdmin = can("admin.users") || can("admin.company") || can("audit.read") || can("admin.system") || !!user?.is_platform_admin;
 
   const visible = NAV.filter((item) => {
-    if (item.permission && !can(item.permission)) return false;
+    if (item.permissions && !can(...item.permissions)) return false;
+    if (item.needs && !item.needs.every(moduleEnabled)) return false;
     if (!item.module) return true;
-    const m = modules.get(item.module);
-    return m ? (m.available ? m.enabled : true) : false;
+    // Planned modules stay visible with a "Soon" label; built ones only while switched on.
+    return modules.get(item.module)?.available === false || moduleEnabled(item.module);
   });
 
   const link = (item: NavItem) => {
@@ -235,8 +238,8 @@ export function AppShell() {
   return (
     <div className="flex h-full">
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:m-2 focus:rounded focus:bg-surface focus:px-2 focus:py-1">{t("nav.skip")}</a>
-      <aside className={cn("hidden md:block shrink-0 transition-[width]", collapsed ? "w-14" : "w-52")}>
-        <div className="fixed inset-y-0 left-0" style={{ width: collapsed ? 56 : 208 }}>
+      <aside className={cn("hidden md:block shrink-0 transition-[width]", collapsed ? "w-14" : "w-56")}>
+        <div className="fixed inset-y-0 left-0" style={{ width: collapsed ? 56 : 224 }}>
           <Sidebar collapsed={collapsed} onToggle={toggle} />
         </div>
       </aside>

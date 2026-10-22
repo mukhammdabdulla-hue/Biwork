@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "./client";
 import type {
-  AgentInfo, Department, Notification, Page, Product, RecordType, Shift, Supplier, Unit, Warehouse,
+  AgentInfo, Category, Department, Notification, Page, Product, RecordType, Shift, Supplier, Unit, Warehouse,
 } from "./types";
 import { useAuth } from "@/auth/AuthProvider";
 
@@ -33,6 +33,11 @@ export const useProducts = (enabled = true) => {
     staleTime: 60_000,
     enabled,
   });
+};
+
+export const useCategories = () => {
+  const company = useCompanyKey();
+  return useQuery({ queryKey: [company, "categories"], queryFn: () => api.get<Category[]>("/master/product-categories"), staleTime: 60_000 });
 };
 
 export const useUnits = () => useQuery({ queryKey: ["units"], queryFn: () => api.get<Unit[]>("/master/units"), staleTime: 30 * 60_000 });

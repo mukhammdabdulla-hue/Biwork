@@ -5,11 +5,12 @@ import { session } from "@/api/client";
 /**
  * Live job progress over SSE (/api/v1/events). EventSource cannot send the bearer token, so the
  * stream is read with fetch. Events only invalidate queries; polling stays the fallback.
+ * The stream is per company, so it reconnects when the user switches company.
  */
-export function useLiveEvents(enabled: boolean) {
+export function useLiveEvents(companyId: string | null) {
   const queryClient = useQueryClient();
   useEffect(() => {
-    if (!enabled) return;
+    if (!companyId) return;
     const controller = new AbortController();
     let stopped = false;
 
@@ -57,5 +58,5 @@ export function useLiveEvents(enabled: boolean) {
       stopped = true;
       controller.abort();
     };
-  }, [enabled, queryClient]);
+  }, [companyId, queryClient]);
 }

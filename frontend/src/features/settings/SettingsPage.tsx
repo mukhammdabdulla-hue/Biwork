@@ -1,8 +1,9 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { KeyRound, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { api } from "@/api/client";
+import { api, session } from "@/api/client";
 import { useAgentInfo, useWarehouses } from "@/api/hooks";
 import type { AiPolicy, CompanySettings } from "@/api/types";
 import { useAuth } from "@/auth/AuthProvider";
@@ -50,10 +51,13 @@ function CompanyTab() {
     date_order: s.date_order ?? "DMY", production_output_warehouse_id: s.production_output_warehouse_id ?? "",
   });
   const editable = can("admin.company");
+  const queryClient = useQueryClient();
   const toggleModule = async (code: string, enabled: boolean) => {
     try {
       await api.put(`/company/modules/${code}`, { enabled });
       await reloadCompany();
+      // Record types, pickers and dashboards depend on which modules are on.
+      await queryClient.invalidateQueries();
       toast.success(t("settings.saved"));
     } catch (e) {
       toastError(e, t);
@@ -162,7 +166,9 @@ function ProfileTab() {
       <Card>
         <CardHeader title={t("settings.changePassword")} subtitle={`${user?.full_name} · ${user?.email}`} />
         <form className="grid gap-3 p-4" onSubmit={(e) => { e.preventDefault(); void run("pw", async () => {
-          await api.post("/auth/password", { current_password: pw.current, new_password: pw.next });
+          const res = await api.post<{ access_token?: string } | undefined>("/auth/password", { current_password: pw.current, new_password: pw.next });
+          // Every other session is signed out; this one continues with the token (and refresh cookie) issued with the change.
+          if (res?.access_token) session.setToken(res.access_token);
           setPw({ current: "", next: "" });
           toast.success(t("settings.passwordChanged"));
         }); }}>

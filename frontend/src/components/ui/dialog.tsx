@@ -75,16 +75,18 @@ interface ConfirmProps {
   onConfirm: () => void;
   danger?: boolean;
   loading?: boolean;
+  /** Keeps the confirm button disabled, e.g. until a required reason is entered. */
+  disabled?: boolean;
   children?: ReactNode;
 }
 
-export function ConfirmDialog({ open, onOpenChange, title, body, confirmLabel, onConfirm, danger, loading, children }: ConfirmProps) {
+export function ConfirmDialog({ open, onOpenChange, title, body, confirmLabel, onConfirm, danger, loading, disabled, children }: ConfirmProps) {
   const { t } = useI18n();
   return (
     <Dialog open={open} onOpenChange={onOpenChange} title={title}
       footer={<>
         <Button onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
-        <Button variant={danger ? "danger" : "primary"} loading={loading} onClick={onConfirm}>{confirmLabel}</Button>
+        <Button variant={danger ? "danger" : "primary"} loading={loading} disabled={disabled} onClick={onConfirm}>{confirmLabel}</Button>
       </>}>
       {body && <p className="text-sm text-muted">{body}</p>}
       {children}

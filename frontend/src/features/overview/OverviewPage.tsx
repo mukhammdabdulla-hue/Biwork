@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle, Bot, CheckCircle2, ClipboardList, Factory, Gauge, Info, PackageX, RefreshCw, ShieldAlert, Timer, XCircle,
 } from "lucide-react";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { api } from "@/api/client";
@@ -81,10 +81,16 @@ export default function OverviewPage() {
         <KpiCard loading={isLoading} label={t("overview.kpi.overdueTasks")} icon={<Timer className="size-4" />}
           value={fmtNumber(k?.overdue_tasks.value)} tone={k?.overdue_tasks.value ? "danger" : "default"}
           onClick={() => navigate("/tasks?overdue=1")} />
+        {/* Each part of the count opens the list that holds those items. */}
         <KpiCard loading={isLoading} label={t("overview.kpi.pendingApprovals")} icon={<CheckCircle2 className="size-4" />}
           value={fmtNumber(k?.pending_approvals.value)}
-          hint={k && t("overview.pendingBreakdown", { agent: k.pending_approvals.agent_records, pr: k.pending_approvals.purchase_requests, drafts: k.pending_approvals.draft_reports })}
-          onClick={() => navigate("/agent")} />
+          hint={k && ([
+            ["/agent?status=awaiting_review", "overview.pending.agent", k.pending_approvals.agent_records],
+            ["/supply?status=submitted", "overview.pending.purchase", k.pending_approvals.purchase_requests],
+            ["/production?status=draft", "overview.pending.drafts", k.pending_approvals.draft_reports],
+          ] as const).map(([to, key, n], i) => (
+            <Fragment key={to}>{i > 0 && "·"}<Link to={to} className="hover:text-primary hover:underline">{t(key, { n: fmtNumber(n) })}</Link></Fragment>
+          ))} />
         <KpiCard loading={isLoading} label={t("overview.kpi.ingestionSuccess")} icon={<Bot className="size-4" />}
           value={k?.ingestion_success_rate.value == null ? "—" : `${fmtNumber(k.ingestion_success_rate.value, 1)}%`}
           hint={t("overview.jobsCount", { n: k?.ingestion_success_rate.jobs ?? 0 })} onClick={() => navigate("/analytics?tab=agent")} />

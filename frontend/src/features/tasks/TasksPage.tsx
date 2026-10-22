@@ -72,13 +72,21 @@ export default function TasksPage() {
   const [status, setStatus] = useState("open,in_progress");
   const mine = params.get("mine") === "1";
   const overdue = params.get("overdue") === "1";
+  // Older notifications linked tasks as ?id=.
+  const selectedId = params.get("task") ?? params.get("id");
   const [editing, setEditing] = useState<Task | "new" | null>(null);
-  const [selected, setSelected] = useState<Task | null>(null);
   const { run, busy } = useAction("tasks");
   const toggle = (k: string, on: boolean) => {
     const next = new URLSearchParams(params);
     if (on) next.set(k, "1");
     else next.delete(k);
+    setParams(next, { replace: true });
+  };
+  const select = (task: Task | null) => {
+    const next = new URLSearchParams(params);
+    next.delete("id");
+    if (task) next.set("task", task.id);
+    else next.delete("task");
     setParams(next, { replace: true });
   };
   const { data, isLoading, error } = useQuery({
@@ -93,7 +101,13 @@ export default function TasksPage() {
     { header: t("common.priority"), accessorKey: "priority", cell: ({ getValue }) => <PriorityBadge priority={getValue() as string} /> },
     { header: t("common.status"), accessorKey: "status", cell: ({ getValue }) => <StatusBadge status={getValue() as string} /> },
   ], [t, fmtDate]);
-  const sel = selected && data?.items.find((x) => x.id === selected.id) || selected;
+  // The open task is looked up across all statuses: it may come from a link, or leave the filtered list once completed.
+  const { data: lookup } = useQuery({
+    queryKey: [company, "tasks", "open-task", selectedId],
+    queryFn: async () => (await api.get<Page<Task>>("/tasks", { limit: 500 })).items.find((x) => x.id === selectedId) ?? null,
+    enabled: !!selectedId,
+  });
+  const sel = lookup ?? data?.items.find((x) => x.id === selectedId);
   return (
     <div className="space-y-4">
       <PageHeader title={t("tasks.title")} subtitle={t("tasks.subtitle")}
@@ -109,12 +123,12 @@ export default function TasksPage() {
           <Checkbox checked={overdue} onChange={(v) => toggle("overdue", v)} label={t("tasks.overdue")} />
         </div>
         {error ? <ErrorState error={error} className="m-4" /> : (
-          <DataTable columns={columns} data={data?.items ?? []} loading={isLoading} onRowClick={setSelected} getRowId={(x) => x.id} selectedId={selected?.id}
+          <DataTable columns={columns} data={data?.items ?? []} loading={isLoading} onRowClick={select} getRowId={(x) => x.id} selectedId={selectedId}
             empty={<EmptyState title={t("common.noData")} />} />
         )}
       </Card>
       {sel && (
-        <Sheet open onOpenChange={(o) => !o && setSelected(null)} title={`${sel.number} · ${sel.title}`}
+        <Sheet open onOpenChange={(o) => !o && select(null)} title={`${sel.number} · ${sel.title}`}
           footer={can("tasks.write") && <>
             <Button variant="ghost" className="mr-auto" onClick={() => setEditing(sel)}>{t("common.edit")}</Button>
             {NEXT[sel.status].map((n) => (
