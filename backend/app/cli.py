@@ -73,12 +73,13 @@ def seed_demo(password: str) -> None:
         "operator": ("operator@biwork.local", "Jasur Toshmatov", "operator"),
         "viewer": ("viewer@biwork.local", "Nodira Rahimova", "viewer"),
     }
+    with SessionLocal() as s:
+        if s.execute(select(Company).where(Company.code == "DEMO")).scalar_one_or_none():
+            print("Demo company already exists; nothing to do")  # demo passwords are left as they are
+            return
     admin = create_admin(users["admin"][0], password, users["admin"][1])
     rnd = random.Random(42)
     with SessionLocal() as s:
-        if s.execute(select(Company).where(Company.code == "DEMO")).scalar_one_or_none():
-            print("Demo company already exists; nothing to do")
-            return
         admin = s.get(User, admin.id)
         company = identity.create_company(s, admin, identity.CompanyIn(
             name="BIWORK Demo Factory", code="DEMO", tin="301234567", organization_code="DEMO-HOLDING",

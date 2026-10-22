@@ -65,7 +65,8 @@ class OpenAIProvider:
         s = get_settings()
         self.client = client or openai.OpenAI(
             api_key=s.openai_api_key,
-            base_url=s.openai_base_url,
+            # Explicit default: with None the SDK re-reads OPENAI_BASE_URL, which may be set but empty.
+            base_url=s.openai_base_url or "https://api.openai.com/v1",
             organization=s.openai_organization,
             timeout=s.ai_timeout_s,
             max_retries=0,
