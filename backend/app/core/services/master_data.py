@@ -25,6 +25,15 @@ from app.core.text import clean_text, normalize_key
 PRODUCT_TYPES = ("finished_good", "semi_finished", "raw_material", "consumable", "packaging", "service")
 DEPARTMENT_KINDS = ("workshop", "warehouse", "office", "other")
 
+
+def check_reference(session: Session, ctx: RequestContext, model: Any, entity_id: uuid.UUID | None, what: str, field: str) -> None:
+    """A referenced row must belong to the caller's company. Foreign keys alone would accept another
+    tenant's id (and the 201-vs-409 difference would tell whether it exists)."""
+    if entity_id is not None and not session.execute(
+        select(model.id).where(model.id == entity_id, model.company_id == ctx.company_id)
+    ).first():
+        raise ValidationFailed(f"Unknown {what}", extra={"field": field})
+
 # --------------------------------------------------------------------------- units
 
 
@@ -85,6 +94,7 @@ def create_category(session: Session, ctx: RequestContext, data: CategoryIn) -> 
         select(ProductCategory.id).where(ProductCategory.company_id == ctx.company_id, ProductCategory.code == data.code)
     ).first():
         raise Conflict(f"Category code '{data.code}' already exists")
+    check_reference(session, ctx, ProductCategory, data.parent_id, "parent category", "parent_id")
     cat = ProductCategory(company_id=ctx.company_id, code=data.code.strip(), name=clean_text(data.name), parent_id=data.parent_id)
     session.add(cat)
     session.flush()
@@ -162,6 +172,7 @@ def create_product(
     code = data.code.strip()
     if session.execute(select(Product.id).where(Product.company_id == ctx.company_id, func.lower(Product.code) == code.lower())).first():
         raise Conflict(f"Product code '{code}' already exists", code="duplicate_product_code")
+    check_reference(session, ctx, ProductCategory, data.category_id, "product category", "category_id")
     unit = require_unit(session, data.base_unit)
     product = Product(
         company_id=ctx.company_id, code=code, name=clean_text(data.name, 250), base_unit_id=unit.id, base_unit=unit,
@@ -185,6 +196,7 @@ def update_product(
         raise PreconditionFailed("Product was modified by someone else; reload and try again")
     before = product_snapshot(product)
     values = data.model_dump(exclude_unset=True)
+    check_reference(session, ctx, ProductCategory, values.get("category_id"), "product category", "category_id")
     if "name" in values and values["name"]:
         product.name = clean_text(values["name"], 250)
     if values.get("base_unit"):
@@ -262,6 +274,7 @@ def create_department(session: Session, ctx: RequestContext, data: DepartmentIn)
     ctx.require("admin.company")
     if session.execute(select(Department.id).where(Department.company_id == ctx.company_id, Department.code == data.code)).first():
         raise Conflict(f"Department code '{data.code}' already exists")
+    check_reference(session, ctx, Department, data.parent_id, "parent department", "parent_id")
     dep = Department(company_id=ctx.company_id, code=data.code.strip(), name=clean_text(data.name, 200), kind=data.kind,
                      parent_id=data.parent_id)
     session.add(dep)

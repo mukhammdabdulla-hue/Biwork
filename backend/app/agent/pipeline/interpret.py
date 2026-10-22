@@ -255,6 +255,7 @@ def interpret_document(session: Session, job: IngestionJob, item: IngestionItem,
         result = extraction.classify(ai_ctx, text, candidates)
         if result.contains_instructions:
             warnings.append("The AI classifier flagged instruction-like text in this content; it was treated as data only")
+            item.meta = {**item.meta, "contains_instructions": True}
         types = [record_type(r["record_type"]) for r in result.record_types if r["confidence"] >= MIN_CLASSIFY_CONFIDENCE][:3]
         if not types:
             raise StageError("Could not identify a supported record type in this content. Retry with a record type selected.")

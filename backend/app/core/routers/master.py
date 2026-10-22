@@ -9,7 +9,7 @@ from fastapi import APIRouter, Query, Response
 from sqlalchemy import func, or_, select
 
 from app.core.api import DB, Ctx, Idem, IfMatch, etag_for, paginate
-from app.core.errors import NotFound
+from app.core.errors import NotFound, PermissionDenied
 from app.core.matching import get_resolver, registered_entity_types
 from app.core.models import Product, ProductAlias, ProductCategory, Unit, UnitAlias
 from app.core.services import master_data
@@ -99,8 +99,12 @@ def update_product(product_id: uuid.UUID, data: master_data.ProductUpdate, ctx: 
 
 @router.get("/search/{entity_type}")
 def search_entities(entity_type: str, ctx: Ctx, db: DB, q: str = Query(min_length=1, max_length=200)) -> list[dict[str, Any]]:
-    """Candidate entities for a reference field (used by the review UI to choose a match)."""
+    """Candidate entities for a reference field (used by the review UI to choose a match). Needs the read
+    permission of the module that owns the entity type; department-scoped entities follow the caller's scope."""
     if entity_type not in registered_entity_types():
         raise NotFound("Unknown entity type")
+    resolver = get_resolver(entity_type)
+    if not any(ctx.has(p) for p in resolver.permissions):
+        raise PermissionDenied(f"Missing permission: {' or '.join(resolver.permissions)}", extra={"missing": list(resolver.permissions)})
     return [{"id": str(c.entity_id), "label": c.label, "score": round(c.score, 3), "match_kind": c.kind, "data": c.data}
-            for c in get_resolver(entity_type).resolve(db, ctx.company_id, q)]
+            for c in resolver.resolve(db, ctx.company_id, q, department_ids=ctx.department_ids)]

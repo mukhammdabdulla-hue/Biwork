@@ -13,7 +13,8 @@ from app.core import audit
 from app.core.context import RequestContext
 from app.core.errors import Conflict
 from app.core.manifest import WriteResult
-from app.core.models import Employee
+from app.core.models import Department, Employee
+from app.core.services.master_data import check_reference
 from app.core.text import clean_text, normalize_key
 
 EMPLOYEE_STATUSES = ("active", "on_leave", "dismissed")
@@ -35,6 +36,7 @@ def create_employee(session: Session, ctx: RequestContext, data: EmployeeIn, sou
         Employee.company_id == ctx.company_id, Employee.personnel_number == data.personnel_number,
     )).first():
         raise Conflict(f"An employee with personnel number {data.personnel_number} already exists", code="duplicate_employee")
+    check_reference(session, ctx, Department, data.department_id, "department", "department_id")
     employee = Employee(
         company_id=ctx.company_id, personnel_number=data.personnel_number, full_name=clean_text(data.full_name, 250),
         normalized_name=normalize_key(data.full_name)[:250], position=clean_text(data.position, 200),

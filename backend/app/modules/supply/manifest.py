@@ -201,7 +201,7 @@ PURCHASE_REQUEST = RecordTypeSpec(
 
 register_resolver(AliasTableResolver(
     entity_type="supplier", model=Supplier, alias_model=SupplierAlias, alias_fk="supplier_id",
-    label=lambda s: f"{s.name} ({s.code})", data=lambda s: {"tin": s.tin},
+    label=lambda s: f"{s.name} ({s.code})", data=lambda s: {"tin": s.tin}, permissions=("supply.read",),
 ))
 
 

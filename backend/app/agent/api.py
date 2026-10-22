@@ -38,7 +38,7 @@ from app.analytics.service import agent_stats
 from app.config import get_settings
 from app.core import audit
 from app.core.api import DB, Ctx, Idem, IfMatch, paginate
-from app.core.errors import AppError, NotFound, PayloadTooLarge, ValidationFailed
+from app.core.errors import AppError, NotFound, PayloadTooLarge, PermissionDenied, ValidationFailed
 from app.core.models import StoredFile, User
 from app.core.services.files import EXTENSIONS
 from app.db.session import after_commit
@@ -265,7 +265,7 @@ def submit_json(data: JsonSubmission, ctx: Ctx, db: DB,
 def list_jobs(ctx: Ctx, db: DB, status: str | None = None, source_kind: str | None = None, q: str | None = None,
               mine: bool = False, cursor: str | None = None, limit: int = Query(50, le=200)) -> dict[str, Any]:
     ctx.require("agent.read")
-    stmt = select(IngestionJob).where(IngestionJob.company_id == ctx.company_id)
+    stmt = select(IngestionJob).where(IngestionJob.company_id == ctx.company_id, review.visible_jobs(ctx))
     if status:
         stmt = stmt.where(IngestionJob.status.in_(status.split(",")))
     if source_kind:
@@ -296,7 +296,7 @@ def get_job(job_id: uuid.UUID, ctx: Ctx, db: DB) -> dict[str, Any]:
         "stage_runs": [{"stage": r.stage, "status": r.status, "attempt": r.attempt, "item_id": str(r.item_id) if r.item_id else None,
                         "started_at": r.started_at, "finished_at": r.finished_at, "duration_ms": r.duration_ms, "error": r.error,
                         "metrics": r.metrics} for r in runs],
-        "report": job_report(db, job),
+        "report": job_report(db, job, review.visible_records(ctx)),
     }
 
 
@@ -305,7 +305,8 @@ def list_records(job_id: uuid.UUID, ctx: Ctx, db: DB, group: str | None = None, 
                  offset: int = Query(0, ge=0), limit: int = Query(50, le=500)) -> dict[str, Any]:
     ctx.require("agent.read")
     job = review.get_job(db, ctx, job_id)
-    stmt = select(ExtractedRecord).where(ExtractedRecord.job_id == job.id)
+    visible = review.visible_records(ctx)
+    stmt = select(ExtractedRecord).where(ExtractedRecord.job_id == job.id, visible)
     if group:
         stmt = stmt.where(ExtractedRecord.review_group == group, ExtractedRecord.status == "needs_review")
     if status:
@@ -322,8 +323,8 @@ def list_records(job_id: uuid.UUID, ctx: Ctx, db: DB, group: str | None = None, 
         counts.setdefault(rid, {})[severity] = n
     numbers = dict(db.execute(select(CommittedWrite.record_id, CommittedWrite.target_number).where(CommittedWrite.record_id.in_(ids))).all())
     groups = dict(db.execute(select(ExtractedRecord.review_group, func.count()).where(
-        ExtractedRecord.job_id == job.id, ExtractedRecord.status == "needs_review").group_by(ExtractedRecord.review_group)).all())
-    statuses = dict(db.execute(select(ExtractedRecord.status, func.count()).where(ExtractedRecord.job_id == job.id)
+        ExtractedRecord.job_id == job.id, ExtractedRecord.status == "needs_review", visible).group_by(ExtractedRecord.review_group)).all())
+    statuses = dict(db.execute(select(ExtractedRecord.status, func.count()).where(ExtractedRecord.job_id == job.id, visible)
                                .group_by(ExtractedRecord.status)).all())
     return {"total": total, "offset": offset, "groups": groups, "statuses": statuses,
             "items": [record_summary(r, counts.get(r.id), numbers.get(r.id)) for r in rows]}
@@ -449,6 +450,7 @@ def item_preview(item_id: uuid.UUID, ctx: Ctx, db: DB, table_seq: int | None = N
     item = db.execute(select(IngestionItem).where(IngestionItem.id == item_id, IngestionItem.company_id == ctx.company_id)).scalar_one_or_none()
     if item is None:
         raise NotFound("Item not found")
+    review.get_job(db, ctx, item.job_id)  # department scope
     if table_seq is not None:
         rows = db.execute(select(ParsedSegment).where(ParsedSegment.item_id == item.id, ParsedSegment.kind == "row",
                                                       ParsedSegment.table_seq == table_seq).order_by(ParsedSegment.seq)
@@ -488,6 +490,8 @@ def cancel(job_id: uuid.UUID, ctx: Ctx, db: DB) -> dict[str, Any]:
     job = review.get_job(db, ctx, job_id)
     if job.status in ("completed", "cancelled", "committing"):
         raise ValidationFailed(f"A {job.status} job cannot be cancelled", code="invalid_transition")
+    if db.execute(select(ExtractedRecord.id).where(ExtractedRecord.job_id == job.id, ~review.visible_records(ctx))).first():
+        raise PermissionDenied("This job also holds records of departments outside your access", code="department_restricted")
     discarded = 0
     for r in db.execute(select(ExtractedRecord).where(ExtractedRecord.job_id == job.id,
                                                       ExtractedRecord.status.in_(("draft", "needs_review", "approved", "failed")))).scalars():
@@ -504,14 +508,14 @@ def cancel(job_id: uuid.UUID, ctx: Ctx, db: DB) -> dict[str, Any]:
 @router.get("/jobs/{job_id}/report")
 def report(job_id: uuid.UUID, ctx: Ctx, db: DB) -> dict[str, Any]:
     ctx.require("agent.read")
-    return job_report(db, review.get_job(db, ctx, job_id))
+    return job_report(db, review.get_job(db, ctx, job_id), review.visible_records(ctx))
 
 
 @router.get("/jobs/{job_id}/error-report")
 def error_report(job_id: uuid.UUID, ctx: Ctx, db: DB) -> Response:
     ctx.require("agent.read")
     job = review.get_job(db, ctx, job_id)
-    return Response(error_report_xlsx(db, job), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    return Response(error_report_xlsx(db, job, review.visible_records(ctx)), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     headers={"Content-Disposition": f'attachment; filename="biwork-errors-{str(job.id)[:8]}.xlsx"'})
 
 

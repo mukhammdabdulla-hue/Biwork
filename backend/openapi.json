@@ -1961,7 +1961,7 @@
      "master data"
     ],
     "summary": "Search Entities",
-    "description": "Candidate entities for a reference field (used by the review UI to choose a match).",
+    "description": "Candidate entities for a reference field (used by the review UI to choose a match). Needs the read\npermission of the module that owns the entity type; department-scoped entities follow the caller's scope.",
     "operationId": "search_entities_api_v1_master_search__entity_type__get",
     "parameters": [
      {

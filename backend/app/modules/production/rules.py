@@ -63,6 +63,13 @@ def order_consistent(inp: RuleInput) -> Iterable[Issue]:
         yield Issue("order_closed", "warning", f"Order {order.number} is {order.status}", "order")
 
 
+def output_warehouse_set(inp: RuleInput) -> Iterable[Issue]:
+    """Saved reports are approved, and approved output is posted to the finished-goods warehouse."""
+    if not inp.settings.get("production_output_warehouse_id"):
+        yield Issue("output_warehouse_missing", "warning", "No finished-goods warehouse is set in the company settings, "
+                    "so this output will not be added to stock when the report is saved")
+
+
 def order_dates(inp: RuleInput) -> Iterable[Issue]:
     start, end = inp.payload.get("planned_start"), inp.payload.get("planned_end")
     if start and end and date.fromisoformat(end) < date.fromisoformat(start):

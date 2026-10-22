@@ -43,11 +43,12 @@ register_resolver(ListResolver(
     entity_type="shift",
     load=lambda s, cid: s.execute(select(Shift).where(Shift.company_id == cid, Shift.is_active.is_(True))).scalars().all(),
     label=lambda sh: sh.name, keys=lambda sh: [sh.code, sh.name, f"{sh.code} smena", f"{sh.code}-smena", f"смена {sh.code}"],
+    permissions=("production.read",),
 ))
 register_resolver(ListResolver(
     entity_type="production_line",
     load=lambda s, cid: s.execute(select(ProductionLine).where(ProductionLine.company_id == cid, ProductionLine.is_active.is_(True))).scalars().all(),
-    label=lambda line: f"{line.name} ({line.code})", keys=lambda line: [line.code, line.name],
+    label=lambda line: f"{line.name} ({line.code})", keys=lambda line: [line.code, line.name], permissions=("production.read",),
 ))
 register_resolver(ListResolver(
     entity_type="production_order",
@@ -56,5 +57,5 @@ register_resolver(ListResolver(
     label=lambda o: f"{o.number} — {o.product.code} {fmt_qty(o.planned_qty)} {o.unit.code}",
     keys=lambda o: [o.number, o.external_number or ""],
     data=lambda o: {"product_id": str(o.product_id), "status": o.status},
-    fuzzy=False,
+    fuzzy=False, permissions=("production.read",), department=lambda o: o.department_id,
 ))

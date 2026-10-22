@@ -6,7 +6,7 @@ import io
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, true
 from sqlalchemy.orm import Session
 
 from app.agent.models import AICall, CommittedWrite, ExtractedRecord, IngestionItem, IngestionJob, ParsedSegment, ValidationResult
@@ -23,11 +23,15 @@ SUGGESTIONS = {
     "date_in_future": "Correct the date",
     "conflicting_values": "Confirm which of the conflicting values is correct",
     "unit_incompatible": "Use a unit compatible with the product's base unit",
+    "output_warehouse_missing": "Set the finished-goods warehouse in Settings before saving, or post the output to stock manually",
 }
 
 
-def job_report(session: Session, job: IngestionJob) -> dict[str, Any]:
-    records = session.execute(select(ExtractedRecord).where(ExtractedRecord.job_id == job.id).order_by(ExtractedRecord.seq)).scalars().all()
+def job_report(session: Session, job: IngestionJob, visible: Any = None) -> dict[str, Any]:
+    """`visible` limits the records counted (a department-restricted reader's scope)."""
+    visible = true() if visible is None else visible
+    records = session.execute(select(ExtractedRecord).where(ExtractedRecord.job_id == job.id, visible)
+                              .order_by(ExtractedRecord.seq)).scalars().all()
     by_status: dict[str, int] = {}
     groups: dict[str, int] = {}
     fields_extracted = fields_valid = 0
@@ -48,7 +52,7 @@ def job_report(session: Session, job: IngestionJob) -> dict[str, Any]:
                 matched.setdefault(spec.reference or name, set()).add(ref["id"])
     writes = session.execute(
         select(CommittedWrite, ExtractedRecord.seq).join(ExtractedRecord, ExtractedRecord.id == CommittedWrite.record_id)
-        .where(ExtractedRecord.job_id == job.id).order_by(ExtractedRecord.seq)
+        .where(ExtractedRecord.job_id == job.id, visible).order_by(ExtractedRecord.seq)
     ).all()
     ai = session.execute(select(func.count(), func.coalesce(func.sum(AICall.input_tokens), 0),
                                 func.coalesce(func.sum(AICall.output_tokens), 0), func.coalesce(func.sum(AICall.cost_usd), 0))
@@ -87,10 +91,23 @@ def job_report(session: Session, job: IngestionJob) -> dict[str, Any]:
     }
 
 
-def error_report_xlsx(session: Session, job: IngestionJob) -> bytes:
+FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _append(ws, values: list[Any]) -> None:
+    """Append a row of untrusted values: text that a spreadsheet would run as a formula stays text."""
+    ws.append(values)
+    for cell in ws[ws.max_row]:
+        if isinstance(cell.value, str) and cell.value.startswith(FORMULA_PREFIXES):
+            cell.data_type = "s"
+            cell.quotePrefix = True
+
+
+def error_report_xlsx(session: Session, job: IngestionJob, visible: Any = None) -> bytes:
     import openpyxl
     from openpyxl.styles import Font, PatternFill
 
+    visible = true() if visible is None else visible
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Issues"
@@ -102,7 +119,7 @@ def error_report_xlsx(session: Session, job: IngestionJob) -> bytes:
     rows = session.execute(
         select(ValidationResult, ExtractedRecord).join(ExtractedRecord, ExtractedRecord.id == ValidationResult.record_id)
         .where(ExtractedRecord.job_id == job.id, ValidationResult.severity.in_(("error", "warning")),
-               ExtractedRecord.status.notin_(("committed", "rejected")))
+               ExtractedRecord.status.notin_(("committed", "rejected")), visible)
         .order_by(ExtractedRecord.seq, ValidationResult.id)
     ).all()
     for vr, record in rows:
@@ -112,16 +129,17 @@ def error_report_xlsx(session: Session, job: IngestionJob) -> bytes:
         if vr.field:
             f = next((x for x in record.fields if x.field == vr.field), None)
             value = f.raw_value if f else None
-        ws.append([record.seq, record.record_type, record.status, source, vr.field or "(record)", vr.severity, vr.message,
-                   value, SUGGESTIONS.get(vr.rule_code, "")])
+        _append(ws, [record.seq, record.record_type, record.status, source, vr.field or "(record)", vr.severity, vr.message,
+                     value, SUGGESTIONS.get(vr.rule_code, "")])
         for cell in ws[ws.max_row]:
             cell.fill = fills.get(vr.severity, PatternFill())
-    for record in session.execute(select(ExtractedRecord).where(ExtractedRecord.job_id == job.id, ExtractedRecord.status == "failed")).scalars():
-        ws.append([record.seq, record.record_type, "failed", "", "(record)", "error", record.error or "Commit failed", None,
-                   "Correct the record and approve it again"])
+    for record in session.execute(select(ExtractedRecord).where(ExtractedRecord.job_id == job.id, ExtractedRecord.status == "failed",
+                                                                visible)).scalars():
+        _append(ws, [record.seq, record.record_type, "failed", "", "(record)", "error", record.error or "Commit failed", None,
+                     "Correct the record and approve it again"])
     for item in session.execute(select(IngestionItem).where(IngestionItem.job_id == job.id, IngestionItem.status == "failed")).scalars():
-        ws.append(["", "", "failed", item.meta.get("filename") or "text input", "(file)", "error", item.error or "Processing failed",
-                   None, "Fix the file and submit it again"])
+        _append(ws, ["", "", "failed", item.meta.get("filename") or "text input", "(file)", "error", item.error or "Processing failed",
+                     None, "Fix the file and submit it again"])
     for col, width in zip("ABCDEFGHI", (9, 18, 14, 22, 22, 10, 70, 24, 50), strict=True):
         ws.column_dimensions[col].width = width
     ws.freeze_panes = "A2"
@@ -132,12 +150,12 @@ def error_report_xlsx(session: Session, job: IngestionJob) -> bytes:
         bad_rows = {(r.row_ref or {}).get("row") for vr, r in rows if vr.severity == "error"}
         sheet = wb.create_sheet("Rows with issues")
         for table in tables:
-            sheet.append([f"{table.content['name']}"])
-            sheet.append(["Row", *table.content["headers"]])
+            _append(sheet, [f"{table.content['name']}"])
+            _append(sheet, ["Row", *table.content["headers"]])
             for seg in session.execute(select(ParsedSegment).where(ParsedSegment.item_id == table.item_id, ParsedSegment.kind == "row",
                                                                    ParsedSegment.table_seq == table.seq).order_by(ParsedSegment.seq)).scalars():
                 if seg.content["row_number"] in bad_rows:
-                    sheet.append([seg.content["row_number"], *seg.content["cells"]])
+                    _append(sheet, [seg.content["row_number"], *seg.content["cells"]])
             sheet.append([])
     out = io.BytesIO()
     wb.save(out)

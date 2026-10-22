@@ -101,6 +101,7 @@ register_resolver(ListResolver(
     entity_type="warehouse",
     load=lambda s, cid: s.execute(select(Warehouse).where(Warehouse.company_id == cid, Warehouse.is_active.is_(True))).scalars().all(),
     label=lambda w: f"{w.name} ({w.code})", keys=lambda w: [w.code, w.name], data=lambda w: {"kind": w.kind},
+    permissions=("inventory.read",),
 ))
 
 

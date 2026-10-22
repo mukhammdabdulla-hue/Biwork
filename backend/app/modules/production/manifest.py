@@ -76,7 +76,7 @@ PRODUCTION_REPORT = RecordTypeSpec(
     write_permission="production.write",
     approve_permission="production.approve",
     validators=(rules.quantities_reconcile, rules.date_plausible("production_date"), rules.unit_compatible,
-                rules.department_is_workshop, rules.order_consistent, rules.open_orders_for),
+                rules.department_is_workshop, rules.order_consistent, rules.open_orders_for, rules.output_warehouse_set),
     matcher=matchers.match_production_report,
     fingerprint_fields=("production_date", "product", "department", "shift"),
     summary=lambda p: " · ".join(str(x) for x in (p.get("product"), f"{p.get('qty_produced') or '?'} {p.get('unit') or ''}".strip(),

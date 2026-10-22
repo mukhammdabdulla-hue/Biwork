@@ -170,7 +170,7 @@ def create_purchase_request(session: Session, ctx: RequestContext, data: Purchas
 
 def _route_for_approval(session: Session, ctx: RequestContext, pr: PurchaseRequest) -> None:
     """Procurement approval workflow: notify approvers and open an approval task."""
-    link = f"/supply/purchase-requests/{pr.id}"
+    link = f"/supply?request={pr.id}"
     notify_permission(session, ctx.company_id, "supply.approve", "purchase_request.submitted",
                       f"Purchase request {pr.number} awaits approval",
                       f"{len(pr.lines)} line(s), needed by {pr.needed_by or 'not specified'}", link, exclude=ctx.user_id)
@@ -203,7 +203,8 @@ def decide_purchase_request(session: Session, ctx: RequestContext, pr_id: uuid.U
         raise ValidationFailed(f"Cannot change status from '{pr.status}' to '{status}'", code="invalid_transition")
     before = pr.status
     pr.status = status
-    if status in ("approved", "rejected"):
+    # The request shows its latest decision: approval/rejection always, later steps when they carry a comment.
+    if status in ("approved", "rejected") or clean_text(comment, 2000):
         pr.decided_by, pr.decided_at, pr.decision_comment = ctx.user_id, datetime.now(UTC), clean_text(comment, 2000)
     pr.updated_by = ctx.user_id
     session.flush()

@@ -173,7 +173,7 @@ def get_report(report_id: uuid.UUID, ctx: Ctx, db: DB, response: Response) -> di
     response.headers["ETag"] = etag_for(r.version)
     movements = movements_for_ref(db, ctx.company_id, "production_report", r.id)
     superseded_by = db.execute(select(ProductionReport.id, ProductionReport.number).where(ProductionReport.supersedes_id == r.id)).first()
-    return {**report_out(db, r),
+    return {**report_out(db, r), "warnings": service.stock_warnings(db, ctx, r),
             "stock_movements": [{"id": str(m.id), "number": m.number, "type": m.movement_type, "qty": m.qty, "unit": m.unit.code,
                                  "warehouse": m.warehouse.name, "reverses_id": str(m.reverses_id) if m.reverses_id else None}
                                 for m in movements],
@@ -190,7 +190,7 @@ def create_report(data: ReportCreate, ctx: Ctx, db: DB, idem: Idem):
     if replay:
         return replay
     r = service.create_report(db, ctx, service.ReportIn(**data.model_dump(exclude={"approve"})), approve=data.approve)
-    out = report_out(db, r)
+    out = {**report_out(db, r), "warnings": service.stock_warnings(db, ctx, r)}
     idem.store(db, ctx, 201, out)
     db.commit()
     return out
@@ -208,7 +208,7 @@ def update_draft(report_id: uuid.UUID, data: service.ReportIn, ctx: Ctx, db: DB,
 def approve_report(report_id: uuid.UUID, ctx: Ctx, db: DB, expected: IfMatch) -> dict[str, Any]:
     r = service.approve_report(db, ctx, report_id, expected)
     db.commit()
-    return report_out(db, r)
+    return {**report_out(db, r), "warnings": service.stock_warnings(db, ctx, r)}
 
 
 class ReasonIn(BaseModel):
@@ -231,7 +231,7 @@ class CorrectionIn(BaseModel):
 def correct_report(report_id: uuid.UUID, data: CorrectionIn, ctx: Ctx, db: DB) -> dict[str, Any]:
     r = service.correct_report(db, ctx, report_id, data.report, data.reason)
     db.commit()
-    return report_out(db, r)
+    return {**report_out(db, r), "warnings": service.stock_warnings(db, ctx, r)}
 
 
 # --------------------------------------------------------------------------- planning

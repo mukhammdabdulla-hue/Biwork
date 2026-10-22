@@ -34,8 +34,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import get_settings
 from app.core.context import RequestContext
-from app.core.errors import AppError, Conflict, PreconditionFailed, RateLimited, Unauthorized
-from app.core.models import IdempotencyKey, User
+from app.core.errors import AppError, Conflict, PermissionDenied, PreconditionFailed, RateLimited, Unauthorized
+from app.core.models import CompanyModule, IdempotencyKey, User
 from app.core.security import decode_access_token
 from app.core.services import identity
 from app.db.session import SessionLocal, bind_tenant
@@ -130,6 +130,17 @@ def require(*permissions: str):
     def dependency(ctx: Ctx) -> RequestContext:
         ctx.require(*permissions)
         return ctx
+
+    return Depends(dependency)
+
+
+def require_module(code: str):
+    """Routes of a product module answer 403 `module_disabled` while the company has the module switched off."""
+    def dependency(ctx: Ctx, db: DB) -> None:
+        row = db.get(CompanyModule, (ctx.company_id, code))
+        if row is None or not row.enabled:
+            raise PermissionDenied(f"The '{code}' module is switched off for this company", code="module_disabled",
+                                   extra={"module": code})
 
     return Depends(dependency)
 
