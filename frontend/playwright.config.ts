@@ -2,7 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 /**
  * End-to-end tests run against a live stack: the API (seeded with `python -m app.cli seed-demo`)
- * and the Vite dev server, which proxies /api to it. See README "End-to-end tests".
+ * and the Vite dev server, which proxies /api to it. See README "Tests".
  */
 const baseURL = process.env.E2E_BASE_URL ?? "http://127.0.0.1:5173";
 
