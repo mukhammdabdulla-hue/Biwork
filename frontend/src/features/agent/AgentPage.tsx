@@ -18,6 +18,7 @@ import { KpiCard, PageHeader } from "@/components/ui/page";
 import { StatusBadge } from "@/components/ui/status";
 import { DataTable } from "@/components/ui/table";
 import { useI18n, type MessageKey } from "@/i18n";
+import { recordTypeLabel } from "@/i18n/labels";
 import { toastError } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 
@@ -165,15 +166,15 @@ function SubmitCard() {
         )}
         {problem && <Notice tone="danger"><span role="alert">{problem}</span></Notice>}
         <div className="flex flex-wrap items-end gap-3">
-          <Field label={t("agent.submit.recordType")} className="w-52">
+          <Field label={t("agent.submit.recordType")} className="w-full sm:w-64">
             {(id) => (
               <Select id={id} value={recordType} onChange={(e) => setRecordType(e.target.value)}>
                 <option value="">{t("agent.submit.auto")}</option>
-                {enabledTypes.map((r) => <option key={r.code} value={r.code}>{r.label}</option>)}
+                {enabledTypes.map((r) => <option key={r.code} value={r.code}>{recordTypeLabel(t, r.code, r.label)}</option>)}
               </Select>
             )}
           </Field>
-          <Field label={t("agent.submit.policy")} className="w-52" hint={undefined}>
+          <Field label={t("agent.submit.policy")} className="w-full sm:w-64">
             {(id) => (
               <Select id={id} value={policy} onChange={(e) => setPolicy(e.target.value)} title={t(`agent.submit.policy.${policy}.hint` as MessageKey)}>
                 {(info?.import_policies ?? ["valid_rows_only", "all_or_nothing", "stop_on_first_error"]).map((p) => (

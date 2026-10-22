@@ -16,10 +16,28 @@ import { axisProps, ChartCard, ChartTooltip, MiniTable, SERIES, type SeriesSpec 
 import { EmptyState, ErrorState } from "@/components/ui/feedback";
 import { KpiCard, PageHeader } from "@/components/ui/page";
 import { StatusBadge } from "@/components/ui/status";
-import { useI18n } from "@/i18n";
+import { hasMessage, useI18n, type TFunction } from "@/i18n";
+import { auditActionLabel } from "@/i18n/labels";
 import { cn, toNumber } from "@/lib/utils";
 
 const PERIODS = [7, 30, 90] as const;
+
+type Alert = Overview["alerts"][number];
+
+/** Alert text in the user's language from its kind and parameters; the API's English text when they are missing. */
+function alertText(alert: Alert, t: TFunction, fmtNumber: (v: unknown) => string, fmtDate: (v: string) => string) {
+  const p = alert.params;
+  const titleKey = `alert.${alert.kind}.title`;
+  const detailKey = `alert.${alert.kind}.detail`;
+  if (!p || !hasMessage(titleKey) || !hasMessage(detailKey)) return { title: alert.title, detail: alert.detail };
+  const num = (v: unknown) => fmtNumber(v);
+  const date = (v: unknown) => (typeof v === "string" && v ? fmtDate(v) : "—");
+  const vars: Record<string, string> = Object.fromEntries(Object.entries(p).map(([k, v]) => [k, v == null ? "" : String(v)]));
+  for (const k of ["on_hand", "reorder_level", "completion_pct", "rate"]) if (k in p) vars[k] = num(p[k] ?? 0);
+  for (const k of ["planned_end", "due_date"]) if (k in p) vars[k] = date(p[k]);
+  if (alert.kind === "job_failed" && !vars.title) vars.title = `#${String(p.job_id ?? "").slice(0, 8)}`;
+  return { title: t(titleKey, vars), detail: t(detailKey, vars) };
+}
 
 export default function OverviewPage() {
   const { t, fmtNumber, fmtDate, fmtRelative } = useI18n();
@@ -105,10 +123,10 @@ export default function OverviewPage() {
           table={<MiniTable head={[t("common.date"), t("overview.produced"), t("overview.accepted"), t("overview.defective")]}
             rows={trend.map((d) => [fmtDate(d.date), fmtNumber(d.produced), fmtNumber(d.accepted), fmtNumber(d.defective)])} />}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={trend} margin={{ top: 4, right: 4, bottom: 0, left: -8 }} barCategoryGap="20%">
+            <BarChart data={trend} margin={{ top: 4, right: 4, bottom: 0, left: 0 }} barCategoryGap="20%">
               <CartesianGrid vertical={false} stroke="var(--grid)" />
               <XAxis dataKey="date" {...axisProps} tickFormatter={shortDate} minTickGap={24} />
-              <YAxis {...axisProps} width={48} tickFormatter={(v: number) => fmtNumber(v)} />
+              <YAxis {...axisProps} width="auto" tickFormatter={(v: number) => fmtNumber(v)} />
               <Tooltip cursor={{ fill: "var(--surface-3)", opacity: 0.6 }}
                 content={<ChartTooltip series={trendSeries} format={(v) => fmtNumber(v)} labelFormat={(l) => fmtDate(l)} />} />
               <Bar maxBarSize={48} dataKey="accepted" stackId="q" fill={SERIES[0]} stroke="var(--surface)" strokeWidth={1} isAnimationActive={false} />
@@ -121,19 +139,22 @@ export default function OverviewPage() {
           <CardHeader title={t("overview.alerts")} actions={data && <Badge>{data.alerts.length}</Badge>} />
           <ul className="max-h-[300px] divide-y divide-border overflow-y-auto scrollbar-thin">
             {data && data.alerts.length === 0 && <li><EmptyState icon={<CheckCircle2 className="size-5 text-success" />} title={t("overview.noAlerts")} /></li>}
-            {data?.alerts.map((a, i) => (
+            {data?.alerts.map((a, i) => {
+              const text = alertText(a, t, fmtNumber, fmtDate);
+              return (
               <li key={i}>
                 <Link to={a.link} className="flex gap-2.5 px-4 py-2.5 hover:bg-surface-2">
                   {a.severity === "danger" ? <ShieldAlert className="mt-0.5 size-4 shrink-0 text-danger" aria-label={t("agent.severity.error")} />
                     : a.severity === "warning" ? <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" aria-label={t("agent.severity.warning")} />
                       : <Info className="mt-0.5 size-4 shrink-0 text-info" aria-label={t("agent.severity.info")} />}
                   <span className="min-w-0">
-                    <span className="block truncate text-sm font-medium">{a.title}</span>
-                    <span className="block truncate text-xs text-muted">{a.detail}</span>
+                    <span className="block truncate text-sm font-medium">{text.title}</span>
+                    <span className="block truncate text-xs text-muted">{text.detail}</span>
                   </span>
                 </Link>
               </li>
-            ))}
+              );
+            })}
           </ul>
         </Card>
       </div>
@@ -150,7 +171,7 @@ export default function OverviewPage() {
               {data && data.recent_activity.length === 0 && <li><EmptyState title={t("overview.noActivity")} /></li>}
               {data?.recent_activity.map((a, i) => (
                 <li key={i} className="px-4 py-2">
-                  <p className="truncate text-sm">{a.summary ?? a.action}</p>
+                  <p className="truncate text-sm" title={a.summary ?? undefined}>{auditActionLabel(t, a.action, a.summary)}</p>
                   <p className="text-2xs text-muted">{a.actor} · {fmtRelative(a.at)}</p>
                 </li>
               ))}

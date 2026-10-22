@@ -95,7 +95,7 @@ export default function TasksPage() {
   });
   const columns = useMemo<ColumnDef<Task>[]>(() => [
     { header: t("common.number"), accessorKey: "number", cell: ({ row }) => <span className="font-medium">{row.original.number}</span> },
-    { header: t("tasks.titleField"), accessorKey: "title", cell: ({ row }) => <span className="inline-flex items-center gap-1.5">{row.original.title}{row.original.source_record_id && <Bot className="size-3.5 text-brand" aria-label={t("production.fromAgent")} />}</span> },
+    { header: t("tasks.titleField"), accessorKey: "title", meta: { wrap: true }, cell: ({ row }) => <span className="inline-flex items-center gap-1.5">{row.original.title}{row.original.source_record_id && <Bot className="size-3.5 text-brand" aria-label={t("production.fromAgent")} />}</span> },
     { header: t("tasks.assignee"), accessorKey: "assignee_name", cell: ({ getValue }) => (getValue() as string) ?? <span className="text-subtle">{t("tasks.unassigned")}</span> },
     { header: t("tasks.dueDate"), accessorKey: "due_date", cell: ({ row }) => <span className={cn(row.original.overdue && "font-medium text-danger")}>{fmtDate(row.original.due_date)}{row.original.overdue && ` · ${t("tasks.overdue")}`}</span> },
     { header: t("common.priority"), accessorKey: "priority", cell: ({ getValue }) => <PriorityBadge priority={getValue() as string} /> },

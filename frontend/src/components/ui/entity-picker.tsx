@@ -5,6 +5,7 @@ import { useState } from "react";
 import { api } from "@/api/client";
 import type { EntityCandidate } from "@/api/types";
 import { useI18n } from "@/i18n";
+import { entityLabel } from "@/i18n/labels";
 import { cn } from "@/lib/utils";
 import { Spinner } from "./feedback";
 
@@ -42,7 +43,7 @@ export function EntityPicker({ entityType, value, onSelect, placeholder, disable
         <Popover.Content align="start" sideOffset={4} className="z-50 w-[var(--radix-popover-trigger-width)] min-w-72 rounded-md border border-border bg-surface p-1.5 shadow-lg">
           <div className="flex items-center gap-2 border-b border-border px-1.5 pb-1.5">
             <Search className="size-3.5 text-subtle" />
-            <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("agent.record.searchEntity", { entity: entityType.replace("_", " ") })}
+            <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("agent.record.searchEntity", { entity: entityLabel(t, entityType).toLowerCase() })}
               className="h-7 w-full bg-transparent text-sm outline-none placeholder:text-subtle" />
             {isFetching && <Spinner className="size-3.5" />}
           </div>

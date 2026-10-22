@@ -46,7 +46,7 @@ interface CalendarData {
 }
 
 export function CalendarTab() {
-  const { t, fmtNumber, fmtDate, locale } = useI18n();
+  const { t, fmtNumber, fmtDate } = useI18n();
   const company = useCompanyKey();
   const [month, setMonth] = useState(todayIso().slice(0, 7));
   const { data, isLoading, error } = useQuery({
@@ -61,7 +61,7 @@ export function CalendarTab() {
     const d = new Date(first.getFullYear(), first.getMonth() + delta, 1);
     setMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
   };
-  const weekdays = Array.from({ length: 7 }, (_, i) => new Intl.DateTimeFormat(locale, { weekday: "short" }).format(new Date(2024, 0, 1 + i)));
+  const weekdays = Array.from({ length: 7 }, (_, i) => fmtDate(new Date(2024, 0, 1 + i), { weekday: "short" }));
   const cells = [...Array(lead).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => `${month}-${String(i + 1).padStart(2, "0")}`)];
   return (
     <Card>

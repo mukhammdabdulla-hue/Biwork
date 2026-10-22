@@ -10,8 +10,10 @@ import { useAgentInfo, useNotifications } from "@/api/hooks";
 import { useAuth } from "@/auth/AuthProvider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Drawer } from "@/components/ui/dialog";
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger, Tooltip } from "@/components/ui/menu";
 import { LOCALES, useI18n, type MessageKey } from "@/i18n";
+import { roleName } from "@/i18n/labels";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
@@ -84,7 +86,7 @@ function Sidebar({ collapsed, onToggle, onNavigate }: { collapsed: boolean; onTo
   };
 
   return (
-    <nav aria-label="Main" className="flex h-full flex-col bg-sidebar">
+    <nav aria-label={t("nav.main")} className="flex h-full flex-col bg-sidebar">
       <Logo collapsed={collapsed} />
       <ul className="flex-1 space-y-0.5 overflow-y-auto px-2 py-1 scrollbar-thin">{visible.map(link)}</ul>
       <ul className="space-y-0.5 border-t border-white/10 px-2 py-2">
@@ -150,13 +152,13 @@ function Topbar({ onOpenNav }: { onOpenNav: () => void }) {
   const initials = (user?.full_name ?? "?").split(" ").map((p) => p[0]).slice(0, 2).join("");
   return (
     <header className="sticky top-0 z-30 flex h-12 items-center gap-2 border-b border-border bg-surface/95 px-3 backdrop-blur md:px-4">
-      <Button variant="ghost" size="icon" className="md:hidden" onClick={onOpenNav} aria-label="Menu"><MenuIcon className="size-4" /></Button>
+      <Button variant="ghost" size="icon" className="md:hidden" onClick={onOpenNav} aria-label={t("nav.menu")}><MenuIcon className="size-4" /></Button>
       <Menu>
         <MenuTrigger asChild>
           <button className="flex min-w-0 items-center gap-2 rounded-md px-2 py-1 text-sm hover:bg-surface-3" aria-label={t("top.company")}>
             <Building2 className="size-4 text-muted" />
             <span className="truncate font-medium">{company?.name ?? "—"}</span>
-            {company?.is_sample_data && <Badge tone="violet">{t("common.sampleData")}</Badge>}
+            {company?.is_sample_data && <Badge tone="violet" className="hidden sm:inline-flex">{t("common.sampleData")}</Badge>}
           </button>
         </MenuTrigger>
         <MenuContent align="start">
@@ -200,7 +202,7 @@ function Topbar({ onOpenNav }: { onOpenNav: () => void }) {
           <div className="px-2 py-1.5">
             <p className="text-sm font-medium">{user?.full_name}</p>
             <p className="text-2xs text-muted">{user?.email}</p>
-            <p className="mt-1 text-2xs text-subtle">{company?.roles.map((r) => r.name).join(", ")}</p>
+            <p className="mt-1 text-2xs text-subtle">{company?.roles.map((r) => roleName(t, r)).join(", ")}</p>
           </div>
           <MenuSeparator />
           <MenuItem onSelect={() => navigate("/settings?tab=profile")}><Sliders className="size-3.5" />{t("top.profile")}</MenuItem>
@@ -243,17 +245,12 @@ export function AppShell() {
           <Sidebar collapsed={collapsed} onToggle={toggle} />
         </div>
       </aside>
-      {mobileOpen && (
-        <div className="fixed inset-0 z-40 md:hidden">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
-          <div className="absolute inset-y-0 left-0 w-60">
-            <Sidebar collapsed={false} onNavigate={() => setMobileOpen(false)} />
-            <Button variant="ghost" size="icon" className="absolute right-2 top-2.5 text-white" onClick={() => setMobileOpen(false)} aria-label={t("common.close")}>
-              <X className="size-4" />
-            </Button>
-          </div>
-        </div>
-      )}
+      <Drawer open={mobileOpen} onOpenChange={setMobileOpen} title={t("nav.menu")} className="md:hidden">
+        <Sidebar collapsed={false} onNavigate={() => setMobileOpen(false)} />
+        <Button variant="ghost" size="icon" className="absolute right-2 top-2.5 text-white" onClick={() => setMobileOpen(false)} aria-label={t("common.close")}>
+          <X className="size-4" />
+        </Button>
+      </Drawer>
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar onOpenNav={() => setMobileOpen(true)} />
         {info?.is_mock && (

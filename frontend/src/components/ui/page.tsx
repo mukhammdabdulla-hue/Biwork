@@ -1,5 +1,6 @@
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import type { ReactNode } from "react";
+import { useI18n } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "./feedback";
 
@@ -32,13 +33,14 @@ interface KpiProps {
 }
 
 export function KpiCard({ label, value, unit, hint, delta, deltaGoodWhenUp = true, icon, tone = "default", loading, onClick }: KpiProps) {
+  const { fmtNumber } = useI18n();
   const good = delta === null || delta === undefined ? null : delta >= 0 === deltaGoodWhenUp;
   const Comp = onClick ? "button" : "div";
   return (
     <Comp onClick={onClick} className={cn("group flex flex-col gap-1 rounded-lg border border-border bg-surface px-3.5 py-3 text-left shadow-card",
       onClick && "hover:border-border-strong transition-colors")}>
       <div className="flex items-center justify-between gap-2 text-xs text-muted">
-        <span className="truncate">{label}</span>
+        <span className="line-clamp-2 min-w-0 leading-tight">{label}</span>
         {icon && <span className={cn("text-subtle", tone === "warning" && "text-warning", tone === "danger" && "text-danger", tone === "success" && "text-success")}>{icon}</span>}
       </div>
       {loading ? <Skeleton className="h-7 w-24" /> : (
@@ -47,11 +49,11 @@ export function KpiCard({ label, value, unit, hint, delta, deltaGoodWhenUp = tru
           {unit && <span className="text-sm text-muted">{unit}</span>}
         </div>
       )}
-      <div className="flex min-h-4 items-center gap-1.5 text-2xs text-muted">
+      <div className="flex min-h-4 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-2xs text-muted">
         {delta !== null && delta !== undefined && (
           <span className={cn("inline-flex items-center font-medium", good ? "text-success" : "text-danger")}>
             {delta >= 0 ? <ArrowUpRight className="size-3" /> : <ArrowDownRight className="size-3" />}
-            {Math.abs(delta)}%
+            {fmtNumber(Math.abs(delta))}%
           </span>
         )}
         {hint}

@@ -75,7 +75,9 @@ export function DataTable<T>({ columns, data, loading, empty, onRowClick, rowCla
                   className={cn("border-b border-border last:border-0", onRowClick && "cursor-pointer hover:bg-surface-2 focus:bg-surface-2",
                     selectedId && row.id === selectedId && "bg-primary-soft/60 hover:bg-primary-soft/60", rowClassName?.(row.original))}>
                   {row.getVisibleCells().map((c) => (
-                    <td key={c.id} className={cn(cell, "align-middle whitespace-nowrap",
+                    <td key={c.id} className={cn(cell, "align-middle",
+                      // Long free text (titles) wraps instead of widening the table past its card.
+                      (c.column.columnDef.meta as { wrap?: boolean } | undefined)?.wrap ? "min-w-48 whitespace-normal break-words" : "whitespace-nowrap",
                       (c.column.columnDef.meta as { align?: string } | undefined)?.align === "right" && "text-right tabular")}>
                       {flexRender(c.column.columnDef.cell, c.getContext())}
                     </td>

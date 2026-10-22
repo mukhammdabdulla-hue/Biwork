@@ -13,6 +13,7 @@ import { EmptyState, Notice } from "@/components/ui/feedback";
 import { Field, Input } from "@/components/ui/inputs";
 import { DataTable } from "@/components/ui/table";
 import { useI18n } from "@/i18n";
+import { roleName } from "@/i18n/labels";
 import { useAction } from "@/lib/action";
 
 /** Creates a company (platform administrators only; the creator becomes its administrator) and switches into it. */
@@ -71,7 +72,7 @@ export function CompaniesTab() {
     { header: t("common.name"), accessorKey: "name", cell: ({ row }) => <span className="inline-flex items-center gap-1.5 font-medium">{row.original.name}
       {row.original.is_sample_data && <Badge tone="violet">{t("common.sampleData")}</Badge>}</span> },
     { header: t("common.code"), accessorKey: "code" },
-    { header: t("company.yourRoles"), id: "roles", accessorFn: (c) => c.roles.map((r) => r.name).join(", ") },
+    { header: t("company.yourRoles"), id: "roles", accessorFn: (c) => c.roles.map((r) => roleName(t, r)).join(", ") },
     {
       id: "actions", header: "", enableSorting: false, cell: ({ row }) => row.original.id === company?.id
         ? <Badge tone="success"><Check className="size-3" />{t("company.current")}</Badge>

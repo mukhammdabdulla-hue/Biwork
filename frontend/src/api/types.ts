@@ -443,7 +443,8 @@ export interface Overview {
     by_department: { name: string; produced: number; defective: number }[];
     plan_vs_actual: PlanVsActual[];
   };
-  alerts: { severity: "danger" | "warning" | "info"; kind: string; title: string; detail: string; link: string }[];
+  /** title/detail are English; params (per kind) let the UI build the text in the user's language. */
+  alerts: { severity: "danger" | "warning" | "info"; kind: string; title: string; detail: string; link: string; params?: Record<string, string | number | null> | null }[];
   recent_activity: { at: string; action: string; summary: string | null; actor: string; entity_type: string | null; entity_id: string | null }[];
 }
 

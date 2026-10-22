@@ -22,7 +22,8 @@ test.describe("BIWORK Agent workspace", () => {
     });
     await page.getByRole("button", { name: "Process" }).click();
     await expect(page).toHaveURL(/\/agent\/jobs\//);
-    await expect(page.getByText("Processing failed at stage “Parse”")).toBeVisible({ timeout: 30_000 });
+    // The banner; the processing report repeats the sentence followed by the error message.
+    await expect(page.getByText("Processing failed at stage “Parse”", { exact: true })).toBeVisible({ timeout: 30_000 });
     const stages = page.getByRole("list", { name: "Processing stages" }).getByRole("listitem");
     await expect(stages.filter({ hasText: "Interpret" })).toContainText("not run");
     await expect(stages.filter({ hasText: "Review" })).toContainText("not run");

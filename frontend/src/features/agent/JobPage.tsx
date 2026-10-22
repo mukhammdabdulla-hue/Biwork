@@ -17,7 +17,8 @@ import { ConfirmDialog } from "@/components/ui/dialog";
 import { EmptyState, ErrorState, Notice, Skeleton, Spinner } from "@/components/ui/feedback";
 import { DefinitionList, PageHeader } from "@/components/ui/page";
 import { ConfidenceBar, StatusBadge } from "@/components/ui/status";
-import { useI18n, type MessageKey } from "@/i18n";
+import { useI18n, type MessageKey, type TFunction } from "@/i18n";
+import { entityLabel, recordTypeLabel, stageLabel } from "@/i18n/labels";
 import { toastError } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 import { MappingDialog } from "./MappingDialog";
@@ -75,7 +76,7 @@ function StageTimeline({ job }: { job: JobDetail }) {
         else if (failedAt >= 0 && i > failedAt && state !== "failed") state = "skipped";
         const ms = state === "skipped" ? 0 : job.stage_runs.filter((r) => r.stage === stage).reduce((a, r) => a + (r.duration_ms ?? 0), 0);
         return (
-          <li key={stage} className="flex min-w-[92px] flex-1 items-center gap-1.5">
+          <li key={stage} className="flex flex-1 items-center gap-1.5">
             <span className={cn("flex size-5 shrink-0 items-center justify-center rounded-full border text-2xs",
               state === "done" && "border-success bg-success text-white",
               state === "running" && "border-primary text-primary",
@@ -87,17 +88,46 @@ function StageTimeline({ job }: { job: JobDetail }) {
                 : state === "failed" ? <X className="size-3" /> : state === "waiting" ? <Circle className="size-2 fill-current" />
                   : state === "skipped" ? <Minus className="size-3" /> : i + 1}
             </span>
-            <span className="min-w-0">
-              <span className={cn("block truncate text-xs", state === "pending" || state === "skipped" ? "text-subtle" : "font-medium")}>{t(`agent.stage.${stage}` as MessageKey)}</span>
+            <span className="shrink-0">
+              <span className={cn("block whitespace-nowrap text-xs", state === "pending" || state === "skipped" ? "text-subtle" : "font-medium")}>{stageLabel(t, stage)}</span>
               <span className="block text-2xs text-subtle tabular">{ms ? (ms >= 1000 ? `${(ms / 1000).toFixed(1)} s` : `${ms} ms`) : state === "waiting" ? t("agent.job.waitingYou")
                 : state === "skipped" ? t("agent.job.notRun") : " "}</span>
             </span>
-            {i < STAGES.length - 1 && <span className={cn("hidden h-px flex-1 lg:block", state === "done" ? "bg-success/50" : "bg-border")} />}
+            {i < STAGES.length - 1 && <span className={cn("hidden h-px min-w-2 flex-1 lg:block", state === "done" ? "bg-success/50" : "bg-border")} />}
           </li>
         );
       })}
     </ol>
   );
+}
+
+/** Processing report lines built from the report's figures, so they read in the user's language. */
+function buildReportLines(t: TFunction, fmtNumber: (v: unknown) => string, job: JobDetail, failedStage: string | undefined): string[] {
+  const r = job.report;
+  const byStatus = r.records_by_status;
+  const groups = r.review_groups;
+  const records = Object.values(byStatus).reduce((a, b) => a + b, 0);
+  const lines: string[] = [];
+  if (job.status === "failed") lines.push(t("agent.report.failedAt", { stage: failedStage ? stageLabel(t, failedStage) : "?", message: job.error?.message ?? "" }));
+  else if (records) lines.push(t("agent.report.success"));
+  if (records) {
+    lines.push(t("agent.report.recordsExtracted", { n: fmtNumber(records) }));
+    lines.push(t("agent.report.fieldsExtracted", { n: fmtNumber(r.fields_extracted) }));
+    lines.push(t("agent.report.fieldsValidated", { n: fmtNumber(r.fields_validated) }));
+  }
+  for (const [entity, n] of Object.entries(r.entities_matched).sort(([a], [b]) => a.localeCompare(b))) {
+    lines.push(t("agent.report.entityMatched", { entity: entityLabel(t, entity), n: fmtNumber(n) }));
+  }
+  if (r.saved.length) {
+    const numbers = r.saved.map((w) => w.number ?? w.target_id.slice(0, 8));
+    lines.push(t("agent.report.saved", { n: fmtNumber(numbers.length), numbers: `${numbers.slice(0, 10).join(", ")}${numbers.length > 10 ? " …" : ""}` }));
+  }
+  const counts: [number | undefined, MessageKey][] = [
+    [byStatus.approved, "agent.report.approvedWaiting"], [byStatus.failed, "agent.report.failedToSave"], [byStatus.rejected, "agent.report.rejectedN"],
+    [groups.needs_correction, "agent.report.needCorrection"], [groups.needs_approval, "agent.report.needApproval"], [groups.ready, "agent.report.readyToApprove"],
+  ];
+  for (const [n, key] of counts) if (n) lines.push(t(key, { n: fmtNumber(n) }));
+  return lines;
 }
 
 function ItemIcon({ format }: { format: string }) {
@@ -164,7 +194,7 @@ function RecordRow({ r, selected, onSelect }: { r: RecordSummary; selected: bool
         className={cn("w-full border-l-2 px-3 py-2 text-left hover:bg-surface-2", selected ? "border-primary bg-primary-soft/50" : "border-transparent")}>
         <div className="flex items-center gap-2">
           <span className="text-2xs text-subtle tabular">#{r.seq}</span>
-          <span className="min-w-0 flex-1 truncate text-sm font-medium">{r.summary ?? r.record_type}</span>
+          <span className="min-w-0 flex-1 truncate text-sm font-medium">{r.summary ?? recordTypeLabel(t, r.record_type)}</span>
           {r.status === "needs_review" ? <StatusBadge status={r.review_group} /> : <StatusBadge status={r.status} />}
         </div>
         <div className="mt-0.5 flex items-center gap-2 text-2xs text-muted">
@@ -277,6 +307,7 @@ export default function JobPage() {
   const approvedCount = statuses.approved ?? 0;
   const canApproveReady = approvesAll || (!!readyTypes.data?.length && readyTypes.data.every(approvable));
   const failedStage = failedStageOf(job);
+  const reportLines = buildReportLines(t, fmtNumber, job, failedStage);
   const editable = !["committing", "completed", "cancelled"].includes(job.status);
 
   return (
@@ -311,7 +342,7 @@ export default function JobPage() {
       )}
       {job.status === "failed" && job.error && (
         <Notice tone="danger" icon={<AlertTriangle className="size-4" />}>
-          <p className="font-medium">{t("agent.job.failed", { stage: failedStage ? t(`agent.stage.${failedStage}` as MessageKey) : "?" })}</p>
+          <p className="font-medium">{t("agent.job.failed", { stage: failedStage ? stageLabel(t, failedStage) : "?" })}</p>
           <p>{job.error.message}</p>
           {job.error.retryable === false && <p className="mt-1">{t("agent.job.notRetryable")}</p>}
         </Notice>
@@ -329,7 +360,7 @@ export default function JobPage() {
       </Card>
 
       <Card className="overflow-hidden">
-        <CardHeader title={t("agent.job.records")} subtitle={counts.data ? `${counts.data.total} ${t("common.records")}` : undefined} actions={editable && <>
+        <CardHeader title={t("agent.job.records")} subtitle={counts.data ? t("common.recordCount", { n: counts.data.total }) : undefined} actions={editable && <>
           {readyCount > 0 && canApproveReady && (
             <Button size="sm" variant="success" loading={busy === "approve"}
               onClick={() => run("approve", async () => {
@@ -382,8 +413,8 @@ export default function JobPage() {
         <CardHeader title={t("agent.job.report")} />
         <div className="grid gap-4 p-4 md:grid-cols-2">
           <div>
-            {job.report.messages.length === 0 ? <p className="text-sm text-muted">—</p> : (
-              <ul className="space-y-1 text-sm">{job.report.messages.map((m, i) => <li key={i}>• {m}</li>)}</ul>
+            {reportLines.length === 0 ? <p className="text-sm text-muted">—</p> : (
+              <ul className="space-y-1 text-sm">{reportLines.map((m, i) => <li key={i}>• {m}</li>)}</ul>
             )}
             {job.report.saved.length > 0 && (
               <ul className="mt-3 flex flex-wrap gap-1.5">
@@ -399,9 +430,9 @@ export default function JobPage() {
           </div>
           <DefinitionList items={[
             [t("agent.report.fields"), `${fmtNumber(job.report.fields_extracted)} / ${fmtNumber(job.report.fields_validated)}`],
-            [t("agent.report.matched"), Object.entries(job.report.entities_matched).map(([k, v]) => `${k.replace("_", " ")}: ${v}`).join(", ") || "—"],
+            [t("agent.report.matched"), Object.entries(job.report.entities_matched).map(([k, v]) => `${entityLabel(t, k)}: ${fmtNumber(v)}`).join(", ") || "—"],
             [t("agent.report.ai"), `${job.report.ai.provider} · ${job.report.ai.model}${job.report.ai.is_mock ? ` (${t("agent.col.mock")})` : ""}`],
-            [t("analytics.calls"), `${job.report.ai.calls} · ${fmtNumber(job.report.ai.input_tokens)} / ${fmtNumber(job.report.ai.output_tokens)} · $${job.report.ai.cost_usd.toFixed(4)}`],
+            [t("analytics.calls"), `${fmtNumber(job.report.ai.calls)} · ${fmtNumber(job.report.ai.input_tokens)} / ${fmtNumber(job.report.ai.output_tokens)} · ${fmtNumber(job.report.ai.cost_usd, 4)} USD`],
             [t("agent.report.versions"), <span className="font-mono text-2xs">{job.report.pipeline_version} · {job.report.prompt_version}</span>],
           ]} />
         </div>

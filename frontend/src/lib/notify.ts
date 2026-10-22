@@ -14,5 +14,5 @@ export function errorMessage(error: unknown, t: TFunction): string {
 
 export function toastError(error: unknown, t: TFunction) {
   const requestId = error instanceof ApiError ? error.problem.request_id : undefined;
-  toast.error(errorMessage(error, t), { description: requestId ? `Request ${requestId}` : undefined });
+  toast.error(errorMessage(error, t), { description: requestId ? t("common.requestId", { id: requestId }) : undefined });
 }

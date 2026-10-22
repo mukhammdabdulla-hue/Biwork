@@ -15,7 +15,8 @@ import { ErrorState, Kbd, Notice, Skeleton } from "@/components/ui/feedback";
 import { Input, Select, Textarea } from "@/components/ui/inputs";
 import { SectionTitle } from "@/components/ui/page";
 import { ConfidenceBar, FieldStateBadge, StatusBadge } from "@/components/ui/status";
-import { hasMessage, useI18n, type TFunction } from "@/i18n";
+import { useI18n } from "@/i18n";
+import { codeLabel, enumLabel, fieldLabel, issueFieldLabel, issueMessage, recordTypeLabel } from "@/i18n/labels";
 import { toastError } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 import { SourcePreview } from "./SourcePreview";
@@ -34,25 +35,19 @@ type RefChoice = { id: string; label: string } | null;
 
 const EDITABLE = ["draft", "needs_review", "failed"];
 
-/** A backend code (decision, match kind…) in the user's language, or the code itself when unknown. */
-function codeLabel(t: TFunction, prefix: string, code: string): string {
-  const key = `${prefix}.${code}`;
-  return hasMessage(key) ? t(key) : code.replace(/_/g, " ");
-}
-
 function display(value: unknown): string {
   if (value === null || value === undefined) return "";
   return typeof value === "object" ? JSON.stringify(value) : String(value);
 }
 
-function FieldEditor({ field, value, onChange, disabled }: { field: FieldView; value: string; onChange: (v: string) => void; disabled: boolean }) {
+function FieldEditor({ field, label, value, onChange, disabled }: { field: FieldView; label: string; value: string; onChange: (v: string) => void; disabled: boolean }) {
   const { t } = useI18n();
-  const common = { "aria-label": field.label, disabled, className: "h-7 text-xs" };
+  const common = { "aria-label": label, disabled, className: "h-7 text-xs" };
   if (field.enum) {
     return (
       <Select {...common} value={value} onChange={(e) => onChange(e.target.value)}>
         <option value="">—</option>
-        {field.enum.map((o) => <option key={o} value={o}>{o}</option>)}
+        {field.enum.map((o) => <option key={o} value={o}>{enumLabel(t, field.field, o)}</option>)}
         {value && !field.enum.includes(value) && <option value={value}>{value}</option>}
       </Select>
     );
@@ -72,6 +67,7 @@ function FieldRow({ field, record, draft, refChoice, onDraft, onRef, disabled, i
 }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
+  const label = fieldLabel(t, record.record_type, field.field, field.label);
   const value = draft ?? field.raw_value ?? "";
   const normalized = display(field.normalized_value);
   const matched = refChoice !== undefined ? refChoice : field.match?.id ? { id: field.match.id, label: field.match.label ?? field.match.id } : null;
@@ -86,7 +82,7 @@ function FieldRow({ field, record, draft, refChoice, onDraft, onRef, disabled, i
     onDraft("");
   };
   const clearButton = canClear && (
-    <Button size="xs" variant="ghost" onClick={clear} aria-label={`${t("agent.record.clear")}: ${field.label}`}>
+    <Button size="xs" variant="ghost" onClick={clear} aria-label={`${t("agent.record.clear")}: ${label}`}>
       <X className="size-3" />{t("agent.record.clear")}
     </Button>
   );
@@ -97,7 +93,7 @@ function FieldRow({ field, record, draft, refChoice, onDraft, onRef, disabled, i
     <div className={cn("border-b border-l-2 border-border px-3 py-2 last:border-b-0", tone, changed && "bg-primary-soft/30")}>
       <div className="grid grid-cols-1 items-start gap-x-3 gap-y-1 sm:grid-cols-[140px_minmax(0,1fr)_auto]">
         <div className="pt-1">
-          <p className="text-xs font-medium">{field.label}{field.required && <span className="ml-0.5 text-danger">*</span>}</p>
+          <p className="text-xs font-medium">{label}{field.required && <span className="ml-0.5 text-danger">*</span>}</p>
           {field.extracted_by === "user" && <p className="text-2xs text-subtle">{field.edited_by ? t("agent.record.editedBy", { name: field.edited_by }) : t("agent.record.byUser")}</p>}
           {field.extracted_by === "derived" && <p className="text-2xs text-subtle">{t("agent.record.derived")}</p>}
         </div>
@@ -130,7 +126,7 @@ function FieldRow({ field, record, draft, refChoice, onDraft, onRef, disabled, i
           ) : (
             <>
               <div className="flex items-center gap-1">
-                <div className="min-w-0 flex-1"><FieldEditor field={field} value={value} onChange={onDraft} disabled={disabled} /></div>
+                <div className="min-w-0 flex-1"><FieldEditor field={field} label={label} value={value} onChange={onDraft} disabled={disabled} /></div>
                 {clearButton}
               </div>
               {normalized && normalized !== value && draft === undefined && (
@@ -143,7 +139,7 @@ function FieldRow({ field, record, draft, refChoice, onDraft, onRef, disabled, i
           )}
           {field.state_reason && field.state !== "high_confidence" && !fieldIssues.some((i) => i.message === field.state_reason) && <p className="text-2xs text-muted">{field.state_reason}</p>}
           {fieldIssues.map((i) => (
-            <p key={i.id} className={cn("text-2xs", i.severity === "error" ? "text-danger" : i.severity === "warning" ? "text-warning" : "text-muted")}>{i.message}</p>
+            <p key={i.id} className={cn("text-2xs", i.severity === "error" ? "text-danger" : i.severity === "warning" ? "text-warning" : "text-muted")}>{issueMessage(t, i)}</p>
           ))}
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:flex-col sm:items-end">
@@ -271,7 +267,7 @@ export function RecordPanel({ jobId, recordId, editable, onChanged, onNext, onPr
       <div className="flex flex-wrap items-start gap-2 border-b border-border px-4 py-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 id={`record-${record.id}`} className="text-base font-semibold">{record.label} #{record.seq}</h3>
+            <h3 id={`record-${record.id}`} className="text-base font-semibold">{recordTypeLabel(t, record.record_type, record.label)} #{record.seq}</h3>
             <StatusBadge status={record.status} />
             {record.status === "needs_review" && <StatusBadge status={record.review_group} />}
             {record.committed_number && <Badge tone="success">{t("agent.record.savedAs", { number: record.committed_number })}</Badge>}
@@ -305,7 +301,7 @@ export function RecordPanel({ jobId, recordId, editable, onChanged, onNext, onPr
           <section>
             <SectionTitle actions={canEdit && (
               <Button size="xs" variant="ghost" onClick={() => setAddLines((n) => n + 1)}><Plus className="size-3" />{t("agent.record.addLine")}{addLines > 0 && ` (+${addLines})`}</Button>
-            )}>{record.lines_label || t("agent.record.lines")} ({record.lines.length})</SectionTitle>
+            )}>{t("agent.record.lines")} ({record.lines.length})</SectionTitle>
             <div className="space-y-2">
               {record.lines.map((line, i) => {
                 const removed = removeLines.includes(i);
@@ -334,7 +330,7 @@ export function RecordPanel({ jobId, recordId, editable, onChanged, onNext, onPr
               {(general.length ? general : issues).map((i) => (
                 <li key={i.id} className="flex items-start gap-1.5 text-xs">
                   <IssueIcon severity={i.severity} />
-                  <span><span className="font-medium">{t(`agent.severity.${i.severity}`)}</span>{i.field && <span className="text-muted"> · {i.field}</span>}: {i.message}</span>
+                  <span><span className="font-medium">{t(`agent.severity.${i.severity}`)}</span>{i.field && <span className="text-muted"> · {issueFieldLabel(t, record.record_type, i.field)}</span>}: {issueMessage(t, i)}</span>
                 </li>
               ))}
             </ul>

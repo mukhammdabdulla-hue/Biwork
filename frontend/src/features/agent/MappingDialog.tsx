@@ -10,6 +10,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Checkbox, Field, Select } from "@/components/ui/inputs";
 import { ConfidenceBar } from "@/components/ui/status";
 import { useI18n, type MessageKey } from "@/i18n";
+import { fieldLabel, recordTypeLabel } from "@/i18n/labels";
 import { toastError } from "@/lib/notify";
 
 const BY_TONE: Record<string, Tone> = { rule: "info", template: "success", ai: "violet", user: "success" };
@@ -70,7 +71,7 @@ export function MappingDialog({ jobId, item, table, onClose, onApplied }: Props)
           {(id) => (
             <Select id={id} value={recordType} onChange={(e) => setRecordType(e.target.value)}>
               <option value="">—</option>
-              {(recordTypes ?? []).filter((r) => r.enabled).map((r) => <option key={r.code} value={r.code}>{r.label}</option>)}
+              {(recordTypes ?? []).filter((r) => r.enabled).map((r) => <option key={r.code} value={r.code}>{recordTypeLabel(t, r.code, r.label)}</option>)}
             </Select>
           )}
         </Field>
@@ -99,7 +100,7 @@ export function MappingDialog({ jobId, item, table, onClose, onApplied }: Props)
                       <Select aria-label={`${t("agent.mapping.field")}: ${h}`} value={mapping[i]} onChange={(e) => setMapping({ ...mapping, [i]: e.target.value })}
                         className="h-7 text-xs" aria-invalid={!!duplicate}>
                         <option value="">{t("agent.mapping.ignore")}</option>
-                        {targets.map((f) => <option key={f.name} value={f.name}>{f.label}{f.required ? " *" : ""}</option>)}
+                        {targets.map((f) => <option key={f.name} value={f.name}>{fieldLabel(t, recordType, f.name, f.label)}{f.required ? " *" : ""}</option>)}
                       </Select>
                     </td>
                     <td className="px-3 py-1.5">
@@ -117,7 +118,7 @@ export function MappingDialog({ jobId, item, table, onClose, onApplied }: Props)
           </table>
         </div>
         {missingRequired.length > 0 && (
-          <p className="text-xs text-warning">{t("agent.mapping.missingRequired", { fields: missingRequired.map((f) => f.label).join(", ") })}</p>
+          <p className="text-xs text-warning">{t("agent.mapping.missingRequired", { fields: missingRequired.map((f) => fieldLabel(t, recordType, f.name, f.label)).join(", ") })}</p>
         )}
         {table.preamble && table.preamble.length > 0 && <p className="text-2xs text-subtle">{t("agent.mapping.preamble")}: {table.preamble.join(" · ")}</p>}
       </div>

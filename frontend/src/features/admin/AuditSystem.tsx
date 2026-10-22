@@ -13,7 +13,8 @@ import { Input } from "@/components/ui/inputs";
 import { MiniTable } from "@/components/ui/charts";
 import { DefinitionList } from "@/components/ui/page";
 import { StatusBadge } from "@/components/ui/status";
-import { useI18n, type MessageKey } from "@/i18n";
+import { useI18n } from "@/i18n";
+import { auditActionLabel, stageLabel } from "@/i18n/labels";
 import { toastError } from "@/lib/notify";
 
 export function JsonBlock({ value }: { value: unknown }) {
@@ -74,7 +75,7 @@ export function AuditTab() {
                     <td className="pl-3">{open === e.id ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}</td>
                     <td className="px-2 py-1.5 text-subtle tabular">{e.id}</td>
                     <td className="px-3 py-1.5 whitespace-nowrap">{fmtDateTime(e.occurred_at)}</td>
-                    <td className="px-3 py-1.5"><code className="text-2xs">{e.action}</code></td>
+                    <td className="px-3 py-1.5">{auditActionLabel(t, e.action) !== e.action && <span className="block">{auditActionLabel(t, e.action)}</span>}<code className="text-2xs text-subtle">{e.action}</code></td>
                     <td className="px-3 py-1.5">{e.actor_name ?? e.actor_type}{e.actor_type !== "user" && <Badge className="ml-1">{e.actor_type}</Badge>}</td>
                     <td className="max-w-[28rem] truncate px-3 py-1.5 text-muted">{e.summary ?? (e.entity_type ? `${e.entity_type} ${e.entity_id?.slice(0, 8)}` : "—")}</td>
                   </tr>
@@ -126,23 +127,23 @@ export function SystemTab() {
         ]} /></div>
       </Card>
       <Card><CardHeader title={t("admin.system.running")} />
-        <div className="p-4 pt-2">{data.running_stages.length === 0 ? <p className="text-xs text-muted">—</p> : (
-          <MiniTable head={[t("analytics.stage"), "Job", t("common.created"), t("agent.job.attemptShort")]}
-            rows={data.running_stages.map((r) => [t(`agent.stage.${r.stage}` as MessageKey), <Link key={r.job_id} className="text-primary hover:underline" to={`/agent/jobs/${r.job_id}`}>{r.job_id.slice(0, 8)}</Link>, fmtDateTime(r.started_at), r.attempt])} />
+        <div className="overflow-x-auto p-4 pt-2 scrollbar-thin">{data.running_stages.length === 0 ? <p className="text-xs text-muted">—</p> : (
+          <MiniTable head={[t("analytics.stage"), t("trace.job"), t("common.created"), t("agent.job.attemptShort")]}
+            rows={data.running_stages.map((r) => [stageLabel(t, r.stage), <Link key={r.job_id} className="text-primary hover:underline" to={`/agent/jobs/${r.job_id}`}>{r.job_id.slice(0, 8)}</Link>, fmtDateTime(r.started_at), r.attempt])} />
         )}</div>
       </Card>
       <Card><CardHeader title={t("admin.system.failures")} />
-        <div className="p-4 pt-2">{data.recent_failures.length === 0 ? <p className="text-xs text-muted">{t("admin.system.noFailures")}</p> : (
+        <div className="overflow-x-auto p-4 pt-2 scrollbar-thin">{data.recent_failures.length === 0 ? <p className="text-xs text-muted">{t("admin.system.noFailures")}</p> : (
           <ul className="space-y-1.5 text-xs">{data.recent_failures.map((f, i) => (
-            <li key={i}><Link className="font-medium text-primary hover:underline" to={`/agent/jobs/${f.job_id}`}>{f.job_id.slice(0, 8)}</Link> · {t(`agent.stage.${f.stage}` as MessageKey)} · {fmtDateTime(f.at)}
+            <li key={i}><Link className="font-medium text-primary hover:underline" to={`/agent/jobs/${f.job_id}`}>{f.job_id.slice(0, 8)}</Link> · {stageLabel(t, f.stage)} · {fmtDateTime(f.at)}
               <p className="truncate text-danger">{f.error}</p></li>
           ))}</ul>
         )}</div>
       </Card>
       <Card className="lg:col-span-2"><CardHeader title={t("admin.system.ai")} />
-        <div className="p-4 pt-2">{data.ai_usage_this_month.length === 0 ? <p className="text-xs text-muted">{t("analytics.noAi")}</p> : (
+        <div className="overflow-x-auto p-4 pt-2 scrollbar-thin">{data.ai_usage_this_month.length === 0 ? <p className="text-xs text-muted">{t("analytics.noAi")}</p> : (
           <MiniTable head={[t("settings.ai.provider"), t("analytics.model"), t("analytics.calls"), t("analytics.tokens"), t("analytics.cost")]}
-            rows={data.ai_usage_this_month.map((u) => [u.provider, u.model, `${u.calls}${u.errors ? ` (${u.errors} ✕)` : ""}`, `${fmtNumber(u.input_tokens)} / ${fmtNumber(u.output_tokens)}`, `$${u.cost_usd.toFixed(4)}`])} />
+            rows={data.ai_usage_this_month.map((u) => [u.provider, u.model, `${fmtNumber(u.calls)}${u.errors ? ` (${fmtNumber(u.errors)} ✕)` : ""}`, `${fmtNumber(u.input_tokens)} / ${fmtNumber(u.output_tokens)}`, fmtNumber(u.cost_usd, 4)])} />
         )}</div>
       </Card>
       <Card className="lg:col-span-2"><CardHeader title={t("admin.system.queues")} /><div className="p-4"><JsonBlock value={data.queue_backlog} /></div></Card>

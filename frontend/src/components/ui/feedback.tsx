@@ -6,7 +6,8 @@ import { errorMessage } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 
 export function Spinner({ className }: { className?: string }) {
-  return <Loader2 className={cn("size-4 animate-spin text-muted", className)} aria-label="Loading" />;
+  const { t } = useI18n();
+  return <Loader2 className={cn("size-4 animate-spin text-muted", className)} aria-label={t("common.loading")} />;
 }
 
 export function Skeleton({ className }: { className?: string }) {
@@ -31,7 +32,7 @@ export function ErrorState({ error, className }: { error: unknown; className?: s
       <AlertTriangle className="mt-0.5 size-4 shrink-0" />
       <div>
         <p className="font-medium">{errorMessage(error, t)}</p>
-        {apiError?.problem.request_id && <p className="text-2xs opacity-75">Request {apiError.problem.request_id}</p>}
+        {apiError?.problem.request_id && <p className="text-2xs opacity-75">{t("common.requestId", { id: apiError.problem.request_id })}</p>}
       </div>
     </div>
   );

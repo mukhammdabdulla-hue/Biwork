@@ -1,6 +1,6 @@
 import * as RadixDialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useI18n } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "./button";
@@ -15,13 +15,33 @@ interface DialogProps {
   wide?: boolean;
 }
 
+/**
+ * Radix returns focus to a Dialog.Trigger on close, but these dialogs are opened from state. Remember
+ * the element that had focus when the dialog opened and return focus to it when the dialog closes.
+ */
+function useReturnFocus(open: boolean) {
+  const [opener, setOpener] = useState<Element | null>(() => (open ? document.activeElement : null));
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) setOpener(document.activeElement);
+  }
+  return (event: Event) => {
+    if (opener instanceof HTMLElement && opener.isConnected && opener !== document.body) {
+      event.preventDefault();
+      opener.focus();
+    }
+  };
+}
+
 export function Dialog({ open, onOpenChange, title, description, children, footer, wide }: DialogProps) {
   const { t } = useI18n();
+  const returnFocus = useReturnFocus(open);
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
         <RadixDialog.Overlay className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[1px]" />
-        <RadixDialog.Content
+        <RadixDialog.Content onCloseAutoFocus={returnFocus}
           className={cn("fixed left-1/2 top-[8vh] z-50 -translate-x-1/2 w-[calc(100vw-2rem)] max-h-[84vh] flex flex-col",
             "rounded-lg border border-border bg-surface shadow-xl", wide ? "max-w-3xl" : "max-w-lg")}>
           <div className="flex items-start justify-between gap-4 border-b border-border px-4 py-3">
@@ -44,11 +64,12 @@ export function Dialog({ open, onOpenChange, title, description, children, foote
 /** Right-hand side panel (details, editors). */
 export function Sheet({ open, onOpenChange, title, description, children, footer, width = "max-w-xl" }: DialogProps & { width?: string }) {
   const { t } = useI18n();
+  const returnFocus = useReturnFocus(open);
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
         <RadixDialog.Overlay className="fixed inset-0 z-40 bg-black/30" />
-        <RadixDialog.Content className={cn("fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l border-border bg-surface shadow-xl", width)}>
+        <RadixDialog.Content onCloseAutoFocus={returnFocus} className={cn("fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l border-border bg-surface shadow-xl", width)}>
           <div className="flex items-start justify-between gap-4 border-b border-border px-4 py-3">
             <div className="min-w-0">
               <RadixDialog.Title className="text-lg font-semibold truncate">{title}</RadixDialog.Title>
@@ -60,6 +81,23 @@ export function Sheet({ open, onOpenChange, title, description, children, footer
           </div>
           <div className="flex-1 overflow-y-auto px-4 py-3 scrollbar-thin">{children}</div>
           {footer && <div className="flex justify-end gap-2 border-t border-border px-4 py-3">{footer}</div>}
+        </RadixDialog.Content>
+      </RadixDialog.Portal>
+    </RadixDialog.Root>
+  );
+}
+
+/** Left-hand drawer (mobile navigation): modal, traps focus, closes on Escape and returns focus to the opener. */
+export function Drawer({ open, onOpenChange, title, children, className }: { open: boolean; onOpenChange: (open: boolean) => void; title: string; children: ReactNode; className?: string }) {
+  const returnFocus = useReturnFocus(open);
+  return (
+    <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
+      <RadixDialog.Portal>
+        <RadixDialog.Overlay className={cn("fixed inset-0 z-40 bg-black/40", className)} />
+        <RadixDialog.Content aria-describedby={undefined} aria-modal onCloseAutoFocus={returnFocus}
+          className={cn("fixed inset-y-0 left-0 z-50 w-60 focus:outline-none", className)}>
+          <RadixDialog.Title className="sr-only">{title}</RadixDialog.Title>
+          {children}
         </RadixDialog.Content>
       </RadixDialog.Portal>
     </RadixDialog.Root>
