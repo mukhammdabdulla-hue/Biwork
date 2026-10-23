@@ -265,6 +265,12 @@ def test_stored_ai_payloads_follow_the_retention_policy(client, world, owner_eng
 # --------------------------------------------------------------------------- other input formats
 
 
+def test_agent_info_lists_formats_as_bare_extensions(client, world):
+    # The web app matches file names against these and builds the picker's accept list from them.
+    formats = client.get("/api/v1/agent/info", headers=world.login(client, "manager")).json()["formats"]
+    assert {"xlsx", "pdf", "png", "csv"} <= set(formats) and not any(f.startswith(".") for f in formats)
+
+
 def test_image_docx_csv_and_structured_payload_ingestion(client, world):
     from PIL import Image, ImageDraw, ImageFont
 
