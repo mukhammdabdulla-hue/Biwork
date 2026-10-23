@@ -535,7 +535,7 @@ def list_record_types(ctx: Ctx, db: DB) -> list[dict[str, Any]]:
 @router.get("/info")
 def info(ctx: Ctx) -> dict[str, Any]:
     s = get_settings()
-    return {**provider_info(), "formats": sorted(EXTENSIONS), "max_upload_mb": s.max_upload_mb, "max_files_per_job": s.max_files_per_job,
+    return {**provider_info(), "formats": sorted(ext.lstrip(".") for ext in EXTENSIONS), "max_upload_mb": s.max_upload_mb, "max_files_per_job": s.max_files_per_job,
             "import_policies": list(IMPORT_POLICIES), "ocr_enabled": s.ocr_enabled, "ocr_languages": s.ocr_langs,
             "malware_scanning": bool(s.clamav_host), "confidence_threshold": s.agent_confidence_threshold}
 
