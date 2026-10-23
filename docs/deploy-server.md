@@ -240,6 +240,9 @@ Ma’lumotlar bazasi migratsiyalari `migrate` xizmati orqali avtomatik bajarilad
   `PasswordAuthentication no`).
 - Oyiga bir marta `apt update && apt upgrade -y` qiling va dasturni yangilang (8-boʻlim).
 - Barcha administratorlar uchun MFA’ni yoqing va har bir xodimga faqat kerakli rolni bering.
+- Kirish urinishlari har bir IP manzil uchun daqiqasiga cheklangan. Hisobni bloklash standart
+  holatda oʻchiq. Uni yoqish uchun `.env` ga `LOGIN_LOCKOUT_MINUTES=15` yozing: shunda 5 marta
+  notoʻgʻri paroldan keyin hisob 15 daqiqaga bloklanadi.
 - Zaxira nusxalarni boshqa joyda ham saqlang va tiklashni vaqti-vaqti bilan tekshiring.
 - Audit jurnali oʻzgartirib boʻlmaydigan qilib saqlanadi. Uning butunligini «Ma’muriyat →
   Audit jurnali → Yaxlitlikni tekshirish» tugmasi bilan tekshirish mumkin.

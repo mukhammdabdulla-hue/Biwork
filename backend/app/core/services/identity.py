@@ -58,7 +58,8 @@ def authenticate(session: Session, email: str, password: str, otp: str | None, i
     settings = get_settings()
     user = session.execute(select(User).where(func.lower(User.email) == email.strip().lower())).scalar_one_or_none()
     now = datetime.now(UTC)
-    if user is not None and user.locked_until and user.locked_until > now:
+    lockout = settings.login_lockout_minutes > 0  # off: a lock set earlier no longer applies either
+    if lockout and user is not None and user.locked_until and user.locked_until > now:
         audit.record(session, "auth.login_blocked", actor_type="user", actor_id=user.id, entity_type="user",
                      entity_id=user.id, summary="Sign-in refused: account temporarily locked", context={"ip": ip})
         raise Unauthorized("Account temporarily locked after repeated failed sign-ins", code="account_locked")
@@ -66,7 +67,7 @@ def authenticate(session: Session, email: str, password: str, otp: str | None, i
     if not ok or user is None or not user.is_active:
         if user is not None:
             user.failed_login_count += 1
-            if user.failed_login_count >= settings.login_max_failures:
+            if lockout and user.failed_login_count >= settings.login_max_failures:
                 user.locked_until = now + timedelta(minutes=settings.login_lockout_minutes)
                 user.failed_login_count = 0
         audit.record(session, "auth.login_failed", actor_type="user", actor_id=user.id if user else None,

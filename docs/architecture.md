@@ -773,7 +773,7 @@ Uploaded documents and extracted text are untrusted data:
 
 | Area | Approach |
 |---|---|
-| **Authentication** | email + password (argon2id), optional TOTP MFA; short-lived JWT access token (15 min) in memory + rotating refresh token in an `HttpOnly`, `Secure`, `SameSite=Strict` cookie; refresh-token reuse detection; account lockout and login rate limits. SSO (OIDC/SAML) is a Phase 4 add-on. |
+| **Authentication** | email + password (argon2id), optional TOTP MFA; short-lived JWT access token (15 min) in memory + rotating refresh token in an `HttpOnly`, `Secure`, `SameSite=Strict` cookie; refresh-token reuse detection; per-IP sign-in rate limit and optional account lockout (`LOGIN_LOCKOUT_MINUTES`, off by default). SSO (OIDC/SAML) is a Phase 4 add-on. |
 | **API clients** | per-company API keys (hashed, scoped, rotatable) for system-to-system ingestion |
 | **Authorization** | permission strings per module (`<module>.<action>`), granted through roles per company membership; optional department scoping; checked in services |
 | **Tenant isolation** | `company_id` on every row, membership-verified company context, PostgreSQL RLS (§4.7); Scenario E tests cross-company access at the API and DB level |
@@ -1000,7 +1000,7 @@ the [README](../README.md); AI provider and privacy details in [ai-providers.md]
 | Area | Status | Where |
 |---|---|---|
 | Core: companies, users, memberships, roles/permissions, departments + aliases, units, products, tasks, notifications, files, workflows, number sequences | Implemented | `backend/app/core` |
-| Auth: argon2id, JWT access + rotating refresh cookie with reuse detection, TOTP MFA, lockout, API keys | Implemented | `core/services/identity.py`, `core/routers/auth.py` |
+| Auth: argon2id, JWT access + rotating refresh cookie with reuse detection, TOTP MFA, optional lockout, API keys | Implemented | `core/services/identity.py`, `core/routers/auth.py` |
 | Tenant isolation: `company_id` + RLS on 37 tables, non-owner app role | Implemented | migration `0001` |
 | Audit: hash-chained, append-only events, chain verification, provenance trace | Implemented | `core/audit.py`, `api/audit.py` |
 | BIWORK Agent: 9 stages, parsers (text, pasted tables, CSV, XLSX/XLS, DOCX, PDF, images + OCR), column mapping + templates, normalization, validation, matching, duplicates, review groups, auto-approval, idempotent commit with import policies, error report, retry/watchdog | Implemented | `backend/app/agent` |

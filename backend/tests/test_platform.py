@@ -44,13 +44,34 @@ def test_login_refresh_rotation_reuse_detection_and_logout(client, world):
     assert client.post("/api/v1/auth/refresh", headers=cookie).status_code == 401
 
 
-def test_lockout_after_repeated_failures(client, world):
+def _fail_five_times(client, email):
     for _ in range(5):
-        assert client.post("/api/v1/auth/login", json={"email": world.users["viewer"], "password": "wrong"}).status_code == 401
+        assert client.post("/api/v1/auth/login", json={"email": email, "password": "wrong"}).status_code == 401
+
+
+def test_no_lockout_by_default(client, world):
+    _fail_five_times(client, world.users["viewer"])
     r = client.post("/api/v1/auth/login", json={"email": world.users["viewer"], "password": PASSWORD})
-    assert r.status_code == 401 and r.json()["code"] == "account_locked"
-    unknown = client.post("/api/v1/auth/login", json={"email": "nobody@x.test", "password": "wrong"})
-    assert unknown.json()["code"] == "invalid_credentials"  # same answer as a wrong password
+    assert r.status_code == 200, r.text
+
+
+def test_lockout_after_repeated_failures_when_enabled(client, world, monkeypatch):
+    from app.config import get_settings
+
+    monkeypatch.setenv("LOGIN_LOCKOUT_MINUTES", "15")
+    get_settings.cache_clear()
+    try:
+        _fail_five_times(client, world.users["viewer"])
+        r = client.post("/api/v1/auth/login", json={"email": world.users["viewer"], "password": PASSWORD})
+        assert r.status_code == 401 and r.json()["code"] == "account_locked"
+        unknown = client.post("/api/v1/auth/login", json={"email": "nobody@x.test", "password": "wrong"})
+        assert unknown.json()["code"] == "invalid_credentials"  # same answer as a wrong password
+    finally:
+        monkeypatch.undo()
+        get_settings.cache_clear()
+    # Turning the lockout off releases accounts that are still locked.
+    r = client.post("/api/v1/auth/login", json={"email": world.users["viewer"], "password": PASSWORD})
+    assert r.status_code == 200, r.text
 
 
 def test_mfa_enrolment_and_login(client, world):

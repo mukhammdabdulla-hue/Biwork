@@ -55,8 +55,10 @@ class Settings(BaseSettings):
     refresh_cookie_name: str = "biwork_refresh"
     cookie_secure: bool = False
     field_encryption_key: str | None = None  # Fernet key for MFA secrets etc.
-    login_max_failures: int = 5
-    login_lockout_minutes: int = 15
+    login_max_failures: int = Field(default=5, ge=1)
+    # 0: no account lockout (the per-IP sign-in rate limit still applies); >0 locks an account for that
+    # many minutes after LOGIN_MAX_FAILURES wrong passwords in a row.
+    login_lockout_minutes: int = Field(default=0, ge=0)
     password_min_length: int = 10
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
     rate_limit_per_minute: int = 300
