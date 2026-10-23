@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import random
 import sys
+import textwrap
 from datetime import date, time, timedelta
 from decimal import Decimal
 
@@ -229,6 +230,9 @@ def ai_models(provider: str | None) -> int:
                 ok = model in available
                 status |= 0 if ok else 1
                 print(f"  {tier:<8} {model:<40} {'ok' if ok else 'NOT AVAILABLE to this API key'}")
+        # The ids to choose from when setting <PROVIDER>_MODEL_* (or replacing one that is not available).
+        print(textwrap.fill(", ".join(sorted(available)), width=100, initial_indent="  available: ",
+                            subsequent_indent=" " * 13, break_on_hyphens=False))
     return status
 
 

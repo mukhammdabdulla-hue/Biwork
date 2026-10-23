@@ -183,7 +183,8 @@ class Settings(BaseSettings):
         for provider in self.configured_ai_providers():
             if not self.provider_model(provider, "default"):
                 problems.append(f"{provider.upper()}_MODEL_DEFAULT must be set when {provider.upper()}_API_KEY is set "
-                                "(use a model id your account can access; `python -m app.cli ai-models` lists them)")
+                                "(set a model id your account can access, then run `python -m app.cli ai-models`: it "
+                                "checks the configured ids and lists the ones this key can use)")
         unknown = set(self.ai_fallback_providers) - {"openai", "gemini", "anthropic"}
         if unknown:
             problems.append(f"AI_FALLBACK_PROVIDERS contains unknown provider(s): {', '.join(sorted(unknown))}")

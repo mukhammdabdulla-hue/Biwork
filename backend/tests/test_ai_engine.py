@@ -93,6 +93,22 @@ def test_startup_validation_of_ai_settings():
     assert s.provider_model("openai", "economy") == "m1" and s.provider_model("openai", "complex") is None
 
 
+def test_ai_models_checks_configured_ids_and_lists_the_available_ones(ai_config, monkeypatch, capsys):
+    from app import cli
+
+    ai_config(**LIVE)
+
+    class Listing:
+        def list_models(self):
+            return ["oa-default", "oa-economy", "gpt-z-mini", "gpt-a"]
+
+    monkeypatch.setattr(router, "get_provider", lambda name: Listing())
+    assert cli.ai_models("openai") == 1  # oa-complex is not served to this key
+    out = capsys.readouterr().out
+    assert "oa-default" in out and "NOT AVAILABLE" in out.split("oa-complex")[1].splitlines()[0]
+    assert "available: gpt-a, gpt-z-mini, oa-default, oa-economy" in out
+
+
 def test_no_credentials_means_labelled_demo_mode(ai_config):
     ai_config(AI_PROVIDER="auto")
     assert router.demo_mode() and router.provider_order() == ["demo"]

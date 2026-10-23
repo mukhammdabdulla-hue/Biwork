@@ -94,14 +94,19 @@ AI sozlamasi. Quyidagi ikki variantdan birini tanlang:
 # 1-variant: haqiqiy AI (kalitlardan kamida bittasi)
 AI_PROVIDER=auto
 OPENAI_API_KEY=sk-...
+# Kalitingizga ochiq model nomi, masalan:
+OPENAI_MODEL_DEFAULT=gpt-5-mini
 # GEMINI_API_KEY=...
+# GEMINI_MODEL_DEFAULT=...
 # ANTHROPIC_API_KEY=...
 
 # 2-variant: AI kalitisiz, demo rejim (ekranda "Mock AI" deb koʻrsatiladi)
 # AI_PROVIDER=demo
 ```
 
-Modellarni tanlash va narxlar haqida: [ai-engine.md](ai-engine.md).
+Kalit yozilgan boʻlsa, oʻsha provayderning `..._MODEL_DEFAULT` qatori ham toʻldirilishi shart,
+aks holda dastur ishga tushmaydi. Model nomi toʻgʻriligini 5-boʻlimdagi `ai-models` buyrugʻi
+tekshiradi. Modellarni tanlash va narxlar haqida: [ai-engine.md](ai-engine.md).
 
 Faylni saqlang (`Ctrl+O`, `Enter`, `Ctrl+X`) va uni boshqalar oʻqiy olmaydigan qiling:
 
@@ -133,6 +138,15 @@ Birinchi administratorni yarating. Email va parolni oʻzingiznikiga almashtiring
 docker compose run --rm migrate python -m app.cli create-admin \
   --email admin@korxona.uz --password 'Kuchli-Parol-2026' --name "Administrator"
 ```
+
+AI kaliti yozilgan boʻlsa, model nomlarini tekshiring:
+
+```bash
+docker compose run --rm migrate python -m app.cli ai-models
+```
+
+Har bir model yonida `ok` chiqishi kerak. `NOT AVAILABLE` chiqsa, `available:` roʻyxatidan
+boshqa model nomini tanlab `.env` ga yozing, keyin `docker compose up -d` qiling.
 
 Brauzerda `https://biwork.korxona.uz` manzilini oching. HTTPS sertifikati birinchi marta
 bir daqiqagacha olinadi.
