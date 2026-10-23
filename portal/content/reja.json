@@ -1,0 +1,69 @@
+{
+  "guide": {
+    "intro": "Bosma (ofset) va tigel sexlari rejalashtiruvchilari va sex boshliqlari uchun: buyurtmalar bo'yicha uskunalar rejasini avtomatik tuzadi va kechikishni oldindan ko'rsatadi. Brauzerda 30 kunlik bepul sinovda namuna ma'lumot bilan buyurtma qo'shish, reja tuzish, qo'lda (FIFO) reja bilan solishtirish, uskuna buzilishini sinash va Excel'ga chiqarishni o'zingiz qilib ko'rasiz.",
+    "steps": [
+      {
+        "title": "Sinovni boshlang va panelni oching",
+        "text": "Mahsulot sahifasida «Sinab ko'rish»ni bosing, korxona nomi, ismingiz, email va parolni kiritib «Hisob yaratish»ni bosing. Kabinetda sinovni boshlang va «Brauzerda ochish»ni bosing — Reja paneli namuna buyurtmalar bilan ochiladi. Birinchi bo'lib «Bosh sahifa» chiqadi: «Keyingi qadamlar» kartalari, navbatdagi va shoshilinch buyurtmalar soni.",
+        "shot": "bosh.webp",
+        "points": [
+          "Chap menyu: «Bosh sahifa», «Reja», «Buyurtmalar», «Uskunalar», «Ma'lumot», «Tahlil»",
+          "«Keyingi qadamlar» kartasidagi «Bajarish» taklifni qo'llaydi va rejani qayta tuzadi"
+        ]
+      },
+      {
+        "title": "Buyurtmalarni ko'ring va yangisini qo'shing",
+        "text": "Chap menyudan «Buyurtmalar»ni oching: jadvalda raqam, nomi, mijoz, tiraj, marshrut va muddat turadi; «Navbatda», «Bajarilgan», «Shoshilinch» va bo'lim bo'yicha saralash mumkin. Yangi buyurtma uchun «Yangi buyurtma»ni bosing, «Raqam», «Tiraj», «Nomi» va «Muddat»ni kiriting, «Marshrut»da «Bosma» va/yoki «Tigel»ni belgilang, so'ng «Qo'shish»ni bosing.",
+        "points": [
+          "«Format» (Katta/Kichik) va «Turi» (Ofset/Fleksa) buyurtmaga mos uskunalarni belgilaydi",
+          "«Rang» bo'sh qolsa mijoz nomi olinadi, «Shtamp» bo'sh qolsa buyurtma nomidan olinadi",
+          "Qatordagi qalam belgisi — tahrirlash, savat belgisi — o'chirish"
+        ]
+      },
+      {
+        "title": "Rejani tuzing",
+        "text": "Yuqoridagi «Rejani tuzish» tugmasini bosing; yonidagi strelka orqali rejimni tanlash mumkin: «Tezkor», «Standart» yoki «Chuqur» (chuqurrog'i ko'proq vaqt oladi). Tayyor reja «Reja» sahifasida Gantt ko'rinishida chiqadi: har uskuna alohida qatorda, smenalar, sozlash bloklari va qizil «hozir» chizig'i bilan. Kechikadigan buyurtmalar alohida belgilanadi.",
+        "shot": "gantt.webp",
+        "points": [
+          "Operatsiyani bossangiz, buyurtmaning bosma → tigel zanjiri ajratib ko'rsatiladi",
+          "«Moslash» butun rejani ekranga sig'diradi, lupa tugmalari masshtabni o'zgartiradi",
+          "Uskuna nomi yonidagi foiz — joriy reja bo'yicha yuklama"
+        ]
+      },
+      {
+        "title": "Qo'lda (FIFO) reja bilan solishtiring",
+        "text": "Gantt ustidagi «FIFO» kalitini yoqing — har uskuna ostida kelish tartibida qo'lda tuzilgan reja ham chiziladi. «Panel» tugmasini bosib «Ko'rsatkichlar» yorlig'ini oching: sozlash vaqti, kechikkan buyurtmalar, umumiy muddat va yuklama bo'yicha FIFO va Optimal yonma-yon turadi. «Tavsiyalar» yorlig'ida tizim maslahatlari, «Tarix»da avvalgi rejalar bor.",
+        "shot": "fifo.webp",
+        "points": [
+          "Rasmdagi raqamlar namuna ma'lumotga tegishli: sizda natija buyurtmalaringizga bog'liq"
+        ]
+      },
+      {
+        "title": "Uskuna buzilishini belgilang va rejani qayta tuzing",
+        "text": "«Uskunalar» sahifasida har uskuna kartasida «Tezlik», «Sozlash» va «Guruhda» (bir xil rang yoki shtamp guruhidagi sozlash) qiymatlari turadi — o'zgartirib «Saqlash»ni bosasiz. Uskuna ishdan chiqsa «Buzildi»ni bosing va necha soat to'xtashini kiriting. Pastda «Reja eskirdi» xabari chiqadi: «Qayta tuzish» ishni boshqa uskunalarga ko'chiradi.",
+        "shot": "uskuna.webp",
+        "points": [
+          "Rejali ta'mir uchun «To'xtash»: boshlanishi, tugashi va sababini kiritib «Qo'shish»ni bosing",
+          "Kartadagi «Faol» belgisini bosib uskunani nofaol qilish mumkin"
+        ]
+      },
+      {
+        "title": "Rejani Excel'ga chiqaring",
+        "text": "«Reja» sahifasida reja nomi yonidagi «Excel» tugmasini bosing. Ochilgan oynada «Xulosa» va har uskuna varag'ini oldindan ko'rasiz, kerakli rejani tanlab «.xlsx» tugmasi bilan faylni yuklab olasiz. Faylda har uskuna alohida varaqda, zavodda odatiy ustunlar bilan: navbat, buyurtma raqami va nomi, shtamp/rang, sozlash, boshlash va tugash vaqti, smena, muddat."
+      },
+      {
+        "title": "Tor joylar va to'xtash sabablarini tahlil qiling",
+        "text": "Chap menyudan «Tahlil»ni oching. «Yuklama va tor joylar» yorlig'ida har uskunaning yuklamasi, «Tor joylar» reytingi va «To'xtash sabablari» grafiklarda ko'rinadi. Yuqoridagi rangli belgilar — tizim topgan muammolar va tavsiyalar, ustiga sichqonchani olib borsangiz izohi chiqadi. Sahifa sarlavhasida tahlil qilingan davr yoziladi.",
+        "shot": "tahlil.webp"
+      }
+    ],
+    "tips": [
+      "Sinovda (umumiy namunada) fayl yuklash va AI yordamchi yopiq: buyurtmalarni qo'lda qo'shing. Excel'dan yuklash litsenziyali nusxada ishlaydi.",
+      "Sinov namuna uchun: haqiqiy mijoz va buyurtma ma'lumotlarini kiritmang.",
+      "Uskunalar tezligi va sozlash vaqtini o'zingizniki bilan almashtirsangiz, reja sexingizga yaqinroq bo'ladi.",
+      "«Shoshilinch» belgilangan buyurtmaning kechikishi rejada 3 barobar og'ir hisoblanadi.",
+      "Reja yonidagi «Zaxira» belgisi — reja tezkor soddaroq algoritm bilan tuzilgan. O'z serveringizda Python va OR-Tools o'rnatilsa, kuchliroq optimallashtirish ishlaydi.",
+      "Fleksa bosma rejalashtirilmaydi: fleksa buyurtmalar faqat tigelga yo'naltiriladi."
+    ]
+  }
+}

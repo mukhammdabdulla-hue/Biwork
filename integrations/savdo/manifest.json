@@ -1,0 +1,243 @@
+{
+  "contract": 1,
+  "slug": "savdo",
+  "code": "SAV",
+  "name": "Biwork Savdo",
+  "tagline": "Savdo yozuvlari, yuk xatlari va savdo dinamikasi bir joyda",
+  "category": "Boshqaruv va hisob",
+  "icon": "inbox",
+  "status": "active",
+  "sort": 40,
+  "description": "Biwork Savdo korxonaning kundalik savdosini yuritadi: har bir sotuv (sana, mahsulot, miqdor, narx, xaridor, to'lov izohi) yozuv bo'lib saqlanadi, qidiruv va filtrlar bilan topiladi, kerak bo'lsa tahrirlanadi. Rahbar uchun «Umumiy ko'rinish» — jami savdo, mahsulotlar va xaridorlar bo'yicha ulush hamda kunlik, oylik yoki yillik savdo dinamikasi.\n\nYuk xatini raqami avtomat berilgan blankada yozasiz: xaridor va mahsulot qatorlarini kiritasiz, summa so'z bilan yoziladi, tayyor yuk xati PDF qilib chop etiladi — qatorlari esa o'zi savdo yozuviga tushadi. Savdo hisoboti ham PDF ko'rinishida chiqadi: oylik jadval, mahsulotlar va xaridorlar kesimida.\n\nAvvalgi savdo ma'lumotini Excel yoki Google Sheets'dan jadvalni nusxalab qo'yib yuklaysiz, butun bazani Excel (CSV) ga chiqarasiz. 1C bilan to'g'ridan-to'g'ri bog'lanish yo'q. Interfeys o'zbek tilida, telefon brauzerida ham ochiladi.",
+  "highlights": [
+    "Savdo yozuvlari: qidiruv, filtr, tahrirlash, Excel'ga eksport",
+    "Rahbar uchun savdo dinamikasi: kun, oy va yil kesimida",
+    "Yuk xati: avtomat raqam, summa so'z bilan, PDF chop etish",
+    "Savdo hisoboti (PDF): oylik jadval, mahsulot va xaridorlar kesimida",
+    "Excel yoki Google Sheets jadvalini nusxalab import qilish"
+  ],
+  "web": {
+    "url": "",
+    "launch": "token"
+  },
+  "trial": {
+    "enabled": true,
+    "days": 14
+  },
+  "plans": [
+    {
+      "code": "standard",
+      "name": "Standart",
+      "type": "paid",
+      "seats": 1,
+      "days": 365,
+      "limits": {},
+      "features": [
+        "web_demo",
+        "app",
+        "download"
+      ]
+    },
+    {
+      "code": "business",
+      "name": "Korxona",
+      "type": "paid",
+      "seats": 3,
+      "days": 365,
+      "limits": {},
+      "features": [
+        "web_demo",
+        "app",
+        "download"
+      ]
+    }
+  ],
+  "package": {
+    "min_php": "8.1",
+    "extensions": [
+      "pdo_sqlite",
+      "mbstring",
+      "json",
+      "sodium"
+    ]
+  },
+  "marketing": {
+    "headline": "Savdo yozuvlari va yuk xatlarini bir joyda yuriting, savdo dinamikasini kunma-kun ko'ring",
+    "lead": "Biwork Savdo — sotuvlarni yozib boradigan, yuk xatini raqam bilan yozib PDF chop etadigan va rahbarga savdo qanday ketayotganini ko'rsatadigan dastur. Savdo hisoboti ham bir bosishda PDF bo'ladi.",
+    "badges": [
+      "O'zbek tilida",
+      "Yuk xati PDF",
+      "Excel'dan import",
+      "Excel'ga eksport",
+      "Telefonda ochiladi"
+    ],
+    "problems": [
+      {
+        "title": "Savdo daftar va Excel'larda sochilib ketgan",
+        "text": "Kim, qachon, nimani, qanchaga olgani turli fayllarda turadi. Bitta mahsulot yoki xaridor bo'yicha ro'yxat tuzish uchun soatlab qidirishga to'g'ri keladi."
+      },
+      {
+        "title": "Yuk xati qo'lda yoziladi",
+        "text": "Raqam, sana, summa va so'z bilan yozilgan summa har safar qo'lda kiritiladi — xato va takror ish ko'p. Bu yerda raqam avtomat beriladi va summa so'z bilan o'zi yoziladi."
+      },
+      {
+        "title": "Rahbar savdo dinamikasini kech ko'radi",
+        "text": "Oy qanday ketayotgani, qaysi mahsulot va xaridor ko'proq tushum berayotgani hisobot tayyor bo'lgandan keyingina ma'lum bo'ladi."
+      },
+      {
+        "title": "Hisobotni har oy qayta yig'ishga to'g'ri keladi",
+        "text": "Oylik savdo jadvali, mahsulotlar va xaridorlar kesimidagi hisobot ma'lumotdan o'zi tuziladi va PDF qilinadi."
+      }
+    ],
+    "features": [
+      {
+        "title": "Rahbar uchun savdo dinamikasi",
+        "text": "Umumiy ko'rinishda jami savdo, sotilgan mahsulot, yozuvlar va xaridorlar soni, savdo dinamikasi grafigi (kunlik, oylik yoki yillik) hamda mahsulotlar va xaridorlar bo'yicha ulush jadvallari turadi. Rasmdagi raqamlar xayoliy namuna ma'lumotga tegishli.",
+        "points": [
+          "Mahsulot va xaridor bo'yicha filtr",
+          "Yil bo'yicha tanlash",
+          "Mahsulotlar va xaridorlar ulushi"
+        ],
+        "shot": "umumiy.webp"
+      },
+      {
+        "title": "Savdolar ro'yxati",
+        "text": "Har bir sotuv — alohida yozuv: sana, mahsulot, miqdor, o'lchov birligi, narx, summa, xaridor va to'lov izohi (puli olindi, avans, qaytadi). Qidirish, mahsulot, xaridor va oy bo'yicha saralash mumkin.",
+        "points": [
+          "Yozuvni qo'shish, tahrirlash va o'chirish",
+          "Yuk xatiga bog'langan yozuvlarda yuk xati raqami ko'rinadi",
+          "Butun bazani Excel (CSV) ga yuklash"
+        ],
+        "shot": "royxat.webp"
+      },
+      {
+        "title": "Yuk xatlari ro'yxati",
+        "text": "Chiqarilgan yuk xatlari sana, xaridor va qidiruv bo'yicha filtrlanadi. Bir nechta yuk xatini belgilab, bitta PDF qilib chop etish mumkin.",
+        "points": [],
+        "shot": "yuklar.webp"
+      },
+      {
+        "title": "Yuk xati yozish",
+        "text": "Raqam avtomat beriladi. Xaridor ma'lumotini va mahsulot qatorlarini kiritasiz — oxirgi narx o'zi qo'yiladi, jami summa so'z bilan yoziladi. Saqlangan yuk xati qatorlari savdolar ro'yxatiga tushadi.",
+        "points": [
+          "Xaridor: nomi, pasport, JSHSHIR, telefon",
+          "Tahrir yoki o'chirishda bog'langan savdo qatorlari ham yangilanadi",
+          "«Saqlash va chop etish» — darhol PDF"
+        ],
+        "shot": "yukxati.webp"
+      },
+      {
+        "title": "PDF yuk xati va savdo hisoboti",
+        "text": "Yuk xati sotuvchi va xaridor imzo joylari bilan A4 blankada chiqadi. Savdo hisoboti ekrandagi filtr bo'yicha tuziladi: oylik savdo jadvali, mahsulotlar va xaridorlar kesimida.",
+        "points": [],
+        "shot": "pdf.webp"
+      },
+      {
+        "title": "Bosh sahifa: oy, chorak yoki yil",
+        "text": "Bosh sahifada tanlangan davr tushumi oldingi davrga nisbatan o'zgarish bilan, savdo grafigi va mahsulotlar tarkibi ko'rinadi.",
+        "points": [],
+        "shot": "bosh.webp"
+      }
+    ],
+    "shots": [
+      {
+        "file": "umumiy.webp",
+        "caption": "Umumiy ko'rinish: jami savdo, savdo dinamikasi, mahsulotlar va xaridorlar bo'yicha ulush (namuna ma'lumot)",
+        "alt": "Biwork Savdo: umumiy ko'rinish va savdo dinamikasi grafigi"
+      },
+      {
+        "file": "royxat.webp",
+        "caption": "Savdolar ro'yxati: qidiruv, filtrlar, to'lov izohi va yuk xati raqami",
+        "alt": "Biwork Savdo: savdolar ro'yxati"
+      },
+      {
+        "file": "yuklar.webp",
+        "caption": "Yuk xatlari ro'yxati: sana, xaridor va qidiruv bo'yicha filtr, bir nechtasini birga chop etish",
+        "alt": "Biwork Savdo: yuk xatlari ro'yxati"
+      },
+      {
+        "file": "yukxati.webp",
+        "caption": "Yuk xati yozish: avtomat raqam, qatorlar va summa so'z bilan",
+        "alt": "Biwork Savdo: yuk xati yozish sahifasi"
+      },
+      {
+        "file": "pdf.webp",
+        "caption": "PDF: yuk xati blankasi va savdo hisoboti (namuna ma'lumot)",
+        "alt": "Biwork Savdo: PDF yuk xati va PDF savdo hisoboti"
+      },
+      {
+        "file": "bosh.webp",
+        "caption": "Bosh sahifa: oylik tushum, savdo grafigi va mahsulotlar tarkibi",
+        "alt": "Biwork Savdo: bosh sahifa"
+      }
+    ],
+    "audience": [
+      {
+        "title": "Ulgurji va distribyutor korxonalar",
+        "text": "Mahsulotni bir nechta xaridorga ko'p marta sotadigan, har yuk uchun yuk xati yozib beradigan savdo korxonalari."
+      },
+      {
+        "title": "Ishlab chiqaruvchi korxonaning sotuv bo'limi",
+        "text": "Tayyor mahsulotini xaridorlarga yuk xati bilan chiqarib, savdoni Excel yoki daftarda yuritib kelayotganlar."
+      },
+      {
+        "title": "Rahbarlar",
+        "text": "Savdo oyma-oy qanday ketayotganini, qaysi mahsulot va xaridor asosiy tushum berayotganini ko'rishni xohlaganlar."
+      }
+    ],
+    "faq": [
+      {
+        "q": "Sinab ko'rish uchun nima kerak?",
+        "a": "Ro'yxatdan o'ting (korxona nomi va email yetarli) — Biwork Savdoni brauzerda xayoliy namuna ma'lumot bilan sinab ko'rasiz. Hech narsa o'rnatish shart emas."
+      },
+      {
+        "q": "Savdo ma'lumotini qanday kiritaman?",
+        "a": "Uch yo'l: «Savdo qo'shish» bilan qo'lda; yuk xati yozsangiz, uning qatorlari o'zi savdoga tushadi; yoki Excel yoki Google Sheets'dan jadvalni nusxalab «Exceldan import» oynasiga qo'yasiz. Kerak ustunlar tayyor CSV shablonda beriladi."
+      },
+      {
+        "q": "1C bilan ishlaydimi?",
+        "a": "1C bilan to'g'ridan-to'g'ri bog'lanish yo'q. 1C'dan sotuvlar ro'yxatini Excel'ga chiqarib, jadvalni nusxalab import oynasiga qo'yasiz: Sana, Mahsulot, Miqdor, Narx, Summa, Xaridor ustunlari o'zbekcha yoki ruscha sarlavhadan taniladi, tanilmaganini o'zingiz tanlaysiz. 1C'ning tayyor realizatsiya hisoboti faylini avtomatik o'qish hozircha yo'q."
+      },
+      {
+        "q": "Yuk xati qanday ishlaydi?",
+        "a": "Raqam avtomat beriladi (kerak bo'lsa o'zgartirasiz), xaridor va qatorlarni kiritasiz, summa so'z bilan yoziladi. Yuk xati sotuvchi rekvizitlari va imzo joylari bilan A4 PDF bo'lib chiqadi. Bir nechtasini belgilab birga chop etish ham mumkin."
+      },
+      {
+        "q": "Qanday hisobotlar bor?",
+        "a": "Savdo hisoboti (PDF): oylik savdo jadvali, mahsulotlar va xaridorlar kesimida — ekrandagi filtr bo'yicha. Butun savdo bazasini Excel (CSV) fayliga yuklab olish mumkin. Boshqa shakldagi hisobotlar hozircha yo'q."
+      },
+      {
+        "q": "Qarzdorlik, ombor qoldig'i yuritiladimi?",
+        "a": "Yo'q. To'lov holati faqat izoh sifatida yoziladi (masalan «Puli olindi», «Avans olindi», «Qaytadi»), alohida qarzdorlik hisobi va ombor qoldig'i bu mahsulotda yo'q."
+      },
+      {
+        "q": "Bir nechta korxonani yuritsa bo'ladimi?",
+        "a": "Ha, savdo bo'limi bir nechta korxona uchun ochiladi va ekran tepasidagi tanlagich bilan almashtiriladi. Yangi korxona va uning savdo bo'limi administrator panelida sozlanadi."
+      },
+      {
+        "q": "O'rnatish va ma'lumotlar qayerda turadi?",
+        "a": "Dastur sizning serveringizga o'rnatiladi (PHP 8.1 va SQLite), ma'lumotlar o'sha yerdagi bazada saqlanadi. Biwork portali litsenziyani tekshirish uchungina kerak."
+      }
+    ],
+    "seo": {
+      "title": "Biwork Savdo — savdo yozuvlari va yuk xati dasturi",
+      "description": "Savdo yozuvlarini yuritish, yuk xatini avtomat raqam bilan yozib PDF chop etish va savdo dinamikasini ko'rish uchun dastur. Excel'dan import. O'zbek tilida.",
+      "keywords": [
+        "savdo dasturi",
+        "yuk xati dasturi",
+        "yuk xati yozish",
+        "savdo hisobi",
+        "ulgurji savdo dasturi",
+        "savdo dinamikasi",
+        "Biwork Savdo"
+      ]
+    },
+    "cta": {
+      "trial": "Sinab ko'rish",
+      "lead": "So'rov qoldirish",
+      "lead_title": "Biwork Savdo haqida so'rov qoldiring",
+      "lead_text": "Telefon raqamingizni qoldiring — siz bilan bog'lanib, dastur savdongizga mos kelishini birga aniqlaymiz.",
+      "placeholder": "Masalan: nima sotasiz, yuk xatini hozir qanday yozasiz?"
+    }
+  }
+}

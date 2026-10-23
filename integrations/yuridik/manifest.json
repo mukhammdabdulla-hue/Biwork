@@ -1,0 +1,247 @@
+{
+  "contract": 1,
+  "slug": "yuridik",
+  "code": "YUR",
+  "name": "Biwork Yuridik",
+  "tagline": "Sud ishlari, majlislar kalendari va hujjatlar arxivi bir joyda",
+  "category": "Boshqaruv va hisob",
+  "icon": "shield",
+  "status": "active",
+  "sort": 60,
+  "description": "Biwork Yuridik korxonaning sud ishlarini yagona reyestrda yuritadi: har ish bo'yicha sud, ish raqami, qarshi taraf, mas'ul yurist, holat va izoh saqlanadi. Majlislar oy va yil kalendarida ko'rinadi, yaqinlashgan majlis va natijasi yozilmagan majlis haqida dastur ichida eslatib turiladi.\n\nHar bir ish kartasida majlislar tarixi va natijalari (keyinga qoldirildi, da'vo qanoatlantirildi, kelishuv tuzildi va boshqalar) hamda sud hujjatlari — da'vo arizasi, javob xati, dalillar, bayonnomalar, sud qarorlari — fayllari bilan birga turadi. Bir nechta korxona bo'lsa, ishlar korxona kesimida ko'rinadi.\n\nInterfeys o'zbek tilida. Ma'lumotlar o'zingizning serveringizdagi bazada saqlanadi.",
+  "highlights": [
+    "Sud ishlari reyestri: sud, ish raqami, qarshi taraf, mas'ul yurist, holat",
+    "Majlislar kalendari — oy va yil ko'rinishida",
+    "Majlis yaqinlashsa yoki natijasi yozilmasa — dastur ichida eslatma",
+    "Har ishda majlislar tarixi va natijalari",
+    "Hujjatlar arxivi: fayl yuklash, tur bo'yicha saralash, majlisga biriktirish"
+  ],
+  "web": {
+    "url": "",
+    "launch": "token"
+  },
+  "trial": {
+    "enabled": true,
+    "days": 14
+  },
+  "plans": [
+    {
+      "code": "standard",
+      "name": "Standart",
+      "type": "paid",
+      "seats": 1,
+      "days": 365,
+      "limits": {},
+      "features": [
+        "web_demo",
+        "app",
+        "download"
+      ]
+    },
+    {
+      "code": "business",
+      "name": "Korxona",
+      "type": "paid",
+      "seats": 3,
+      "days": 365,
+      "limits": {},
+      "features": [
+        "web_demo",
+        "app",
+        "download"
+      ]
+    }
+  ],
+  "package": {
+    "min_php": "8.1",
+    "extensions": [
+      "pdo_sqlite",
+      "mbstring",
+      "json",
+      "sodium"
+    ]
+  },
+  "marketing": {
+    "headline": "Sud ishlari va majlis muddatlarini daftarda emas — bir joyda yuriting",
+    "lead": "Biwork Yuridik korxonangizning sud ishlarini yagona reyestrga yig'adi: majlislar kalendarda ko'rinadi, yaqinlashgan majlis va natijasi yozilmagan majlis haqida eslatib turadi, da'vo arizasidan sud qarorigacha hujjatlar esa har ish kartasida fayllari bilan saqlanadi.",
+    "badges": [
+      "O'zbek tilida",
+      "Majlislar kalendari",
+      "Hujjatlar arxivi",
+      "Majlis natijalari tarixi",
+      "Bir nechta korxona",
+      "Ma'lumot o'z serveringizda"
+    ],
+    "problems": [
+      {
+        "title": "Majlis sanalari tarqoq yuradi",
+        "text": "Sud chaqiruvlari, daftar va telefondagi eslatmalar turli joyda bo'lsa, majlisni unutish yoki kech eslash xavfi paydo bo'ladi."
+      },
+      {
+        "title": "Majlis natijasi yozilmay qoladi",
+        "text": "Majlis o'tdi, lekin nima hal bo'lgani va keyingi qadam kiritilmadi. Natijasi yozilmagan majlislar alohida sanalib, eslatib turiladi."
+      },
+      {
+        "title": "Ish tarixi yo'qoladi",
+        "text": "Ish nechta majlisdan o'tgani, har birida nima bo'lgani yozib borilmasa, uning borishini keyin tiklash qiyin."
+      },
+      {
+        "title": "Hujjatlar turli papkalarda",
+        "text": "Da'vo arizasi, javob xati, bayonnoma va sud qarori turli kompyuterlarda tursa, kerakli payt topilmaydi. Bu yerda ular ish kartasida turadi."
+      }
+    ],
+    "features": [
+      {
+        "title": "Majlislar kalendari — oy va yil ko'rinishida",
+        "text": "Bosh ekranda oy kalendari: majlis bor kunlar belgilanadi, yonida «Yaqin majlislar» ro'yxati — sana, ish nomi, sud va majlisda nima ko'rilishi. Yuqorida hisoblagichlar: barcha ishlar, jarayonda, 7 kunda majlis, natija yozilmagan, yutildi, yutqazildi — bosib ro'yxatni saralaysiz.",
+        "points": [
+          "Majlis bor kunlar kalendarda belgilanadi",
+          "Har majlis yonida «3 kun qoldi» kabi qolgan muddat",
+          "«Yil» tugmasi bilan butun yil majlislari oylar bo'yicha ko'rinadi"
+        ],
+        "shot": "kalendar.webp"
+      },
+      {
+        "title": "Eslatmalar: majlisni o'tkazib yubormang",
+        "text": "Qo'ng'iroqcha belgisi 7 kun ichidagi majlislarni va natijasi hali yozilmagan o'tgan majlislarni ko'rsatadi («11 kun oldin bo'ldi — natijasi yozilmagan»). Bosh sahifadagi «Masalalar» blokida ham yaqin majlislar qancha kun qolgani bilan turadi. Eslatmalar dastur ichida chiqadi; SMS yoki Telegramga yuborilmaydi.",
+        "points": [],
+        "shot": "eslatma.webp"
+      },
+      {
+        "title": "Sud ishlari reyestri",
+        "text": "Barcha ishlar bitta jadvalda: nima haqida, sud, ish raqami, qarshi taraf, holat, keyingi majlis va mas'ul yurist. Ish nomi, sud yoki qarshi taraf bo'yicha qidirasiz; har ishda nechta majlis va hujjat borligi jadvalda ko'rinadi.",
+        "points": [
+          "Holatlar: jarayonda, yutildi, yutqazildi, kelishuv, to'xtatildi",
+          "Da'vo summasi va instansiya (1-instansiya, apellyatsiya, kassatsiya) matn sifatida — izoh va sud nomida yoziladi"
+        ],
+        "shot": "reyestr.webp"
+      },
+      {
+        "title": "Majlislar tarixi va natijalari",
+        "text": "Ish kartasida har bir majlis: sana, vaqt, nima ko'rilishi. O'tgan majlisga natija yoziladi — tez tanlov («Keyinga qoldirildi», «Da'vo qanoatlantirildi», «Kelishuv tuzildi» va boshqalar) va o'z izohingiz. Kutilayotgan majlislar o'tgan majlislardan alohida turadi.",
+        "points": [
+          "Majlisga kerakli hujjatni biriktirasiz",
+          "Majlisni o'chirsangiz, hujjat ishda qoladi"
+        ],
+        "shot": "majlislar.webp"
+      },
+      {
+        "title": "Hujjatlar arxivi",
+        "text": "Fayllarni ish kartasiga sudrab tashlaysiz yoki tanlaysiz (bittasi 20 MB gacha). Hujjat nomi va turi fayl nomidan aniqlanadi, keyin o'zgartirish mumkin. Hujjatlarni tur bo'yicha saralaysiz, nom bo'yicha qidirasiz, majlisga biriktirasiz va qayta yuklab olasiz.",
+        "points": [
+          "11 ta tur: da'vo arizasi, javob xati, dalillar, bayonnoma, sud qarori, shikoyat, ijro varaqasi, vakolatnoma, davlat boji, yozishma, boshqa",
+          "Hujjat qaysi majlisga tegishli ekani ko'rinib turadi"
+        ],
+        "shot": "hujjatlar.webp"
+      }
+    ],
+    "shots": [
+      {
+        "file": "kalendar.webp",
+        "caption": "Majlislar kalendari, yaqin majlislar va holat hisoblagichlari (namuna ma'lumot)",
+        "alt": "Biwork Yuridik: oy kalendari, yaqin majlislar ro'yxati va sud ishlari hisoblagichlari"
+      },
+      {
+        "file": "eslatma.webp",
+        "caption": "Qo'ng'iroqcha: yaqin majlislar va natijasi yozilmagan o'tgan majlislar",
+        "alt": "Biwork Yuridik: majlislar bo'yicha eslatmalar ro'yxati"
+      },
+      {
+        "file": "reyestr.webp",
+        "caption": "Sud ishlari reyestri: sud, qarshi taraf, holat, keyingi majlis, mas'ul yurist",
+        "alt": "Biwork Yuridik: sud ishlari jadvali"
+      },
+      {
+        "file": "majlislar.webp",
+        "caption": "Ish kartasi: majlislar tarixi va natijalari",
+        "alt": "Biwork Yuridik: sud ishi kartasi, majlislar va natijalar"
+      },
+      {
+        "file": "hujjatlar.webp",
+        "caption": "Ish kartasi: hujjatlar arxivi — tur bo'yicha saralash, qidirish, majlisga biriktirish",
+        "alt": "Biwork Yuridik: sud ishi hujjatlari ro'yxati"
+      },
+      {
+        "file": "yil.webp",
+        "caption": "Yil kalendari: butun yilning majlislari oylar bo'yicha bir qarashda",
+        "alt": "Biwork Yuridik: yil ko'rinishidagi majlislar kalendari"
+      }
+    ],
+    "audience": [
+      {
+        "title": "Korxona yuristlari va yuridik bo'limlar",
+        "text": "Bir vaqtda ko'plab ish, majlis va muddatni yuritib, birortasini o'tkazib yubormaslikni istaganlar."
+      },
+      {
+        "title": "Rahbarlar va direktorlar",
+        "text": "Qaysi ish qaysi holatda, yaqin kunlarda qaysi sudda majlis borligini bir qarashda ko'rishni xohlaganlar."
+      },
+      {
+        "title": "Bir nechta korxonasi bor guruhlar",
+        "text": "Ishlar korxonalar bo'yicha ajratiladi: har korxonaning ishlarini alohida ko'rasiz, korxonasi belgilanmagan ishlar umumiy hisoblanadi."
+      }
+    ],
+    "faq": [
+      {
+        "q": "Sinab ko'rish uchun nima kerak?",
+        "a": "Ro'yxatdan o'ting (korxona nomi va email yetarli) — Biwork Yuridikni brauzerda namuna ma'lumot bilan sinab ko'rasiz. Namunadagi korxonalar, sudlar va ishlar to'qib chiqarilgan. Hech narsa o'rnatish shart emas."
+      },
+      {
+        "q": "Ishlarni qanday kiritaman?",
+        "a": "«Yangi ish» tugmasi bilan qo'lda: nima haqida, sud, ish raqami, qarshi taraf, mas'ul yurist, korxona, holat va izoh. Majlislar va hujjatlar ish kartasida qo'shiladi. Excel yoki boshqa tizimdan avtomatik import hozircha yo'q."
+      },
+      {
+        "q": "Eslatmalar qanday keladi?",
+        "a": "Dastur ichida: qo'ng'iroqcha belgisida (7 kun ichidagi majlislar va natijasi yozilmagan o'tgan majlislar) va bosh sahifadagi «Masalalar» blokida. SMS, Telegram yoki email orqali avtomatik xabar yuborish hozircha yo'q."
+      },
+      {
+        "q": "Da'vo summasi, instansiya va ish turi uchun alohida maydon bormi?",
+        "a": "Alohida maydonlar yo'q: summa, instansiya (1-instansiya, apellyatsiya, kassatsiya) va ish turini sud nomi hamda izohda yozasiz. Shu sababli ular bo'yicha hisobot yoki statistika chiqmaydi."
+      },
+      {
+        "q": "Hisobot yoki Excel/PDF'ga chiqarish bormi?",
+        "a": "Sud ishlari bo'yicha alohida hisobot va eksport yo'q: ro'yxat, kalendar va hisoblagichlar ekranda ko'rinadi, hujjatlar esa alohida fayl sifatida yuklab olinadi."
+      },
+      {
+        "q": "Hujjatlarni qanday saqlayman?",
+        "a": "Ish kartasidagi «Hujjatlar» yorlig'iga fayllarni sudrab tashlang yoki tanlang (bittasi 20 MB gacha). Nomi va turi fayl nomidan aniqlanadi, keyin tahrirlanadi. Hujjatni majlisga biriktirish, tur bo'yicha saralash va nom bo'yicha qidirish mumkin."
+      },
+      {
+        "q": "Bir nechta korxona uchun ishlaydimi?",
+        "a": "Ha: ish qaysi korxonaga tegishli ekanini belgilaysiz va ekrandan korxonani almashtirasiz. Korxonasi belgilanmagan ish «umumiy» hisoblanadi va hamma korxonada ko'rinadi."
+      },
+      {
+        "q": "Mas'ul yurist tizim foydalanuvchisimi?",
+        "a": "Mas'ul yurist nomi ish kartasida matn sifatida yoziladi va alohida foydalanuvchi hisobiga bog'lanmaydi."
+      },
+      {
+        "q": "O'rnatish uchun nima kerak?",
+        "a": "Oddiy kompyuter yoki server: PHP 8.1 va SQLite. Dastur litsenziya kaliti bilan faollashtiriladi va vaqti-vaqti bilan Biwork portali orqali tekshiriladi."
+      },
+      {
+        "q": "Ma'lumotlarim qayerda saqlanadi?",
+        "a": "Ishlar, majlislar va yuklangan hujjatlar faqat sizning serveringizdagi bazada va papkada turadi. Biwork portali faqat litsenziya kaliti va qurilma belgisini (nomi, tizimi, versiyasi) oladi."
+      }
+    ],
+    "seo": {
+      "title": "Biwork Yuridik — sud ishlari va majlislar kalendari",
+      "description": "Sud ishlari reyestri, majlislar kalendari va eslatmalar, majlis natijalari tarixi, sud hujjatlari arxivi. O'zbek tilida, ma'lumot o'z serveringizda.",
+      "keywords": [
+        "sud ishlari",
+        "yuridik dastur",
+        "majlislar kalendari",
+        "sud hujjatlari",
+        "yurist dasturi",
+        "sud ishlarini yuritish",
+        "Biwork Yuridik"
+      ]
+    },
+    "cta": {
+      "trial": "Sinab ko'rish",
+      "lead": "So'rov qoldirish",
+      "lead_title": "Biwork Yuridik haqida so'rov qoldiring",
+      "lead_text": "Telefon raqamingizni qoldiring — siz bilan bog'lanib, dastur yuridik xizmatingizga mos kelishini birga aniqlaymiz.",
+      "placeholder": "Masalan: nechta sud ishi yuritiladi, hozir majlislarni qayerda yozib borasiz?"
+    }
+  }
+}

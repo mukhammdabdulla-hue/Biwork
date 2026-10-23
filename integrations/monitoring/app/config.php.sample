@@ -1,0 +1,29 @@
+<?php
+/**
+ * Biwork Monitoring sozlamasi. Nusxa oling:  cp config.php.sample config.php
+ * config.php bo'lmasa dastur namuna korxona bilan, Biwork'dan mustaqil ishlaydi.
+ */
+return [
+    // Ma'lumotlar bazasi (SQLite). Standart: data/monitoring.sqlite
+    // 'db' => 'data/monitoring.sqlite',
+
+    // true: namuna korxona (14 ta to'qilgan uskuna) yaratiladi va soat qo'lda suriladi.
+    // Haqiqiy ma'lumot manbalari ulangandan keyin false qilinadi, shunda qoidalar real vaqtda (bin/tick.php) ishlaydi.
+    'demo_data' => true,
+
+    // Biwork platformasiga ulanish. Bo'lim bo'lmasa — mustaqil ish. Shartnoma: biwork/docs/TOOL_CONTRACT.md
+    // Ikkala holatda ham portal ochiq kalitlari kerak: ilova ildizida biwork-public.json
+    //   curl -s https://biwork.uz/api/v1/pubkey > biwork-public.json
+    'biwork' => [
+        'server' => 'https://biwork.uz',
+        'tool'   => 'monitoring',
+
+        // 1) Biwork serverida brauzer demosi: portaldan «Ochish» tugmasi bilan kiriladi
+        'sso' => true,
+        // 'customer_id' => 12,   // shaxsiy nusxa faqat shu korxonaning tokenini qabul qiladi
+        // 'demo' => true,        // umumiy namuna: har tashrifchiga alohida nusxa, sozlash yopiq
+
+        // 2) Mijoz kompyuteridagi ilova: faol litsenziyasiz ochilmaydi (/license.php)
+        // 'sso' => false, 'enforce' => true,
+    ],
+];

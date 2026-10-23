@@ -1,0 +1,72 @@
+{
+  "guide": {
+    "intro": "Ishlab chiqarish rahbarlari, sex boshliqlari va rejalashtiruvchilar uchun: uskuna uzoq to'xtasa, ish kech boshlansa yoki buyurtma muddatga ulgurmasa, tizim buni o'zi topib, nima qilish kerakligini ko'rsatadi. Hozir mahsulot «tez orada» holatida va sinov yo'q. Quyidagi qadamlar namuna korxona ma'lumotida ko'rsatilgan — tez orada chiqqanda brauzerda xuddi shunday sinab ko'rasiz.",
+    "steps": [
+      {
+        "title": "Bosh sahifada kun manzarasini ko'ring",
+        "text": "«Bosh sahifa» tepasida beshta karta: «Faol ogohlantirishlar», «Uskunalar holati», «Bugungi bandlik», «Vaqtida boshlangan ishlar» va «Xavfdagi buyurtmalar». «Hozir e'tibor talab qiladi» ro'yxatida eng muhim ogohlantirishlar tepada turadi; birini bossangiz, sababi va nima qilish kerakligi chiqadi. O'ngda uskunalar bo'limlar bo'yicha joriy holati bilan ko'rinadi.",
+        "shot": "bosh.webp",
+        "points": [
+          "Namunada yuqoridagi «+1 soat» tugmasi soatni suradi — vaziyat qanday o'zgarishini ko'rasiz",
+          "Yonidagi strelka menyusida «+30 daqiqa», «+4 soat», «Ertalab 08:00 gacha» va «Boshidan boshlash»"
+        ]
+      },
+      {
+        "title": "Ogohlantirishlarni saralang",
+        "text": "«Ogohlantirishlar» sahifasida «Faol» va «Yopilgan» ro'yxatlari bor. Jiddiylik bo'yicha «Hammasi», «Jiddiy», «Diqqat», «Ma'lumot» tugmalari va «Barcha turlar» ro'yxati bilan saralang, «Uskuna yoki buyurtma» maydonida qidiring. Har qatorda ogohlantirish matni, turi, davomiyligi, holati va mas'ul ko'rinadi.",
+        "shot": "ogohlantirishlar.webp",
+        "points": [
+          "Bir muammo uchun faqat bitta ochiq ogohlantirish bo'ladi",
+          "Muammo bartaraf bo'lsa ogohlantirish o'zi yopiladi"
+        ]
+      },
+      {
+        "title": "Ogohlantirishni oching, mas'ul tayinlang va yoping",
+        "text": "Ogohlantirishni bosing — o'ngda tafsilot ochiladi: «Nima bo'lyapti», «Nima qilish kerak», «Ko'rsatkichlar» va «Tarix». «Mas'ul va izoh» qismida mas'ulni tanlang, izoh yozib «Izohni saqlash»ni bosing. Ko'rib chiqqach «Ko'rdim», muammo hal bo'lgach «Yopish»ni bosing — yopishda qisqa izoh qoldirish mumkin.",
+        "shot": "tafsilot.webp",
+        "points": [
+          "Sabab hali bartaraf bo'lmagan bo'lsa, qo'lda yopilgan ogohlantirish 4 soatdan keyin qayta eslatiladi",
+          "«Uskuna sahifasi» tugmasi shu uskunaning to'liq ma'lumotiga o'tadi"
+        ]
+      },
+      {
+        "title": "Uskunani batafsil ko'ring",
+        "text": "«Uskunalar» sahifasida uskunani tanlang. Tepada «Hozirgi holat», «Bugungi bandlik», «Navbatdagi ishlar» va «Ta'mir (14 kun)» kartalari. «Reja va fakt» chizig'ida yuqori yo'lak — rejadagi ishlar, pastkisi — haqiqatda nima bo'lgani. Pastda «So'nggi 72 soat», oxirgi 7 kunlik bandlik, «To'xtash sabablari» va oxirgi to'xtashlar ro'yxati.",
+        "shot": "uskuna.webp"
+      },
+      {
+        "title": "Buyurtmalar muddatga ulgurishini tekshiring",
+        "text": "«Buyurtmalar» sahifasida «Hammasi» yoki «Faqat xavfdagilar»ni tanlang. Har buyurtma bosqichlari bilan ko'rinadi (kesish, bosma, laminatsiya, tigel va shtanz, yelimlash): qaysi biri tugagan, qaysi uskunada va qancha kechikmoqda. O'ngda «Muddat», «Taxminiy tugash» va muddatgacha qolgan zaxira yoki kechikish yoziladi.",
+        "shot": "buyurtmalar.webp",
+        "points": [
+          "Tugash vaqti hozirgi holat va reja asosida hisoblanadi — shuning uchun «taxminiy»"
+        ]
+      },
+      {
+        "title": "Reja va faktni solishtiring",
+        "text": "«Reja va fakt» sahifasida «±6 soat», «±12 soat» yoki «±24 soat» oralig'ini tanlang. Har uskuna uchun ikki yo'lak: yuqorisi — reja, pastkisi — fakt («Ishlagan», «Sozlash», «To'xtagan», «Bo'sh / tanaffus»); qizil chiziq — hozirgi vaqt. O'ng ustunda vaqtida boshlangan ishlar soni va «Me'yorga nisbatan» ko'rsatkichi turadi.",
+        "shot": "rejafakt.webp",
+        "points": [
+          "Reja ma'lumoti sifatida Biwork Reja ko'zda tutilgan; uni ulash keyingi bosqichda tayyorlanadi"
+        ]
+      },
+      {
+        "title": "Qoidalar chegarasini sozlang",
+        "text": "«Qoidalar» sahifasida qoidalar guruhlar bo'yicha turadi (masalan «To'xtashlar», «Reja va fakt»). Har kartada chegaralar bor: masalan «To'xtashdan keyin ogohlantirish» 60 daqiqa, «Jiddiy deb belgilash» 3 baravar uzoq. Qiymatni o'zgartiring, «Qoida yoqilgan» kalitini kerakligicha qo'ying va «Saqlash»ni bosing.",
+        "shot": "qoidalar.webp",
+        "points": [
+          "Noto'g'ri qiymat kiritilsa tizim rad etadi",
+          "O'chirilgan qoidaning ochiq ogohlantirishlari yopiladi",
+          "Qoidalarni administrator o'zgartiradi; umumiy namunada ular faqat ko'rish uchun"
+        ]
+      }
+    ],
+    "tips": [
+      "Hozir barcha sahifalar namuna korxona ma'lumotida ishlaydi. Sizning ma'lumotingizni (ERP hisoboti yoki Biwork Reja) ulash korxonangiz bilan birga sozlanadi va hali umumiy ko'rinishda tayyor emas.",
+      "Namunadagi uskuna, buyurtma va odam nomlari to'liq to'qilgan.",
+      "«Boshidan boshlash» namunani dastlabki holatga qaytaradi: soat, ogohlantirishlar va izohlar tozalanadi.",
+      "Ogohlantirishlar ko'payib ketsa, keraksiz qoidani o'chiring yoki chegarasini oshiring — qoidalar korxonangizga moslab sozlanadi.",
+      "«Ma'lumot manbalari» sahifasi har manba qachon yangilanganini ko'rsatadi; manba kechiksa, tizim o'zi ogohlantiradi."
+    ]
+  }
+}

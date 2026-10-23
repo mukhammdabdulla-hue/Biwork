@@ -1,0 +1,6 @@
+sessions/
+keys/
+releases/
+*.sqlite*
+setup_key.txt
+error.log

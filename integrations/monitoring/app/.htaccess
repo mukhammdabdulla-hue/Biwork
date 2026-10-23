@@ -1,0 +1,13 @@
+# Biwork Monitoring — ilova ildizi. To'g'ri sozlash: Hujjatlar ildizi = .../app/public
+# Ildiz noto'g'ri bo'lib, shu papka ochilib qolsa: maxfiy papkalar yopiladi va public/ ga yo'naltiriladi.
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule (^|/)\. - [F,L]
+  RewriteRule ^(src|data|bin|tests)(/|$) - [F,L]
+  RewriteRule ^(config\.php|biwork-public\.json|start\.sh|start\.bat|README\.md)$ - [F,L]
+  RewriteCond %{REQUEST_URI} !/public/
+  RewriteCond %{REQUEST_URI}::$1 ^(.*?/)(.*)::\2$
+  RewriteRule ^(.*)$ %1public/$1 [R=302,L]
+</IfModule>

@@ -1,0 +1,14 @@
+# Biwork: admin «Demo versiyalari» joylashtirgan demolar (/demo/<slug>/). Fayllarni qo'lda o'zgartirmang:
+# versiya joriy qilinganda papka zipdan qaytadan ochiladi.
+Options -Indexes
+DirectoryIndex index.php index.html
+<IfModule mod_rewrite.c>
+  # o'z qoidalari: portalning public/.htaccess dagi qayta yozish qoidalari bu papkada ishlamaydi
+  RewriteEngine On
+  RewriteRule (^|/)\. - [F,L]
+</IfModule>
+<FilesMatch "^\.">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+</FilesMatch>

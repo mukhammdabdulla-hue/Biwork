@@ -1,0 +1,12 @@
+{
+  "slug": "moliya",
+  "code": "MOL",
+  "name": "Biwork Moliya",
+  "sub": "Pul oqimi, biznes reja va qarzdorlik",
+  "home": "#/bolim/dashboard",
+  "modules": [
+    "moliya",
+    "hisobot"
+  ],
+  "css": ".field-mini:has(#cfLoyiha){display:none!important}#ddsYuklaBtn{display:none!important}"
+}

@@ -1,0 +1,66 @@
+{"guide": {
+  "intro": "Biwork Moliya — rahbar va moliya xodimlari uchun: pul oqimi, biznes reja ijrosi, debitor-kreditor qarzlar va oylik balans bitta oynada. Brauzerda 30 kunlik bepul sinovda xayoliy savdo korxonasi ma'lumoti bilan kirim-chiqimni tahlil qilish, reja va faktni solishtirish, qarz kartasini tahrirlash va PDF hisobot olishni qilib ko'rasiz.",
+  "steps": [
+    {
+      "title": "Bosh sahifada asosiy raqamlarni ko'ring",
+      "text": "Kirgach «Bosh sahifa» ochiladi: «Kirim», «Chiqim», «Pul qoldig'i», «Qarzdorlik (sof)» va «Sof foyda» bir qatorda. Ostida «Biznes reja» grafigi (fakt va reja) hamda «Pul qoldig'i» — hisob raqamlari, depozitlar va tovar qoldig'i bo'yicha. Davrni o'ng yuqoridagi «Oy», «Chorak», «Yil» tugmalari va oy tanlagichi bilan almashtirasiz.",
+      "shot": "dashboard.webp",
+      "points": [
+        "Korxona sahifa tepasidagi tanlagich bilan almashtiriladi — namunada ikki korxona bor"
+      ]
+    },
+    {
+      "title": "Pul oqimida qoldiq va kirim-chiqimni tahlil qiling",
+      "text": "«Moliya» yorlig'ida «Pul oqimi» ni tanlang. «Hisob raqamlari bo'yicha qoldiq» blokida hisoblardagi pul, tovar qoldig'i va jami aylanma mablag' turadi; «Hisoblar kesimida» ni ochsangiz, har hisob alohida ko'rinadi. «Davr bo'yicha tahlil» grafigi kirim, chiqim va davr oxiridagi qoldiqni ko'rsatadi, pastdagi «Davr tafsiloti» esa tanlangan oy bo'yicha kirim, chiqim, sof oqim va davr oxiri balansini.",
+      "shot": "pul-oqimi.webp",
+      "points": [
+        "Grafik davri o'ng tomondagi ro'yxatlardan tanlanadi: ko'rinish («Oylik»), yil va oy",
+        "Kassa va bank alohida; inkassatsiya va depozitga o'tkazmalar «ichki aylanma» qatorida ko'rinadi"
+      ]
+    },
+    {
+      "title": "Kirim va chiqimlarni jurnalga kiriting",
+      "text": "«Pul oqimi» dagi tranzaksiyalar jurnalini oching (o'ng yuqoridagi ro'yxat belgisi). Har kirim yoki chiqimni qo'lda qo'shasiz yoki CSV/Excel'dan joylaysiz — ustunlar: Sana, Hisob, Turi, Kategoriya, Tavsif, Summa. Jurnal qidiruv va filtr bilan ishlaydi, kategoriyalarni o'zingiz sozlaysiz; qoldiq va davr tahlili shu yozuvlardan hisoblanadi."
+    },
+    {
+      "title": "Biznes rejada reja va faktni solishtiring",
+      "text": "«Biznes reja» da yilni va «Oylar» yoki «Choraklar» ni tanlang. Kartochkalar — «Tushum», «Davr xarajatlari», «Asosiy faoliyat», «Moliyaviy faoliyat», «Sof foyda» — faktni va rejadan og'ishni foizda ko'rsatadi. Ostidagi grafik tanlangan ko'rsatkich bo'yicha oyma-oy fakt va rejani chizadi, «Tarkibi» jadvalida esa har qator fakt, reja va og'ish bilan turadi.",
+      "shot": "biznes-reja.webp",
+      "points": [
+        "To'liq hisobot jadvalida qatorlarga izoh yozasiz",
+        "Reja qatorlarini qo'lda tahrirlash mumkin",
+        "Og'ishlar, xarajat moddalari va yillar bilan solishtirish"
+      ]
+    },
+    {
+      "title": "Debitor va kreditor qarzlarini kuzating",
+      "text": "«Kreditor-Debitor» da «Debitorlik» yoki «Kreditorlik» ni tanlang. Yuqorida davr boshidagi va oxiridagi qarz hamda o'zgarish; «Tahlil diagrammasi» da har tashkilot bo'yicha davr boshi, oxiri va o'zgarish so'mda va foizda. Davrni ikki sana bilan belgilaysiz, tashkilot, shartnoma yoki izoh bo'yicha qidirasiz.",
+      "shot": "qarzdorlik.webp",
+      "points": [
+        "Har qarzga ish holati belgilanadi: yangi, muzokara, pretenziya, kelishuv, sud, ijro, umidsiz yoki yopilgan"
+      ]
+    },
+    {
+      "title": "Qarz kartasida chora va harakatlarni yuriting",
+      "text": "Jadvalda tashkilot nomini bosing — karta ochiladi: debitorlik (bizga qarz), kreditorlik (bizning qarz) va sof pozitsiya; shartnoma, qarz sanasi, necha kun o'tgani va ko'rilgan chora. «Qarz harakati tarixi» da kunlik harakatlar turadi. Yozuvning ish holati, sud ma'lumoti, chorasi va summasini qalam belgisi bilan shu yerda tahrirlaysiz, «Yopish» bilan chiqasiz.",
+      "shot": "qarz-karta.webp"
+    },
+    {
+      "title": "Balansni ko'ring va PDF hisobot oling",
+      "text": "«Balans» da oyni va «Holat» yoki «Oylar» ko'rinishini tanlang: balans qiymati asosiy vositalar, tovarlar, xom ashyo va materiallar bo'yicha, ostida har guruh oyma-oy va eng katta qoldiqlar bilan. Pul oqimi, qarzdorlik, balans va biznes reja ijrosi hisobotlari PDF bo'lib chiqadi — ularni bo'lim sahifasining o'ng yuqorisidagi tugmalardan olasiz.",
+      "shot": "balans.webp",
+      "points": [
+        "Oy oxiri keyingi oy boshiga mos kelmasa, tizim buni ko'rsatadi",
+        "Balans Excel'ga ham chiqariladi"
+      ]
+    }
+  ],
+  "tips": [
+    "1C bilan to'g'ridan-to'g'ri ulanish yo'q. Biznes reja va balans 1C hisobotining muayyan shakllaridan (Excel) yuklanadi: «Отчет выполнения БП», «Материальный отчет», «Ведомость амортизации ОС».",
+    "Yangi debitor yoki kreditor hozircha qo'lda qo'shilmaydi: ular vedomost fayli orqali tushadi, tushgan yozuvni esa qo'lda tahrirlaysiz.",
+    "Bank bilan avtomatik ulanish yo'q: ko'chirma ma'lumotini jurnalga qo'lda yoki CSV/Excel orqali kiritasiz.",
+    "Har korxona o'z pul oqimi, qarzdorligi, biznes rejasi va balansi bilan alohida yuritiladi; tepadagi tanlagich bilan almashtirasiz.",
+    "O'z serveringizga o'rnatgach, administrator panelida avval korxona yarating va uning kartasida moliya sozlamalarini yoqing — namunada ular tayyor qo'yilgan.",
+    "Sinovda kiritgan ma'lumotingiz faqat sizning namuna nusxangizda turadi va 30 kundan keyin tozalanadi. Litsenziya olgach, dastur serveringizda bo'sh bazadan boshlanadi."
+  ]
+}}

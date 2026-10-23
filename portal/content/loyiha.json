@@ -1,0 +1,70 @@
+{"guide": {
+  "intro": "Biwork Loyiha — rahbar, loyiha ofisi va bo'lim boshliqlari uchun: loyihalar holati, vazifalar ijrosi va xodimlarga berilgan topshiriqlar bitta panelda. Brauzerda 30 kunlik bepul sinovda xayoliy namuna ma'lumot bilan loyiha qo'shish, bosqich va risklarni ko'rish, ijroni nazorat qilish, topshiriq berib qabul qilish va PDF hisobot olishni qilib ko'rasiz.",
+  "steps": [
+    {
+      "title": "Bosh sahifada umumiy holatni ko'ring",
+      "text": "Kirgach «Bosh sahifa» ochiladi. Yuqorida faol loyihalar soni va ulardan nechtasi xavf ostida ekani turadi. «Masalalar» blokida kechikkan va e'tibor talab qiladigan ishlar necha kun kechikkani bilan chiqadi, «Loyihalar» blokida esa holatlar diagrammasi, o'rtacha bajarilish va kechikkan vazifalar soni.",
+      "shot": "bosh.webp",
+      "points": [
+        "Davrni o'ng yuqoridagi «Oy», «Chorak», «Yil» tugmalari va oy tanlagichi bilan almashtirasiz",
+        "«E'tiborli loyihalar» ro'yxatida xavf ostidagi loyihalar bajarilish foizi va muddati bilan turadi"
+      ]
+    },
+    {
+      "title": "Loyihalar ro'yxatini oching va yangi loyiha qo'shing",
+      "text": "«Loyiha» yorlig'ida «Loyihalar» bo'limini oching. Har kartochkada loyiha raqami, mas'uli, bajarilish foizi, qolgan kun va holat («Jadval bo'yicha», «E'tibor kerak», «Xavf ostida») sababi bilan yoziladi: masalan «2 ta vazifa ortda qolgan». Yangi loyiha uchun o'ng yuqoridagi «Yangi loyiha» tugmasini bosing.",
+      "shot": "loyihalar.webp",
+      "points": [
+        "«Barchasi» va «Muddat» ro'yxatlari bilan saralaysiz, lupa belgisi bilan nomi bo'yicha qidirasiz",
+        "Kartochka va ro'yxat ko'rinishi yonma-yon turgan ikki tugma bilan almashtiriladi",
+        "Yuqoridagi «Jami», «Jarayonda», «Yakunlangan» loyihalar sonini ko'rsatadi"
+      ]
+    },
+    {
+      "title": "Loyiha kartasida maqsad, bosqich va risklarni to'ldiring",
+      "text": "Kartochkani bosing — loyiha sahifasi «Karta», «Jadval» va «Ijro va jarayon» yorliqlari bilan ochiladi. «Karta»da muddat ko'rsatkichi (SPI) va risklar soni, «Maqsad va natijalar» bloki (maqsad, natijalar, mezonlar) hamda «Bosqichlar» jadvali turadi. Natija, mezon yoki bosqich qo'shish uchun blok yonidagi «+» ni, maqsadni o'zgartirish uchun qalam belgisini bosing.",
+      "shot": "karta.webp",
+      "points": [
+        "«Asos», «Doiraga kiradi», «Doiraga kirmaydi», «Taxminlar», «Cheklovlar» — loyiha pasportining qo'shimcha bo'limlari",
+        "Risklar ehtimol va ta'sir bo'yicha baholanadi, chora va mas'ul yoziladi",
+        "Bosqichlar Gantt ko'rinishida: sanalari va bajarilish foizi bilan"
+      ]
+    },
+    {
+      "title": "Vazifalarni «Jadval» yorlig'ida yuriting",
+      "text": "«Jadval» yorlig'ida loyiha vazifalari bosqichlar bo'yicha turadi: ijrochi, muddat, vazifalar orasidagi bog'liqlik va kritik yo'l Gantt ko'rinishida chiqadi. Vazifalar shu yerda qo'lda kiritiladi. Kritik yo'ldagi vazifa kechiksa, loyiha holati «Xavf ostida» ga o'tadi."
+    },
+    {
+      "title": "Ijroni «Ijro va jarayon» yorlig'ida nazorat qiling",
+      "text": "Vazifalar bosqichlar bo'yicha guruhlangan: har qatorda ijro izohi va nazorat holati («Qabul qilindi», «Tasdiq kutmoqda») ko'rinadi. Bajarilgan vazifa «Tasdiq kutmoqda» ga tushadi — nazoratchi uni qabul qiladi yoki sabab yozib qaytaradi. O'ngdagi «Jarayon lentasi» har voqeani vaqti bilan ko'rsatadi: vazifa berildi, mas'ul tanishdi, ish boshlandi va hokazo.",
+      "shot": "ijro.webp",
+      "points": [
+        "Filtrlar: «Hammasi», «Tasdiq kutmoqda», «Ochiq», «Kechikkan», «Mening ishlarim», «Yakunlangan»",
+        "Kechikish sababi va yangi va'da sanasi saqlanadi",
+        "Bajarilgan ishga fayl biriktiriladi — qatorda qisqich belgisi bilan ko'rinadi"
+      ]
+    },
+    {
+      "title": "Xodimga topshiriq bering va natijani qabul qiling",
+      "text": "Yuqori o'ngdagi topshiriqlar belgisini (lupa yonida) bosing. «Yangi topshiriq» bilan bir yoki bir necha ijrochini tanlab, muddat va muhimlikni belgilaysiz. Ijrochi natijani yozib fayl biriktiradi; topshiriq «Tasdiq kutmoqda» holatiga o'tgach, «Men berganlarim» ro'yxatida «Qabul qilish» tugmasi chiqadi.",
+      "shot": "topshiriq.webp",
+      "points": [
+        "«Men berganlarim», «Menga berilgan», «Hammasi» — kim nima berganini ajratib ko'rasiz",
+        "Holat filtrlari: «Kechikkan», «Yangi», «Bajarilmoqda», «Tasdiq kutmoqda», «Yopilgan»",
+        "Muntazam ish uchun takrorlanish: har kuni, haftada, oyda, chorakda yoki yilda"
+      ]
+    },
+    {
+      "title": "PDF hisobot oling",
+      "text": "«Loyihalar» ro'yxati ustidagi hujjat belgisini bosib, loyihalar bo'yicha PDF hisobot olasiz: qisqa holat, ishlar kesimida yoki to'liq. Bitta loyiha bo'yicha bajarilgan va qolgan ishlar hisobotini loyiha sahifasining o'ng yuqorisidagi hujjat belgisidan olasiz. Alohida «Hisobotlar» menyusi yo'q — hisobotlar shu tugmalardan olinadi."
+    }
+  ],
+  "tips": [
+    "Holat o'zi hisoblanadi: muddati o'tgan loyiha, kritik yo'ldagi kechikkan vazifa yoki o'tib ketgan bosqich — «Xavf ostida»; kechikkan vazifa yoki izohsiz kechikish — «E'tibor kerak».",
+    "Loyiha vazifasi loyiha jadvalida turadi (bosqich, muddat, bog'liqlik). Topshiriq esa odamdan odamga beriladigan alohida ish: bir martalik yoki takrorlanadigan.",
+    "Mas'ul va ijrochilar «Xodimlar» ro'yxatidan tanlanadi. Bu mahsulotda ro'yxat faqat ko'rish uchun ochiq: xodim kartalarini yuritish Biwork HR ga kiradi.",
+    "Loyiha, vazifa va topshiriqlar qo'lda kiritiladi: Excel yoki boshqa tizimdan yuklash hozircha yo'q.",
+    "Ctrl+K bilan loyiha, vazifa va topshiriqlarni tez qidirasiz.",
+    "Sinovda kiritgan ma'lumotingiz faqat sizning namuna nusxangizda turadi va 30 kundan keyin tozalanadi. Litsenziya olgach, dastur serveringizda bo'sh bazadan boshlanadi."
+  ]
+}}

@@ -1,0 +1,33 @@
+# Biwork Monitoring — Apache (Plesk) qoidalari. Hujjatlar ildizi (Document root) = .../monitoring/app/public
+DirectoryIndex index.php
+Options -Indexes
+AddDefaultCharset UTF-8
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule (^|/)\.(?!well-known/) - [F,L]
+  RewriteRule ^router\.php$ - [F,L]
+  RewriteCond %{REQUEST_FILENAME} -f
+  RewriteRule ^ - [L]
+  RewriteRule ^api(/.*)?$ api.php [L,QSA]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteRule ^ index.php [L,QSA]
+</IfModule>
+
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  <FilesMatch "\.(js|css|svg|png)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>
+
+<IfModule mod_mime.c>
+  AddType application/javascript .js
+  AddType image/svg+xml .svg
+</IfModule>
+
+<FilesMatch "^\.">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+</FilesMatch>

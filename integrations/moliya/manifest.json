@@ -1,0 +1,267 @@
+{
+  "contract": 1,
+  "slug": "moliya",
+  "code": "MOL",
+  "name": "Biwork Moliya",
+  "tagline": "Pul oqimi, biznes reja, qarzdorlik va balans bir joyda",
+  "category": "Boshqaruv va hisob",
+  "icon": "chart",
+  "status": "active",
+  "sort": 50,
+  "description": "Biwork Moliya korxonaning moliyaviy holatini bir oynada ko'rsatadi: kassa va bank bo'yicha pul oqimi, biznes reja (reja va fakt), debitor va kreditor qarzlar hamda oylik balans hisobotlari. Rahbar bosh sahifada asosiy raqamlarni ko'radi, har bo'limdan PDF hisobot olinadi.\n\nPul oqimi jurnali qo'lda yoki CSV/Excel'dan to'ldiriladi. Biznes reja, balans va qarzdorlik vedomosti buxgalteriya (1C) hisobot fayllaridan yuklanadi, reja va balans qatorlarini qo'lda ham tahrirlash mumkin. 1C bilan to'g'ridan-to'g'ri bog'lanish yo'q: hisobotni Excel faylga chiqarib yuklaysiz, yuklash hozir muayyan hisobot shakllariga sozlangan.\n\nInterfeys o'zbek tilida. Bir nechta korxona (yuridik shaxs) alohida yuritiladi — har birining o'z pul oqimi, qarzdorligi, biznes rejasi va balansi bor.",
+  "highlights": [
+    "Kassa va bank bo'yicha pul oqimi: kirim, chiqim, qoldiq va davr tahlili",
+    "Biznes reja: reja va fakt oyma-oy, og'ish va izohlar bilan",
+    "Debitor va kreditor reyestri: ish holati (sud, ijro) va kunlik harakat tarixi",
+    "Oyma-oy balans: tovar, xom ashyo, inventar va asosiy vositalar",
+    "PDF hisobotlar; bir nechta korxona alohida yuritiladi"
+  ],
+  "web": {
+    "url": "",
+    "launch": "token"
+  },
+  "trial": {
+    "enabled": true,
+    "days": 14
+  },
+  "plans": [
+    {
+      "code": "standard",
+      "name": "Standart",
+      "type": "paid",
+      "seats": 1,
+      "days": 365,
+      "limits": {},
+      "features": [
+        "web_demo",
+        "app",
+        "download"
+      ]
+    },
+    {
+      "code": "business",
+      "name": "Korxona",
+      "type": "paid",
+      "seats": 3,
+      "days": 365,
+      "limits": {},
+      "features": [
+        "web_demo",
+        "app",
+        "download"
+      ]
+    }
+  ],
+  "package": {
+    "min_php": "8.1",
+    "extensions": [
+      "pdo_sqlite",
+      "mbstring",
+      "json",
+      "sodium"
+    ]
+  },
+  "marketing": {
+    "headline": "Pul oqimi, biznes reja va qarzdorlik — rahbar uchun bitta oynada",
+    "lead": "Biwork Moliya kassa va bank harakatini, reja va fakt natijalarini, debitor-kreditor qarzlarini va oylik balansni bir joyga yig'adi. Rahbar bosh sahifada asosiy raqamlarni ko'radi, buxgalteriya esa jurnalni qo'lda, CSV/Excel orqali yoki 1C hisobot fayllaridan to'ldiradi.",
+    "badges": [
+      "O'zbek tilida",
+      "Pul oqimi va biznes reja",
+      "Debitor-kreditor reyestri",
+      "Oylik balans",
+      "PDF hisobotlar",
+      "Bir nechta korxona"
+    ],
+    "problems": [
+      {
+        "title": "Pul qayerga ketayotgani ko'rinmaydi",
+        "text": "Kassa va bank harakati turli fayllarda yuradi; oy oxirida qoldiq va kategoriyalar bo'yicha chiqim qo'lda yig'iladi."
+      },
+      {
+        "title": "Reja va fakt alohida yuradi",
+        "text": "Tushum va xarajat rejasi bir faylda, haqiqiy natija boshqasida — og'ish qayerdaligini topish uchun ko'p vaqt ketadi."
+      },
+      {
+        "title": "Qarzdorlik nazoratdan chiqib ketadi",
+        "text": "Kim qancha qarz, qaysi birining muddati o'tgan, qaysi biri sudda yoki ijroda — hammasi daftar va yozishmalar orasida tarqoq."
+      },
+      {
+        "title": "Balans hisobotlari 1C da qolib ketadi",
+        "text": "Tovar, xom ashyo va asosiy vositalar qoldig'ini oyma-oy solishtirish uchun har safar hisobotni qayta ochib, qo'lda taqqoslashga to'g'ri keladi."
+      },
+      {
+        "title": "Rahbarga tayyor hisobot kerak",
+        "text": "Direktor uchun qisqa, bir xil ko'rinishdagi hisobotni har safar noldan yig'ish — buxgalterning vaqtini oladi."
+      }
+    ],
+    "features": [
+      {
+        "title": "Rahbar uchun bosh sahifa",
+        "text": "Kirim, chiqim, pul qoldig'i, sof qarzdorlik va sof foyda bitta qatorda. Ostida biznes reja grafigi, hisoblar bo'yicha qoldiq, moliyaviy dinamika, majburiyatlar va aktivlar tarkibi. Rasmdagi raqamlar namuna ma'lumotga tegishli.",
+        "points": [
+          "Oy, chorak va yil bo'yicha ko'rinish",
+          "Hisob raqamlari va depozitlar bo'yicha qoldiq",
+          "Eng katta debitor va kreditorlar"
+        ],
+        "shot": "dashboard.webp"
+      },
+      {
+        "title": "Biznes reja: reja va fakt oyma-oy",
+        "text": "Tushum, davr xarajatlari, asosiy va moliyaviy faoliyat natijasi hamda sof foyda reja bilan solishtiriladi; og'ish so'mda va foizda ko'rinadi. To'liq hisobot jadvalida qatorlarga izoh yozish mumkin.",
+        "points": [
+          "Oylar va choraklar kesimi",
+          "Og'ishlar, xarajat moddalari va yillar bilan solishtirish",
+          "Hisobot fayldan yuklanadi yoki qatorlar qo'lda tahrirlanadi"
+        ],
+        "shot": "biznes-reja.webp"
+      },
+      {
+        "title": "Pul oqimi: kassa va bank",
+        "text": "Hisoblar bo'yicha qoldiq, davr tahlili (kirim, chiqim, davr oxiridagi qoldiq) va kategoriya kesimi. Tranzaksiyalar jurnali qidiruv va filtr bilan ishlaydi; yozuvni qo'lda qo'shasiz yoki CSV/Excel'dan joylaysiz.",
+        "points": [
+          "Kassa va bank alohida; ichki o'tkazmalar (inkassatsiya, depozit) «ichki aylanma» qatorida ko'rinadi",
+          "Kategoriyalarni o'zingiz sozlaysiz",
+          "Tovar qoldig'i va jami aylanma mablag'"
+        ],
+        "shot": "pul-oqimi.webp"
+      },
+      {
+        "title": "Debitor va kreditor reyestri",
+        "text": "Tashkilotlar kesimida qarz davr boshi va oxirida, o'zgarish so'mda va foizda. Har qarzga ish holati belgilanadi: yangi, muzokara, pretenziya, kelishuv, sud, ijro, umidsiz yoki yopilgan.",
+        "points": [
+          "Qidiruv va davr tanlash",
+          "Holat bo'yicha jamlama PDF hisobot",
+          "Debitor va kreditor bitta oynada, sof holat bilan"
+        ],
+        "shot": "qarzdorlik.webp"
+      },
+      {
+        "title": "Qarz kartasi: chora va harakat tarixi",
+        "text": "Tashkilotni bossangiz — shartnoma, qarz sanasi, necha kun o'tgani, ko'rilgan chora (masalan, sud qarori, ijro varaqasi) va kunlik harakat tarixi ochiladi. Yozuvni shu yerning o'zida tahrirlaysiz.",
+        "points": [],
+        "shot": "qarz-karta.webp"
+      },
+      {
+        "title": "Oyma-oy balans hisobotlari",
+        "text": "Tovar, xom ashyo va materiallar, balansdan tashqari inventar va asosiy vositalar (amortizatsiya bilan): oy yakuni, oylar kesimi va eng katta qoldiqlar. Oy oxiri keyingi oy boshiga mos kelmasa, tizim buni ko'rsatadi.",
+        "points": [
+          "Hisobot 1C faylidan yuklanadi, qatorlarni qo'lda ham qo'shish mumkin",
+          "Filtr, qidiruv va Excel'ga chiqarish",
+          "PDF hisobot"
+        ],
+        "shot": "balans.webp"
+      },
+      {
+        "title": "PDF hisobotlar va bir nechta korxona",
+        "text": "Pul oqimi, qarzdorlik, balans va biznes reja ijrosi hisobotlari PDF ko'rinishida tayyorlanadi. Bir nechta korxonani alohida yuritasiz — tepadagi tanlagich bilan almashtirasiz.",
+        "points": [],
+        "shot": ""
+      }
+    ],
+    "shots": [
+      {
+        "file": "dashboard.webp",
+        "caption": "Bosh sahifa: asosiy ko'rsatkichlar, biznes reja, hisoblar bo'yicha qoldiq",
+        "alt": "Biwork Moliya: rahbar uchun bosh sahifa"
+      },
+      {
+        "file": "biznes-reja.webp",
+        "caption": "Biznes reja: sof foyda oyma-oy, reja va fakt, og'ish",
+        "alt": "Biwork Moliya: biznes reja, reja va fakt grafigi"
+      },
+      {
+        "file": "pul-oqimi.webp",
+        "caption": "Pul oqimi: hisoblar qoldig'i va davr bo'yicha kirim-chiqim tahlili",
+        "alt": "Biwork Moliya: pul oqimi sahifasi"
+      },
+      {
+        "file": "qarzdorlik.webp",
+        "caption": "Debitorlik: tashkilotlar kesimida davr boshi, oxiri va o'zgarish",
+        "alt": "Biwork Moliya: debitor-kreditor reyestri"
+      },
+      {
+        "file": "qarz-karta.webp",
+        "caption": "Qarz kartasi: ko'rilgan chora va kunlik harakat tarixi",
+        "alt": "Biwork Moliya: tashkilot bo'yicha qarz kartasi"
+      },
+      {
+        "file": "balans.webp",
+        "caption": "Balans: oyma-oy tovar, xom ashyo, inventar va asosiy vositalar",
+        "alt": "Biwork Moliya: balans hisobotlari sahifasi"
+      }
+    ],
+    "audience": [
+      {
+        "title": "Savdo va ishlab chiqarish korxonalari rahbarlari",
+        "text": "Pul qayerdaligini, reja bajarilishini va kim qancha qarzdorligini har kuni bir joyda ko'rishni istaganlar."
+      },
+      {
+        "title": "Bosh hisobchi va moliya bo'limi",
+        "text": "Kassa-bank jurnalini yuritadigan va 1C hisobotlarini rahbarga tushunarli ko'rinishga keltirishi kerak bo'lganlar."
+      },
+      {
+        "title": "Debitor-kreditor bilan ishlaydigan menejerlar",
+        "text": "Muddati o'tgan qarzlarni, pretenziya, sud va ijro bosqichlarini bir reyestrda kuzatadiganlar."
+      },
+      {
+        "title": "Bir nechta kompaniyasi bor tadbirkorlar",
+        "text": "Har korxonani alohida yuritib, bitta kabinetdan almashtirib ko'rishni xohlaganlar."
+      }
+    ],
+    "faq": [
+      {
+        "q": "Sinab ko'rish uchun nima kerak?",
+        "a": "Ro'yxatdan o'ting (korxona nomi va email yetarli) — Biwork Moliyani brauzerda namuna ma'lumot bilan sinab ko'rasiz. Hech narsa o'rnatish shart emas."
+      },
+      {
+        "q": "Ma'lumotni qanday kiritaman?",
+        "a": "Pul oqimi jurnalini qo'lda to'ldirasiz yoki CSV/Excel'dan joylaysiz (ustunlar: Sana, Hisob, Turi, Kategoriya, Tavsif, Summa). Biznes reja, balans va qarzdorlik vedomosti Excel (.xlsx) hisobot fayllaridan yuklanadi; biznes reja va balans qatorlarini qo'lda ham tahrirlash mumkin."
+      },
+      {
+        "q": "1C bilan bog'lanish bormi?",
+        "a": "To'g'ridan-to'g'ri integratsiya yo'q: hisobotni 1C dan Excel faylga chiqarib, Biwork Moliyaga yuklaysiz. Yuklash hozir muayyan shakllarga sozlangan: biznes reja — «Отчет выполнения БП», balans — «Материальный отчет» va «Ведомость амортизации ОС», qarzdorlik — «Дебитор» va «Кредитор» varaqli fayl. Boshqa shakldagi fayllar uchun moslashtirish kerak bo'lishi mumkin."
+      },
+      {
+        "q": "Debitor yoki kreditorni qo'lda qo'shsam bo'ladimi?",
+        "a": "Hozircha yangi qarz yozuvlari vedomost fayli orqali tushadi. Tushgan yozuvning ish holati, sud ma'lumoti, ko'rilgan chorasi va summasini qo'lda tahrirlaysiz."
+      },
+      {
+        "q": "Bank bilan avtomatik ulanish bormi?",
+        "a": "Yo'q. Bank ko'chirmasini avtomatik olish yo'q — tranzaksiyalar jurnalga qo'lda yoki CSV/Excel orqali kiritiladi."
+      },
+      {
+        "q": "Qanday hisobotlar chiqadi?",
+        "a": "PDF: pul oqimi (moliya) hisoboti, qarzdorlik hisoboti, balans hisoboti va biznes reja ijrosi. Balans Excel'ga ham chiqariladi."
+      },
+      {
+        "q": "Bir nechta korxona bilan ishlash mumkinmi?",
+        "a": "Ha. Har korxona o'z pul oqimi, qarzdorligi, biznes rejasi va balansi bilan alohida yuritiladi; tepadagi tanlagich bilan almashtirasiz."
+      },
+      {
+        "q": "Ma'lumotlarim qayerda saqlanadi?",
+        "a": "Moliyaviy ma'lumotlar sizning serveringizdagi bazada turadi. Biwork portali faqat litsenziyani tekshirish uchun kerak."
+      }
+    ],
+    "seo": {
+      "title": "Biwork Moliya — pul oqimi, biznes reja va qarzdorlik dasturi",
+      "description": "Pul oqimi (kassa va bank), biznes reja (reja va fakt), debitor-kreditor reyestri va oylik balans bir joyda. O'zbek tilida, PDF hisobotlar, 1C hisobotlarini yuklash.",
+      "keywords": [
+        "moliya dasturi",
+        "pul oqimi",
+        "biznes reja",
+        "debitor kreditor",
+        "qarzdorlik hisobi",
+        "kassa bank jurnali",
+        "balans hisoboti",
+        "Biwork Moliya"
+      ]
+    },
+    "cta": {
+      "trial": "Sinab ko'rish",
+      "lead": "So'rov qoldirish",
+      "lead_title": "Biwork Moliya haqida so'rov qoldiring",
+      "lead_text": "Telefon raqamingizni qoldiring — siz bilan bog'lanib, dastur hisobot shakllaringizga mos kelishini birga aniqlaymiz.",
+      "placeholder": "Masalan: nechta korxona bor, hisobotlarni qaysi dasturdan olasiz?"
+    }
+  }
+}

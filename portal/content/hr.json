@@ -1,0 +1,73 @@
+{
+  "guide": {
+    "intro": "Kadrlar bo'limi, rahbarlar va buxgalteriya uchun: xodimlar bazasi, QR-kod bilan ish vaqti, avtomatik tabel va hujjatlar bilan tanishuv bitta panelda. Brauzerda 30 kunlik bepul sinovda xayoliy korxona namunasida xodim qo'shish, davomat va kechikishlarni ko'rish, QR joyini sozlash, tabelni chiqarish va hujjat yuklashni o'zingiz qilib ko'rasiz.",
+    "steps": [
+      {
+        "title": "Sinovni boshlang va panelni oching",
+        "text": "Mahsulot sahifasida «Sinab ko'rish»ni bosing, korxona nomi, ismingiz, email va parolni kiritib «Hisob yaratish»ni bosing. Kabinetda sinovni boshlang va «Brauzerda ochish»ni bosing. Panel xayoliy korxona namunasi bilan ochiladi: yuqorida «Bosh sahifa» va «Xodimlar» yorliqlari, o'ng tomonda qidiruv va hujjatlar belgisi.",
+        "points": [
+          "Namunada 35 ga yaqin xodim, 6 bo'lim, 3 ish joyi, bir necha oylik davomat va 9 ta hujjat bor"
+        ]
+      },
+      {
+        "title": "Xodimlar ro'yxatini ko'ring va xodim qo'shing",
+        "text": "«Xodimlar» yorlig'ida «Kontaktlar»ni tanlang. Tepada xodimlar soni, eng katta bo'limlar va yaqin tug'ilgan kunlar, pastda jadval: F.I.Sh., bo'lim, telefon, ichki raqam, tug'ilgan kun, ishga kirgan sana va oylik. «Bo'lim: barchasi» ro'yxati bilan bo'limni tanlang yoki qidiring. Yangi xodim uchun «Yangi xodim»ni bosib kartani to'ldiring; qatordagi qalam belgisi tahrirlaydi.",
+        "shot": "xodimlar.webp",
+        "points": [
+          "Telefon raqami saqlanganda xodimga hisob ochiladi: login — shu raqam, birinchi kirishda parol almashtiriladi",
+          "Oylik kartada ma'lumot sifatida turadi, ish haqi hisoblanmaydi"
+        ]
+      },
+      {
+        "title": "Kunlik davomatni kuzating",
+        "text": "«Xodimlar» → «Ish vaqti»ni oching, oyni tanlang va «Oy», «Chorak» yoki «Yil» ko'rinishini belgilang. Grafikda har kun ranglar bilan: vaqtida, kechikkan, kelmagan, sababli. Kunni bossangiz, o'ngda shu kunning ro'yxati ochiladi: holat («Keldi», «Kechikdi»), kirish vaqti, joy va selfi belgisi. Pastdagi kartalar kelmagan, kechikib kelgan, vaqtida kelgan va noto'g'ri yozuvlar sonini ko'rsatadi.",
+        "shot": "ishvaqti.webp",
+        "points": [
+          "Kechikkan xodim qatoridagi «+ Sabab yozish» bilan sababni kiriting",
+          "Pastdagi «Xodimlar kesimida» jadvalida har xodimning kechikishi, kelmagan kunlari va intizom koeffitsienti"
+        ]
+      },
+      {
+        "title": "Xodim bo'yicha hisobotni oching",
+        "text": "«Xodimlar kesimida» jadvalida xodimni bosing. Oynada ish kuni, kelgan, kechikkan va kelmagan kunlar, o'rtacha kirish vaqti, jami ishlagan, ortiqcha va kam vaqt turadi. Pastda oy davomidagi kunlar chizig'i, «Kechikish dinamikasi», «Jamoa bilan solishtirma» (intizom, jami kechikish va ishlagan vaqt bo'yicha o'rni) va «Kunma-kun» jadvali. «Hisobot (PDF)» tugmasi hisobotni PDF qilib beradi.",
+        "shot": "xodim.webp"
+      },
+      {
+        "title": "Ish joyi va QR-kodni sozlang",
+        "text": "«Ish vaqti» sahifasining o'ng yuqorisidagi sozlamalar tugmasini (slayderlar belgisi) bosing — «Ish vaqti sozlamalari» ochiladi. «Ish jadvali»da ish vaqti va kunlari, «Joylar va QR»da har joyning nomi, koordinatasi va radiusi («Hozirgi joyim» yoki «Xaritada ochish» yordam beradi), so'ng «Joyni saqlash». O'ngdagi QR-kodni «Chop etish» yoki «SVG yuklab olish» bilan olib, ish joyi eshigiga osasiz.",
+        "shot": "qr.webp",
+        "points": [
+          "Yangi ofis, sex yoki ombor uchun «+ Yangi joy»",
+          "Xodim QR'ni telefon kamerasi bilan skanerlaydi, telefon raqami va paroli bilan kiradi, joylashuvi tekshiriladi va selfi olinadi",
+          "«Tekshiruv qoidalari»da radius, joylashuv aniqligi va selfi necha kun saqlanishi sozlanadi"
+        ]
+      },
+      {
+        "title": "Oylik tabelni tayyorlang va yuklab oling",
+        "text": "«Ish vaqti» sahifasining o'ng yuqorisidagi jadval belgili tugmani bosing va oyni tanlang. Tabel bo'limlar bo'yicha: har xodimga kunlik soatlar, dam kunlari «D», o'ngda jami kunlar, soatlar, ta'til, kelinmagan kunlar va xizmat safari. Ta'til, kasallik va xizmat safari kunlarini qo'lda belgilaysiz. «Intizom» almashtirgichi intizom ko'rsatkichini ochadi; tayyor tabel o'ngdagi yuklab olish tugmalari bilan PDF yoki Excel'ga chiqadi.",
+        "shot": "tabel.webp",
+        "points": [
+          "Chorak uchun intizom koeffitsienti hujjati ham PDF yoki Excel'da olinadi",
+          "Imzo egalari sozlanadi — hujjat tasdiqlash bloki bilan chiqadi"
+        ]
+      },
+      {
+        "title": "Hujjat yuklang va tanishuvni kuzating",
+        "text": "Yuqori paneldagi hujjatlar (kitoblar) belgisini bosing — yonidagi qizil raqam siz hali tanishmagan hujjatlar soni. O'ngda hujjatlar ro'yxati: har birida versiya va necha xodim tanishgani (masalan 32 / 36). Hujjatni tanlasangiz, PDF shu yerda ochiladi; o'qib bo'lgach xodim «Tanishib chiqdim»ni bosadi. Yangi qoida yoki buyruq uchun «Hujjat yuklash»ni bosib PDF va kimga mo'ljallanganini belgilang.",
+        "shot": "hujjatlar.webp",
+        "points": [
+          "Majburiy hujjatlar «tanishishingiz kerak» hisoblagichida turadi",
+          "Yangi versiya yuklansa eski fayl tarixda qoladi va xodimlar qayta tanishadi"
+        ]
+      }
+    ],
+    "tips": [
+      "Namunadagi korxona, xodimlar, ismlar va raqamlar xayoliy — haqiqiy ma'lumot emas.",
+      "Telefon kamerasi va joylashuv faqat https:// manzilda ishlaydi: QR bilan belgilash uchun dastur domen va SSL sertifikati bor serverda o'rnatiladi.",
+      "Selfilar faqat belgilash paytida olinadi va 3 kundan keyin avtomatik o'chiriladi.",
+      "Ish haqi hisoblanmaydi: buxgalteriya uchun tayyor tabel va kechikishlar jamlanmasi chiqadi, 1C ga avtomatik uzatish hozircha yo'q.",
+      "Turniket yoki barmoq izi terminallari bilan ulanish yo'q — belgilash faqat QR orqali.",
+      "Tabel shakli hozircha bitta andoza asosida; rus tiliga tarjima qisman."
+    ]
+  }
+}

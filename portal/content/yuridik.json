@@ -1,0 +1,66 @@
+{"guide": {
+  "intro": "Biwork Yuridik — korxona yuristlari uchun: sud ishlari reyestri, majlislar kalendari, majlis natijalari va sud hujjatlari bitta joyda. Brauzerda 30 kunlik bepul sinovda xayoliy uch korxona ma'lumoti bilan yangi ish ochish, majlis va uning natijasini yozish, hujjat yuklash va eslatmalarni kuzatishni qilib ko'rasiz.",
+  "steps": [
+    {
+      "title": "Bosh ekranda hisoblagich va kalendarni ko'ring",
+      "text": "«Yuridik» yorlig'ida yuqorida hisoblagichlar turadi: «Barcha ishlar», «Jarayonda», «7 kunda majlis», «Natija yozilmagan», «Yutildi», «Yutqazildi» — birini bossangiz, ro'yxat shunga saralanadi. Chapda oy kalendari, majlis bor kunlar raqamli belgi bilan; o'ngda «Yaqin majlislar»: sana, ish, sud va majlisda nima ko'rilishi.",
+      "shot": "kalendar.webp",
+      "points": [
+        "«◀» va «▶» bilan oyni almashtirasiz, «Bugun» joriy kunga qaytaradi",
+        "Qidiruv maydoni: ish, sud yoki taraf bo'yicha"
+      ]
+    },
+    {
+      "title": "Yangi sud ishini oching",
+      "text": "O'ng yuqoridagi «Yangi ish» tugmasini bosing va ma'lumotlarni kiriting: nima haqida, sud, ish raqami, qarshi taraf, mas'ul yurist, korxona, holat va izoh. Saqlagach ish reyestrga qo'shiladi; majlis va hujjatlar uning kartasida qo'shiladi.",
+      "points": [
+        "Da'vo summasi, instansiya va ish turi uchun alohida maydon yo'q — ularni sud nomi va izohda yozing, masalan «Iqtisodiy sud (apellyatsiya)»",
+        "Korxona belgilanmasa, ish «umumiy» hisoblanadi va hamma korxonada ko'rinadi"
+      ]
+    },
+    {
+      "title": "Reyestrda ishni toping va kartasini oching",
+      "text": "Bosh ekran pastidagi jadvalda barcha ishlar: ish nomi va raqami, sud, qarshi taraf, izoh, holat, keyingi majlis va mas'ul. Keyingi majlis yonida «ertaga», «3 kun qoldi» kabi belgi, natijasi yozilmagan majlisda «natija yozilmagan» yozuvi chiqadi. Ish nomi ostida nechta majlis va hujjat borligi ko'rinadi; ishni bossangiz, kartasi ochiladi.",
+      "shot": "reyestr.webp",
+      "points": [
+        "Holatlar: jarayonda, yutildi, yutqazildi, kelishuv, to'xtatildi"
+      ]
+    },
+    {
+      "title": "Majlis qo'shing va natijasini yozing",
+      "text": "Ish kartasida «Majlislar» yorlig'ini oching. Har majlisga «Sana», «Vaqt» va «Nima ko'riladi» yoziladi; kutilayotgan majlislar o'tganlaridan alohida turadi. O'tgan majlisning «Natija» qismida tez tanlovdan birini bosing — «Keyinga qoldirildi», «Da'vo qanoatlantirildi», «Qisman qanoatlantirildi», «Da'vo rad etildi», «Kelishuv tuzildi», «Ish to'xtatildi» — va izoh yozing. Oxirida «Saqlash» ni bosing.",
+      "shot": "majlislar.webp",
+      "points": [
+        "«Hujjat biriktirish» bilan majlisga kerakli hujjatni bog'laysiz",
+        "Majlisni o'chirsangiz, unga biriktirilgan hujjat ishda qoladi"
+      ]
+    },
+    {
+      "title": "Sud hujjatlarini yuklang",
+      "text": "«Hujjatlar» yorlig'ida fayllarni «Fayllarni shu yerga tashlang yoki tanlang» maydoniga sudrab tashlang yoki tanlang: har fayl alohida hujjat bo'ladi, bittasi 20 MB gacha. Nomi va turi fayl nomidan olinadi, keyin qalam belgisi bilan o'zgartirasiz. Hujjatlar tur bo'yicha saralanadi, nomi bo'yicha qidiriladi va qaysi majlisga tegishli ekani ko'rinadi.",
+      "shot": "hujjatlar.webp",
+      "points": [
+        "11 ta tur: da'vo arizasi, javob xati, dalillar, bayonnoma, sud qarori, shikoyat, ijro varaqasi, vakolatnoma, davlat boji, yozishma, boshqa",
+        "Yuklangan faylni istalgan vaqt qayta yuklab olasiz"
+      ]
+    },
+    {
+      "title": "Eslatmalarni kuzating",
+      "text": "Yuqoridagi qo'ng'iroqcha belgisini bosing: 7 kun ichidagi majlislar va natijasi hali yozilmagan o'tgan majlislar ro'yxati ochiladi, masalan «11 kun oldin bo'ldi — natijasi yozilmagan» yoki «ertaga 09:30». To'liq ro'yxat uchun «Barchasi» ni bosing. Bosh sahifadagi «Masalalar» blokida ham yaqin majlislar qancha kun qolgani bilan turadi.",
+      "shot": "eslatma.webp"
+    },
+    {
+      "title": "Yil kalendarida butun yilni ko'ring",
+      "text": "Kalendar ustidagi «Yil» tugmasini bosing: yilning 12 oyi bitta ekranda, majlis bor kunlar belgilangan, har oy yonida majlislar soni turadi. «◀» va «▶» bilan yilni almashtirasiz, «Oy» oy ko'rinishiga qaytaradi.",
+      "shot": "yil.webp"
+    }
+  ],
+  "tips": [
+    "Eslatmalar faqat dastur ichida chiqadi: SMS, Telegram yoki email orqali xabar yuborilmaydi.",
+    "Sud ishlari bo'yicha alohida hisobot yoki Excel/PDF eksport yo'q; hujjatlar alohida fayl sifatida yuklab olinadi.",
+    "Tepadagi umumiy qidiruv sud ishlarini topmaydi — «Yuridik» sahifasidagi «Ish, sud yoki taraf bo'yicha qidirish» maydonidan foydalaning.",
+    "Mas'ul yurist nomi matn sifatida yoziladi va tizim foydalanuvchisiga bog'lanmaydi. Ishlarni Excel yoki boshqa tizimdan import qilish yo'q.",
+    "Bir nechta korxona bo'lsa, tepadagi tanlagich bilan almashtirasiz; namunada uchta korxona bor.",
+    "Sinovda kiritgan ma'lumotingiz faqat sizning namuna nusxangizda turadi va 30 kundan keyin tozalanadi. Litsenziya olgach, dastur serveringizda bo'sh bazadan boshlanadi."
+  ]
+}}

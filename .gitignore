@@ -1,0 +1,21 @@
+# Sirlar va ish vaqtidagi fayllar
+config.php
+.env
+.env.*
+setup_key.txt
+error.log
+*.sqlite
+*.sqlite3
+*.db
+*.pem
+*.key
+portal/data/keys/
+portal/data/sessions/
+portal/data/releases/
+__pycache__/
+*.pyc
+*.zip
+/php/
+zaxira-*/
+sozlama/loglar/
+.DS_Store

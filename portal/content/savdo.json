@@ -1,0 +1,68 @@
+{"guide": {
+  "intro": "Biwork Savdo — kundalik sotuvni yozib boradigan va rahbarga savdo dinamikasini ko'rsatmoqchi bo'lgan korxonalar uchun. Brauzerda 30 kunlik bepul sinovda xayoliy ulgurji savdo ma'lumoti bilan savdo yozuvi qo'shish, yuk xati yozib PDF chop etish, mahsulot va xaridorlar kesimida dinamikani ko'rish va PDF savdo hisobotini olishni qilib ko'rasiz.",
+  "steps": [
+    {
+      "title": "Bosh sahifada davr tushumini ko'ring",
+      "text": "Kirgach «Bosh sahifa» ochiladi: tanlangan davrdagi savdo summasi oldingi davrga nisbatan o'zgarish bilan, «Savdo» grafigi va «Mahsulotlar tarkibi» ko'rinadi. Davrni o'ng yuqoridagi «Oy», «Chorak», «Yil» tugmalari va oy tanlagichi bilan almashtirasiz.",
+      "shot": "bosh.webp",
+      "points": [
+        "Grafikda «Tushum» va «Hajm» o'rtasida almashasiz",
+        "Korxona sahifa tepasidagi tanlagich bilan almashtiriladi — namunada ikki korxona bor"
+      ]
+    },
+    {
+      "title": "«Umumiy ko'rinish»da savdo dinamikasini tahlil qiling",
+      "text": "«Savdo» yorlig'ini bosing — «Umumiy ko'rinish» ochiladi. Yuqorida jami savdo, sotilgan mahsulot miqdori, yozuvlar va xaridorlar soni; ostida «Savdo dinamikasi» grafigi hamda «Mahsulotlar bo'yicha» va «Xaridorlar bo'yicha» ulush jadvallari turadi.",
+      "shot": "umumiy.webp",
+      "points": [
+        "«Barcha mahsulotlar» va «Barcha xaridorlar» ro'yxatlaridan bitta mahsulot yoki xaridorni tanlaysiz",
+        "Grafik o'ng tomonidagi ro'yxatlardan davr va ko'rinish (kunlik, oylik yoki yillik) tanlanadi"
+      ]
+    },
+    {
+      "title": "Savdo yozuvini qo'shing",
+      "text": "O'ng yuqoridagi ro'yxat belgisini (☰) bosing — «Savdolar ro'yxati» ochiladi. «Savdo qo'shish» tugmasi bilan sana, mahsulot, miqdor, o'lchov birligi, narx, xaridor va to'lov izohini kiritasiz. Yozuvni qatordagi qalam belgisi bilan tahrirlaysiz, «×» bilan o'chirasiz.",
+      "shot": "royxat.webp",
+      "points": [
+        "Qidiruv: mahsulot, xaridor, izoh yoki yuk xati raqami bo'yicha",
+        "«Barcha mahsulotlar», «Barcha xaridorlar», «Barcha oylar» filtrlari yonida yozuvlar soni va jami summa ko'rinadi",
+        "Yuk xatidan tushgan yozuvda «YX №» belgisi turadi"
+      ]
+    },
+    {
+      "title": "Yuk xati yozing",
+      "text": "«Yuk xatlari» → «Yangi yuk xati» ni bosing. Raqam avtomat beriladi (kerak bo'lsa o'zgartirasiz). Xaridor nomi, pasport seriyasi, JSHSHIR va telefonni, so'ng mahsulot qatorlarini — nomi, o'lchov, miqdori, narxi — kiritasiz; summa va «Summa so'z bilan» o'zi yoziladi. Oxirida «Saqlash» yoki «Saqlash va chop etish» ni bosing.",
+      "shot": "yukxati.webp",
+      "points": [
+        "Yangi qator «+ Qator qo'shish» bilan qo'shiladi",
+        "Mahsulot uchun oxirgi narx o'zi qo'yiladi",
+        "Saqlangan yuk xati qatorlari savdolar ro'yxatiga o'zi tushadi"
+      ]
+    },
+    {
+      "title": "Yuk xatlarini toping va birga chop eting",
+      "text": "«Yuk xatlari» ro'yxatida sana oralig'i, «Barcha xaridorlar» va «Raqam, xaridor, mahsulot» qidiruvi bilan kerakli yuk xatini topasiz. Qatordagi printer belgisi yuk xatini chop etadi, qalam belgisi tahrirlaydi. Bir nechtasini katakcha bilan belgilab «Chop etish» ni bossangiz, hammasi bitta PDF bo'lib chiqadi.",
+      "shot": "yuklar.webp",
+      "points": [
+        "Yuk xatini tahrirlasangiz yoki o'chirsangiz, unga bog'langan savdo qatorlari ham yangilanadi"
+      ]
+    },
+    {
+      "title": "PDF yuk xati va savdo hisobotini oling",
+      "text": "Yuk xati A4 blankada chiqadi: sotuvchi rekvizitlari, mahsulot qatorlari, summa so'z bilan, sotuvchi va xaridor imzo joylari. Savdo hisobotini «Savdolar ro'yxati» dagi hujjat (PDF) belgisi bilan olasiz: u ekrandagi filtr bo'yicha tuziladi — oylik savdo jadvali, mahsulotlar va xaridorlar kesimida.",
+      "shot": "pdf.webp"
+    },
+    {
+      "title": "Eski savdolarni Excel'dan yuklang yoki bazani CSV'ga chiqaring",
+      "text": "Avvalgi savdolar Excel yoki Google Sheets'da bo'lsa, jadvalni nusxalab «Exceldan import» oynasiga qo'yasiz. Sana, Mahsulot, Miqdor, Narx, Summa, Xaridor ustunlari o'zbekcha yoki ruscha sarlavhadan taniladi, tanilmaganini o'zingiz tanlaysiz. Kerakli ustunlar tayyor CSV shablonda beriladi; butun savdo bazasini Excel (CSV) fayliga ham yuklab olasiz."
+    }
+  ],
+  "tips": [
+    "1C bilan to'g'ridan-to'g'ri ulanish yo'q: 1C'dan sotuvlar ro'yxatini Excel'ga chiqarib, «Exceldan import» orqali yuklaysiz.",
+    "Qarzdorlik va ombor qoldig'i bu mahsulotda yuritilmaydi: to'lov holati faqat izoh sifatida yoziladi («Puli olindi», «Avans olindi», «Qaytadi»).",
+    "Tepadagi umumiy qidiruv savdo yozuvlarini topmaydi — yozuvni «Savdolar ro'yxati» dagi qidiruv maydonidan izlang.",
+    "Yuk xati PDF'ida hozircha korxona logotipi o'rniga standart barg belgisi chiqadi.",
+    "O'z serveringizga o'rnatgach, administrator panelida korxona kartasida «Savdo bo'limi» va «Mavsumli biznes reja» ni yoqing — aks holda «Savdo» bo'limi yoki «Yuk xatlari» yorlig'i chiqmaydi.",
+    "Sinovda kiritgan ma'lumotingiz faqat sizning namuna nusxangizda turadi va 30 kundan keyin tozalanadi. Litsenziya olgach, dastur serveringizda bo'sh bazadan boshlanadi."
+  ]
+}}

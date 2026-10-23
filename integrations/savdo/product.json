@@ -1,0 +1,13 @@
+{
+  "slug": "savdo",
+  "code": "SAV",
+  "name": "Biwork Savdo",
+  "sub": "Savdo yozuvlari, yuk xatlari va dinamika",
+  "home": "#/bolim/savdo",
+  "modules": [
+    "savdo.umumiy",
+    "savdo.yigim",
+    "hisobot"
+  ],
+  "css": "#savdoYigimPill{font-size:0!important;gap:0!important}#savdoYigimPill::after{content:\"Yuk xatlari\";font-size:var(--fs-base);font-weight:700;margin-left:8px}#savdoOverviewPane .cf-table{min-width:0}#savdoOverviewPane .cf-table td{white-space:normal}"
+}

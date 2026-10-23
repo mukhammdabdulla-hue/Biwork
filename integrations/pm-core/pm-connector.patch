@@ -1,0 +1,89 @@
+diff -ruN a/assets/app.js b/assets/app.js
+--- a/assets/app.js
++++ b/assets/app.js
+@@ -2406,7 +2406,7 @@
+     if(!u) return "edit";
+     /* Rahbar ham admin kabi barcha bo'limni to'liq ko'radi va tahrirlaydi — farqi shundaki admin paneli
+        unga ochilmaydi. Server tomonda ham shu qoida (auth.php: user_perms). */
+-    if(u.role==="admin" || u.role==="rahbar") return "edit";
++    if((u.role==="admin" || u.role==="rahbar") && !u.bwMask) return "edit";
+     const b = u.bolimlar || {};
+     const ok = v => v === "none" || v === "view" || v === "edit";
+     /* QISM (2026-10-14): sectionPerm("moliya", "balans") — AYNAN o'sha qism darajasi (server me.bolimlar
+@@ -2423,7 +2423,7 @@
+   function sectionKira(sec){
+     const u = window.__asiUser;
+     if(!u) return "edit";
+-    if(u.role==="admin" || u.role==="rahbar") return "edit";
++    if((u.role==="admin" || u.role==="rahbar") && !u.bwMask) return "edit";
+     const b = u.bolimlar || {};
+     const rank = v => v === "edit" ? 2 : (v === "view" ? 1 : 0);
+     let m = null;
+diff -ruN a/index.php b/index.php
+--- a/index.php
++++ b/index.php
+@@ -10,6 +10,8 @@
+ error_reporting(E_ALL);
+ ini_set('display_errors', '0');
+ 
++/* Biwork ulanishi (biwork-config.php bo'lsagina ishlaydi): demo rejimida DATA_DIR ni db.php'dan OLDIN tanlaydi */
++if (is_file(__DIR__ . '/php/biwork.php')) require __DIR__ . '/php/biwork.php';
+ require __DIR__ . '/php/db.php';
+ require __DIR__ . '/php/auth.php';
+ require __DIR__ . '/php/api.php';
+@@ -65,6 +67,9 @@
+ }
+ $method = $_SERVER['REQUEST_METHOD'];
+ 
++/* Biwork: portaldan "Ochish", /licenziya, litsenziya darvozasi, brend */
++if (function_exists('biwork_route')) biwork_route($uri, $method);
++
+ /* ---------- API ---------- */
+ if (str_starts_with($uri, '/api/')) {
+     /* SAYTLAR ARO SO'ROVNI RAD ETISH (CSRF, ikkinchi qatlam; 2026-10-08): sessiya cookie'si
+@@ -231,6 +236,7 @@
+     if (!is_file(MAIN_HTML)) { http_response_code(404); echo 'Topilmadi'; exit; }
+     $html = (string)file_get_contents(MAIN_HTML);
+     $html = str_replace('{{ASSET_V}}', asset_version(), $html);
++    if (function_exists('biwork_html')) $html = biwork_html($html);
+     header('Content-Type: text/html; charset=utf-8');
+     header('Cache-Control: no-store');
+     header('X-Content-Type-Options: nosniff');
+diff -ruN a/php/auth.php b/php/auth.php
+--- a/php/auth.php
++++ b/php/auth.php
+@@ -473,6 +473,11 @@
+ }
+ 
+ function user_perms(array $u): array {
++    /* Biwork modul niqobi: ochiq modullardan tashqari hamma narsa 'none' (biwork.php; Biwork yoqilmagan bo'lsa o'zgarishsiz) */
++    $p = user_perms_xom($u);
++    return function_exists('biwork_mask_perms') ? biwork_mask_perms($p) : $p;
++}
++function user_perms_xom(array $u): array {
+     $rol = $u['role'] ?? 'user';
+     /* kadmin ham bo'lim kesimida cheklanmaydi — chegarasi KORXONA
+        (state_for_user), bo'lim emas. */
+@@ -509,6 +514,8 @@
+         'yolboshchiAdmin' => (int)($u['yolboshchi'] ?? 1) !== 0,
+         'yolboshchiOzi' => (int)($u['yolboshchi_ozi'] ?? 1) !== 0,
+         'bolimlar' => user_perms($u),
++        /* Biwork: modul niqobi faol — mijoz admin/rahbar rolini ham me.bolimlar bo'yicha cheklaydi */
++        'bwMask' => function_exists('biwork_modules') && biwork_modules() !== null,
+         /* XOM saqlangan huquq (bo'lim + FAQAT aniq yozilgan qismlar) — admin panel
+            shundan tahrirlaydi: `bolimlar` dagi AMALDAGI qiymatni qayta yuborsa,
+            meros qilingan qismlar «aniq» bo'lib qotib qolardi. */
+diff -ruN a/php/hisobot-pdf.php b/php/hisobot-pdf.php
+--- a/php/hisobot-pdf.php
++++ b/php/hisobot-pdf.php
+@@ -103,7 +103,9 @@
+     if (hs_ruxsat($u, 'korporativ')) $r['ulush'] = ['🏛 Korporativ ulushlar', 'AUGAga topshirilgan ulushlar'];
+     /* Ish kundaligi — korxonaning umumiy faoliyat jurnali, bo'lim huquqiga
+        bog'lanmagan: har bir xodim o'z ishini yozadi va hisobotini oladi */
+-    $r['kundalik'] = ['📔 Ish kundaligi', 'Korxona faoliyati: nima qilindi, qachon, kim'];
++    /* Biwork: kundalik moduli ochiq bo'lmagan mahsulotda (HR, Yuridik…) bu hisobot ko'rinmaydi */
++    if (!function_exists('biwork_has') || biwork_has('kundalik'))
++        $r['kundalik'] = ['📔 Ish kundaligi', 'Korxona faoliyati: nima qilindi, qachon, kim'];
+     return $r;
+ }
+ 

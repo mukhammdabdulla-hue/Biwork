@@ -1,0 +1,252 @@
+{
+  "contract": 1,
+  "slug": "monitoring",
+  "code": "MON",
+  "name": "Biwork Monitoring",
+  "tagline": "Korxona jarayonlarini o'zi kuzatadi va muammoni kechikmasdan ko'rsatadi",
+  "category": "Ishlab chiqarish",
+  "icon": "target",
+  "status": "soon",
+  "sort": 15,
+  "description": "Uskunalar, buyurtmalar va reja-fakt ma'lumotlarini doimiy kuzatadi. Uskuna to'xtasa, ish kech boshlansa yoki buyurtma muddatga ulgurmasligi aniq bo'lsa, tizim buni o'zi topadi va mas'ul odamga «nima bo'ldi, nima uchun muhim, nima qilish kerak» deb ko'rsatadi.\n\nOgohlantirishlar kam va aniq bo'lishi uchun har qoidaning chegarasi sizning korxonangizga moslab sozlanadi. Biwork Reja bilan birga ishlashga mo'ljallangan: Reja «qanday bo'lishi kerak»ni, Monitoring «aslida qanday bo'layotgani»ni ko'rsatadi. Interfeys o'zbek tilida.",
+  "highlights": [
+    "Uzoq to'xtash, kech boshlangan ish va muddat xavfi o'zi topiladi",
+    "Har ogohlantirishda sabab va nima qilish kerakligi yoziladi",
+    "Mas'ul tayinlanadi, izoh qoldiriladi, tarix saqlanadi",
+    "10 ta tayyor qoida, chegarasini o'zingiz sozlaysiz",
+    "Muammo bartaraf bo'lsa ogohlantirish o'zi yopiladi"
+  ],
+  "web": {
+    "url": "",
+    "launch": "token"
+  },
+  "trial": {
+    "enabled": false,
+    "days": 14
+  },
+  "plans": [
+    {
+      "code": "standard",
+      "name": "Standart",
+      "type": "paid",
+      "seats": 1,
+      "days": 365,
+      "limits": {
+        "users": 5
+      },
+      "features": [
+        "web_demo",
+        "app",
+        "download"
+      ]
+    },
+    {
+      "code": "business",
+      "name": "Korxona",
+      "type": "paid",
+      "seats": 5,
+      "days": 365,
+      "limits": {
+        "users": 25
+      },
+      "features": [
+        "web_demo",
+        "app",
+        "download"
+      ]
+    }
+  ],
+  "package": {
+    "min_php": "8.1",
+    "extensions": [
+      "pdo_sqlite",
+      "mbstring",
+      "json",
+      "sodium"
+    ]
+  },
+  "marketing": {
+    "headline": "Muammo smena oxirida emas, paydo bo'lgan zahoti ma'lum bo'lsin",
+    "lead": "Biwork Monitoring uskunalar, buyurtmalar va reja bilan fakt ma'lumotini doimiy tekshiradi. Uskuna uzoq to'xtasa, ish kech boshlansa yoki buyurtma muddatga ulgurmasligi aniq bo'lsa, buni o'zi topib, mas'ul odamga nima bo'lgani va nima qilish kerakligini ko'rsatadi.",
+    "badges": [
+      "O'zbek tilida",
+      "10 ta tayyor qoida",
+      "Chegaralarni o'zingiz sozlaysiz",
+      "Yorug' va qorong'i ko'rinish",
+      "Ma'lumot korxonada qoladi"
+    ],
+    "problems": [
+      {
+        "title": "Muammo kech bilinadi",
+        "text": "Uskuna to'xtaganini yoki buyurtma kechikayotganini odatda smena oxirida, hisobot paytida bilib qolasiz. O'shanda chora ko'rishga kech bo'ladi."
+      },
+      {
+        "title": "Ma'lumot bor, lekin uni hech kim kuzatmaydi",
+        "text": "ERP va Excel fayllarda hamma narsa yozilgan, ammo har soat ularni tekshiradigan odam yo'q. Qaysi uskuna turib qolgani va qaysi ish suriladi — qo'ng'iroq qilib so'raladi."
+      },
+      {
+        "title": "Kim javob beradi — noma'lum",
+        "text": "Muammo ko'rinsa ham mas'ul tayinlanmaydi va hal bo'lganmi yo'qmi, yozib borilmaydi. Shu sababli bir muammo qayta-qayta takrorlanadi."
+      },
+      {
+        "title": "To'xtash sababi yozilmaydi",
+        "text": "To'xtash qayd qilinadi, sababi esa ko'pincha bo'sh qoladi. Keyin vaqt nimaga ketganini aniqlab bo'lmaydi."
+      }
+    ],
+    "features": [
+      {
+        "title": "Muammo kechikmasdan topiladi",
+        "text": "Tizim 10 ta tayyor qoida bo'yicha ma'lumotni tekshiradi: uzoq to'xtash, tez-tez buzilish, ish bor-u uskuna bo'sh turishi, ishning kech boshlanishi, operatsiyaning me'yordan cho'zilishi, uzoq sozlash, muddat xavfi, uskuna oldida ish yig'ilib qolishi, sababsiz to'xtash va yangilanmagan ma'lumot.",
+        "points": [
+          "Jiddiy, diqqat va ma'lumot darajalari: muhimi tepada turadi",
+          "Muammo bartaraf bo'lsa ogohlantirish o'zi yopiladi",
+          "Qo'lda yopilgan ogohlantirish bir necha soat qayta chiqmaydi"
+        ],
+        "shot": "ogohlantirishlar.webp"
+      },
+      {
+        "title": "Har ogohlantirishda nima qilish kerakligi yoziladi",
+        "text": "Ogohlantirish ochilganda: nima bo'ldi, nima uchun muhim (qaysi buyurtmalarga ta'sir qiladi) va nima qilish kerak. Mas'ul tayinlanadi, izoh qoldiriladi, hammasi tarixda saqlanadi.",
+        "points": [
+          "«Ko'rdim» va «Yopish» tugmalari izoh bilan",
+          "Mas'ul tayinlash",
+          "Ogohlantirish tarixi: kim, qachon, nima qildi"
+        ],
+        "shot": "tafsilot.webp"
+      },
+      {
+        "title": "Kun qanday ketayotgani bir qarashda",
+        "text": "Bosh sahifada faol ogohlantirishlar, uskunalar holati, bugungi band vaqt, vaqtida boshlangan ishlar ulushi va xavfdagi buyurtmalar ko'rinadi. Eng muhimlari tepada.",
+        "points": [],
+        "shot": "bosh.webp"
+      },
+      {
+        "title": "Har bir uskuna alohida ko'rinadi",
+        "text": "Uskuna sahifasida hozirgi holat, oxirgi kunlardagi band vaqt, to'xtashlar va ularning sabablari, navbatdagi ishlar va shu uskunaga tegishli ogohlantirishlar jamlangan.",
+        "points": [],
+        "shot": "uskuna.webp"
+      },
+      {
+        "title": "Buyurtma muddatga ulgurishini oldindan ko'rsatadi",
+        "text": "Har buyurtma bosqichlari (kesish, bosma, laminatsiya, tigel, yelimlash) bo'yicha ko'rinadi: qaysi bosqich tugagan, qaysisi kechikmoqda va taxminiy tugash vaqti muddatdan qancha oldin yoki keyin. Taxmin hozirgi holat va reja asosida hisoblanadi, shu sababli «taxminiy» deb belgilanadi.",
+        "points": [],
+        "shot": "buyurtmalar.webp"
+      },
+      {
+        "title": "Reja va fakt bir chiziqda",
+        "text": "Har uskuna uchun reja bo'yicha nima bo'lishi kerak edi va aslida nima bo'ldi: ishlagan, sozlangan va to'xtagan vaqt. Reja ma'lumoti sifatida Biwork Reja ko'zda tutilgan.",
+        "points": [
+          "±6, ±12 va ±24 soatlik ko'rinish",
+          "Vaqtida boshlangan ishlar ulushi har uskuna bo'yicha"
+        ],
+        "shot": "rejafakt.webp"
+      },
+      {
+        "title": "Qoidalarni o'zingiz sozlaysiz",
+        "text": "Har qoidani yoqish yoki o'chirish va chegarasini o'zgartirish mumkin: masalan to'xtash necha daqiqadan keyin ogohlantirsin. Shunda ogohlantirishlar kam va aniq bo'ladi.",
+        "points": [
+          "Noto'g'ri qiymat kiritilsa tizim rad etadi",
+          "O'chirilgan qoidaning ochiq ogohlantirishlari yopiladi"
+        ],
+        "shot": "qoidalar.webp"
+      }
+    ],
+    "audience": [
+      {
+        "title": "Ishlab chiqarish rahbarlari",
+        "text": "Sexda nima bo'layotganini har soat so'ramasdan, bir sahifada ko'rishni istaganlar."
+      },
+      {
+        "title": "Sex boshliqlari va rejalashtiruvchilar",
+        "text": "Uskuna to'xtashi, ishning kechikishi yoki navbat yig'ilib qolishini darrov bilib, ishni qayta taqsimlamoqchi bo'lganlar."
+      },
+      {
+        "title": "Ta'mir va sifat xizmatlari",
+        "text": "Qaysi uskuna tez-tez buzilayotganini va to'xtash sabablari yozilayotganini kuzatishi kerak bo'lganlar."
+      }
+    ],
+    "shots": [
+      {
+        "file": "bosh.webp",
+        "caption": "Bosh sahifa: faol ogohlantirishlar, uskunalar holati va xavfdagi buyurtmalar. Namuna korxona ma'lumoti",
+        "alt": "Biwork Monitoring: bosh sahifa"
+      },
+      {
+        "file": "ogohlantirishlar.webp",
+        "caption": "Ogohlantirishlar ro'yxati: jiddiylik darajasi, qidiruv va filtrlar",
+        "alt": "Biwork Monitoring: ogohlantirishlar ro'yxati"
+      },
+      {
+        "file": "tafsilot.webp",
+        "caption": "Ogohlantirish tafsiloti: nima bo'ldi, nima qilish kerak, mas'ul va tarix",
+        "alt": "Biwork Monitoring: ogohlantirish tafsiloti"
+      },
+      {
+        "file": "uskuna.webp",
+        "caption": "Uskuna sahifasi: holat, band vaqt, to'xtashlar va ularning sabablari",
+        "alt": "Biwork Monitoring: uskuna sahifasi"
+      },
+      {
+        "file": "buyurtmalar.webp",
+        "caption": "Buyurtmalar bosqichlar bo'yicha: taxminiy tugash vaqti va muddatdan zaxira",
+        "alt": "Biwork Monitoring: buyurtmalar"
+      },
+      {
+        "file": "rejafakt.webp",
+        "caption": "Reja va fakt: har uskuna bo'yicha rejalashtirilgan va haqiqiy vaqt",
+        "alt": "Biwork Monitoring: reja va fakt"
+      },
+      {
+        "file": "qoidalar.webp",
+        "caption": "Qoidalar: yoqish, o'chirish va chegaralarni sozlash",
+        "alt": "Biwork Monitoring: qoidalar"
+      }
+    ],
+    "faq": [
+      {
+        "q": "Nega mahsulot hozir «tez orada» holatida?",
+        "a": "Birinchi versiya tayyor: qoidalar, ogohlantirishlar va barcha sahifalar namuna korxona ma'lumotida ishlaydi. Sizning ma'lumotingizni ulash (ERP hisoboti yoki Biwork Reja) korxonangiz bilan birga sozlanadi va hali umumiy ko'rinishda tayyor emas. Shu sababli sinov yoqilmagan, so'rov qoldirsangiz — tayyor bo'lishi bilan xabar beramiz."
+      },
+      {
+        "q": "Ma'lumot qayerdan keladi?",
+        "a": "Reja uchun Biwork Reja ko'zda tutilgan, fakt uchun ERP hisoboti (Excel fayl) yoki ERP bazasi. Qaysi usul sizga mosligini korxonangiz ma'lumoti va IT xizmati bilan birga aniqlaymiz. Rasmlardagi ma'lumot to'liq namuna: uskuna, buyurtma va odam nomlari to'qilgan."
+      },
+      {
+        "q": "Ogohlantirishlar ko'p bo'lib ketmaydimi?",
+        "a": "Tizim bir muammo uchun bitta ogohlantirish ochadi, muhimlarini tepaga qo'yadi va muammo bartaraf bo'lsa o'zi yopadi. Har qoidaning chegarasini o'zingiz o'zgartirasiz. Namuna korxonada (14 ta uskuna) bir vaqtda taxminan o'n to'rtta ochiq ogohlantirish bo'ladi, ulardan faqat bir-ikkitasi jiddiy. Sizda soni sozlamalarga va ma'lumotga bog'liq."
+      },
+      {
+        "q": "Biwork Reja bilan bog'liqmi?",
+        "a": "Ular alohida mahsulotlar va har biri alohida sotib olinadi. Birga ishlaganda foydali: Reja «qanday bo'lishi kerak»ni tuzadi, Monitoring «aslida qanday bo'layotgani»ni solishtiradi. Reja ma'lumotini Monitoringga ulash keyingi bosqichda tayyorlanadi."
+      },
+      {
+        "q": "Ma'lumotlarim qayerda saqlanadi?",
+        "a": "Dastur sizning kompyuteringiz yoki serveringizda ishlaydi va ma'lumot o'sha yerdagi bazada turadi. Biwork portali faqat litsenziya kaliti va qurilma belgisini oladi."
+      },
+      {
+        "q": "O'rnatish uchun nima kerak?",
+        "a": "Oddiy kompyuter yoki server va PHP 8.1. Qo'shimcha dasturlar yoki doimiy internet shart emas: interfeys tashqi saytlarsiz ishlaydi, litsenziya vaqti-vaqti bilan portal orqali tekshiriladi."
+      }
+    ],
+    "seo": {
+      "title": "Biwork Monitoring — ishlab chiqarish jarayonlari nazorati",
+      "description": "Uskuna to'xtashi, kechikayotgan ish va muddatga ulgurmaydigan buyurtmani o'zi topadigan nazorat tizimi. Nima qilish kerakligini ham ko'rsatadi. O'zbek tilida.",
+      "keywords": [
+        "ishlab chiqarish nazorati",
+        "uskuna to'xtashi",
+        "ishlab chiqarish monitoringi",
+        "buyurtma muddati",
+        "reja va fakt",
+        "avtomatik ogohlantirish",
+        "Biwork Monitoring"
+      ]
+    },
+    "cta": {
+      "trial": "Sinab ko'rish",
+      "lead": "Xabar olish",
+      "lead_title": "Biwork Monitoring tayyor bo'lganda xabar bering",
+      "lead_text": "Telefon raqamingizni qoldiring: mahsulot tayyor bo'lishi bilan siz bilan bog'lanib, sizning ma'lumotingiz bilan nima ko'rsatishini birga aniqlaymiz.",
+      "placeholder": "Masalan: sexda nechta uskuna bor, hozir to'xtashlarni qanday kuzatasiz?"
+    }
+  }
+}

@@ -1,0 +1,265 @@
+{
+  "contract": 1,
+  "slug": "loyiha",
+  "code": "LOY",
+  "name": "Biwork Loyiha",
+  "tagline": "Loyihalar, vazifalar, g'oyalar va topshiriqlarni bitta panelda boshqaring",
+  "category": "Boshqaruv va hisob",
+  "icon": "grid",
+  "status": "active",
+  "sort": 30,
+  "description": "Biwork Loyiha — rahbar va loyiha ofisi uchun panel: loyihalar, ularning bosqich va vazifalari, risklar, g'oyalar taxtasi va topshiriqlar bitta joyda yuritiladi. Har loyihaning holati muddat, kechikkan vazifalar, kritik yo'l va o'tib ketgan bosqichlarga qarab o'zi hisoblanadi: «Jadval bo'yicha», «E'tibor kerak» yoki «Xavf ostida».\n\nLoyiha kartasida maqsad va natijalar, bosqichlar jadvali (Gantt), risklar matritsasi, jamoa va hujjatlar turadi. Bajarilgan ish nazoratchiga tushadi — u qabul qiladi yoki sabab yozib qaytaradi. Xodimlar o'rtasidagi topshiriqlar (berish → bajarish → qabul qilish) va g'oyalar muhokamasi (taklif → fikr → qaror → loyiha) ham shu yerda.\n\nInterfeys o'zbek tilida. Loyihalar, ishlar, topshiriqlar va g'oyalar bo'yicha PDF hisobot olinadi, Ctrl+K orqali hamma narsa qidiriladi.",
+  "highlights": [
+    "Loyiha holati avtomatik: Jadval bo'yicha, E'tibor kerak yoki Xavf ostida",
+    "Bosqichlar jadvali (Gantt), vazifalar bog'liqligi va kritik yo'l",
+    "Bajarilgan ishni nazoratchi qabul qiladi yoki izoh bilan qaytaradi",
+    "Topshiriqlar: berish, bajarish, qabul qilish — muddat va takrorlanish bilan",
+    "G'oyalar taxtasi: taklif, fikr bildirish, qaror va loyihaga aylantirish"
+  ],
+  "web": {
+    "url": "",
+    "launch": "token"
+  },
+  "trial": {
+    "enabled": true,
+    "days": 14
+  },
+  "plans": [
+    {
+      "code": "standard",
+      "name": "Standart",
+      "type": "paid",
+      "seats": 1,
+      "days": 365,
+      "limits": {},
+      "features": [
+        "web_demo",
+        "app",
+        "download"
+      ]
+    },
+    {
+      "code": "business",
+      "name": "Korxona",
+      "type": "paid",
+      "seats": 3,
+      "days": 365,
+      "limits": {},
+      "features": [
+        "web_demo",
+        "app",
+        "download"
+      ]
+    }
+  ],
+  "package": {
+    "min_php": "8.1",
+    "extensions": [
+      "pdo_sqlite",
+      "mbstring",
+      "json",
+      "sodium"
+    ]
+  },
+  "marketing": {
+    "headline": "Loyihalar, vazifalar va topshiriqlar — hammasi nazorat ostida, bitta panelda",
+    "lead": "Biwork Loyiha har loyihaning holatini, kechikayotgan vazifalar va risklarni rahbarga ko'rsatadi. Ishni berish, bajarish va qabul qilish bitta zanjirda yuradi, g'oyalar esa muhokamadan keyin loyihaga aylanadi.",
+    "badges": [
+      "O'zbek tilida",
+      "Gantt va kritik yo'l",
+      "Ijro nazorati",
+      "PDF hisobotlar",
+      "G'oyalar taxtasi",
+      "Ma'lumot korxonada qoladi"
+    ],
+    "problems": [
+      {
+        "title": "Loyiha holati ko'rinmaydi",
+        "text": "Qaysi loyiha reja bo'yicha ketayotgani, qaysi biri kechikayotganini bilish uchun bir necha kishidan so'rash va jadvallarni solishtirish kerak bo'ladi."
+      },
+      {
+        "title": "Topshiriq berildi, keyin nima bo'ldi?",
+        "text": "Og'zaki yoki messenjerda berilgan ish yo'qolib ketadi: kim ko'rdi, kim bajardi, natija qabul qilindimi — noma'lum."
+      },
+      {
+        "title": "Kechikish oldindan ko'rinmaydi",
+        "text": "Muddat o'tgandan keyingina muammo bilinadi. Kritik yo'ldagi vazifa orqada qolsa, loyiha muddati siljishini oldindan ko'rish kerak."
+      },
+      {
+        "title": "Risklar va hujjatlar tarqoq",
+        "text": "Risklar bir faylda, shartnomalar boshqa papkada, bosqichlar uchinchisida — loyihaning to'liq tasviri yo'q."
+      },
+      {
+        "title": "G'oyalar eshitilmay qoladi",
+        "text": "Xodimlar taklifi suhbatda aytiladi va unutiladi; qaror kim tomonidan va qanday asosda qabul qilingani ko'rinmaydi."
+      }
+    ],
+    "features": [
+      {
+        "title": "Loyihalar portfeli — holat bir qarashda",
+        "text": "Barcha loyihalar kartochka yoki ro'yxat ko'rinishida: raqami, mas'uli, bajarilish foizi va muddatgacha qolgan kun. Holat svetofor rangida chiqadi va sababi yoziladi: «1 ta bosqich muddatidan o'tib ketgan», «2 ta vazifa ortda qolgan».",
+        "shot": "loyihalar.webp",
+        "points": [
+          "Jadval bo'yicha, E'tibor kerak, Xavf ostida, Yakunlangan",
+          "Kartochka va ro'yxat ko'rinishi, qidiruv",
+          "Loyihalar bo'yicha PDF hisobot: qisqa holat, ishlar kesimida yoki to'liq"
+        ]
+      },
+      {
+        "title": "Loyiha kartasi: maqsad, bosqichlar, risklar",
+        "text": "Har loyiha uchun alohida karta: maqsad, kutilgan natijalar va mezonlar, bosqichlar jadvali, jamoa (homiy, rahbar, ijrochilar), asos hujjatlari va risklar. Muddat indeksi (SPI) rejadagi va haqiqiy bajarilishni solishtiradi.",
+        "shot": "karta.webp",
+        "points": [
+          "Risklar matritsasi: ehtimol va ta'sir, chora, mas'ul",
+          "Asos hujjatlari va ish jarayonidagi hujjatlar (talab → fayl biriktirish)",
+          "Vazifalar jadvali: Gantt, bog'liqlik va kritik yo'l",
+          "Bajarilgan va qolgan ishlar bo'yicha loyihaning o'zi uchun PDF hisobot"
+        ]
+      },
+      {
+        "title": "Ijro va nazorat",
+        "text": "Vazifa bajarilgach «Tasdiq kutmoqda» holatiga o'tadi: nazoratchi uni qabul qiladi yoki sabab yozib qaytaradi. «Ijro va jarayon» lentasi voqealarni — berildi, ko'rdi, boshladi, bajardi, qabul qildi — vaqti bilan ko'rsatadi.",
+        "shot": "ijro.webp",
+        "points": [
+          "Bosqichlar bo'yicha guruhlangan vazifalar va holat filtrlari",
+          "Kechikish sababi va yangi va'da sanasi saqlanadi",
+          "Bajarilgan ishga hujjat (fayl) biriktiriladi"
+        ]
+      },
+      {
+        "title": "Topshiriqlar: berish, bajarish, qabul qilish",
+        "text": "«Men berganlarim», «Menga berilgan» va «Hammasi» ro'yxatlari. Topshiriq bir yoki bir necha ijrochiga beriladi, muddat va muhimligi belgilanadi; ijrochi natijani yozib, fayl biriktiradi, bergan odam qabul qiladi.",
+        "shot": "topshiriq.webp",
+        "points": [
+          "Muntazam ishlar uchun takrorlanish: har kuni, haftada, oyda, chorakda, yilda",
+          "Kechikkan, yangi va tasdiq kutayotgan topshiriqlar alohida ajratiladi",
+          "«Ishlarim» tugmasida sizdan nima kutilayotgani bitta ro'yxatda"
+        ]
+      },
+      {
+        "title": "G'oyalar taxtasi",
+        "text": "Xodim g'oya taklif qiladi; ko'rib chiquvchilar «Qo'llab-quvvatlayman», «O'zgartirish kerak» yoki «Qarshiman» deb izoh va fayl bilan fikr bildiradi; qaror qabul qiluvchi qaror chiqaradi. Qabul qilingan g'oyadan loyiha ochiladi.",
+        "shot": "goya.webp",
+        "points": [
+          "Taklif → Muhokama → Qaror → Loyiha bosqichlari",
+          "Har fikr sanasi va izohi bilan tarixga yoziladi",
+          "Fikrlarni parallel yoki navbat bilan so'rash",
+          "G'oyalar bo'yicha PDF hisobot"
+        ]
+      },
+      {
+        "title": "Bosh sahifa — rahbar uchun yagona ko'rinish",
+        "text": "Faol loyihalar va xavf ostidagilari, «Masalalar» (kechikkan va e'tibor talab qiladigan ishlar), loyihalar holati diagrammasi, kechikkan vazifalar, jamoa hamda ochiq topshiriqlar soni.",
+        "shot": "bosh.webp",
+        "points": [
+          "Oy, chorak yoki yil kesimi"
+        ]
+      }
+    ],
+    "shots": [
+      {
+        "file": "loyihalar.webp",
+        "caption": "Namuna (xayoliy) ma'lumotda: loyihalar portfeli — holat svetofor rangida va sababi bilan",
+        "alt": "Biwork Loyiha: loyihalar kartochkalari va holati"
+      },
+      {
+        "file": "karta.webp",
+        "caption": "Namuna (xayoliy) ma'lumotda: loyiha kartasi — muddat indeksi, risklar, maqsad va bosqichlar jadvali",
+        "alt": "Biwork Loyiha: loyiha kartasi va bosqichlar"
+      },
+      {
+        "file": "ijro.webp",
+        "caption": "Namuna (xayoliy) ma'lumotda: ijro va nazorat — tasdiq kutayotgan ishlar va jarayon lentasi",
+        "alt": "Biwork Loyiha: ijro va nazorat sahifasi"
+      },
+      {
+        "file": "topshiriq.webp",
+        "caption": "Namuna (xayoliy) ma'lumotda: topshiriqlar — muddat, holat va «Qabul qilish» tugmasi",
+        "alt": "Biwork Loyiha: topshiriqlar ro'yxati"
+      },
+      {
+        "file": "goya.webp",
+        "caption": "Namuna (xayoliy) ma'lumotda: g'oya muhokamasi — bosqichlar, fikrlar va qaror qabul qiluvchi",
+        "alt": "Biwork Loyiha: g'oya sahifasi"
+      },
+      {
+        "file": "bosh.webp",
+        "caption": "Namuna (xayoliy) ma'lumotda: bosh sahifa — faol loyihalar, masalalar va holat diagrammasi",
+        "alt": "Biwork Loyiha: bosh sahifa"
+      }
+    ],
+    "audience": [
+      {
+        "title": "Loyiha ofisi va loyiha menejerlari",
+        "text": "Bir nechta loyiha, bosqich va vazifani Excel va xabarlarsiz bir joyda yuritmoqchi bo'lganlar."
+      },
+      {
+        "title": "Rahbarlar va direktorlar",
+        "text": "Qaysi loyiha xavf ostida, qaysi vazifa kechikayotganini bosh sahifada bir qarashda ko'rishni istaganlar."
+      },
+      {
+        "title": "Bo'lim boshliqlari",
+        "text": "Xodimlarga topshiriq berib, bajarilishini va natijasini qabul qilishni nazorat qilmoqchi bo'lganlar."
+      },
+      {
+        "title": "Ko'p loyihali korxonalar",
+        "text": "Qurilish, IT, filial ochish, modernizatsiya kabi turli loyihalar bir vaqtda yuradigan korxonalar."
+      }
+    ],
+    "faq": [
+      {
+        "q": "Sinab ko'rish uchun nima kerak?",
+        "a": "Ro'yxatdan o'ting (korxona nomi va email yetarli) — Biwork Loyihani brauzerda xayoliy namuna ma'lumot bilan sinab ko'rasiz: loyiha va vazifa qo'shish, topshiriq berish, g'oyaga fikr bildirish mumkin. Hech narsa o'rnatish shart emas."
+      },
+      {
+        "q": "Namunadagi ma'lumotlar haqiqiymi?",
+        "a": "Yo'q: korxona, odamlar va raqamlar butunlay to'qilgan. Rasmlardagi ko'rsatkichlar ham shu namuna ma'lumotga tegishli — sizning loyihalaringizda natija o'z ma'lumotingizga bog'liq bo'ladi."
+      },
+      {
+        "q": "Loyiha holati («Xavf ostida», «E'tibor kerak») qanday aniqlanadi?",
+        "a": "Tizim o'zi hisoblaydi. Muddati o'tgan loyiha, kritik yo'ldagi kechikkan vazifa yoki o'tib ketgan bosqich bo'lsa — «Xavf ostida». Kechikkan vazifa, sababi izohlanmagan kechikish yoki muddatga yaqin lekin past bajarilish bo'lsa — «E'tibor kerak». Qolgan hollarda — «Jadval bo'yicha». Sabablar kartochkada yoziladi."
+      },
+      {
+        "q": "Topshiriq bilan loyiha vazifasi nima bilan farq qiladi?",
+        "a": "Loyiha vazifasi loyiha jadvalida turadi: bosqich, muddat, bog'liqlik, Gantt. Topshiriq — odamdan odamga beriladigan ish: bir martalik yoki takrorlanadigan; ijrochi bajaradi, bergan odam qabul qiladi yoki qaytaradi."
+      },
+      {
+        "q": "Xodimlar ro'yxati qayerdan olinadi?",
+        "a": "Mas'ul va ijrochilar «Xodimlar» sahifasidagi ro'yxatdan tanlanadi. Biwork Loyihada bu ro'yxat ko'rish uchun ochiq; xodim kartalarini yuritish (tabel, ish vaqti) Biwork HR mahsulotiga kiradi."
+      },
+      {
+        "q": "O'rnatish uchun nima kerak?",
+        "a": "Oddiy kompyuter yoki server: PHP 8.1 va undan yuqori (pdo_sqlite, mbstring, json, sodium kengaytmalari bilan). Alohida ma'lumotlar bazasi serveri kerak emas."
+      },
+      {
+        "q": "Ma'lumotlarim qayerda saqlanadi?",
+        "a": "Loyiha, topshiriq va g'oya ma'lumotlari faqat sizning serveringizdagi bazada turadi. Biwork portali faqat litsenziya kaliti va qurilma belgisini oladi."
+      },
+      {
+        "q": "Excel yoki boshqa tizimlardan loyihalarni yuklab olish mumkinmi?",
+        "a": "Hozircha yo'q: loyihalar, vazifalar va topshiriqlar panelda qo'lda kiritiladi. Boshqa loyiha boshqaruv tizimlari bilan avtomatik bog'lanish ham yo'q."
+      }
+    ],
+    "seo": {
+      "title": "Biwork Loyiha — loyihalar, vazifalar va topshiriqlarni boshqarish",
+      "description": "Loyihalar, bosqich va vazifalar, risklar, topshiriqlar va g'oyalar bitta panelda: Gantt, kritik yo'l, ijro nazorati va PDF hisobotlar. O'zbek tilida.",
+      "keywords": [
+        "loyihalarni boshqarish",
+        "loyiha boshqaruvi dasturi",
+        "topshiriqlar nazorati",
+        "Gantt",
+        "risklarni boshqarish",
+        "g'oyalar taxtasi",
+        "PMO",
+        "Biwork Loyiha"
+      ]
+    },
+    "cta": {
+      "trial": "Sinab ko'rish",
+      "lead": "So'rov qoldirish",
+      "lead_title": "Loyihalaringizni nazoratga oling",
+      "lead_text": "Telefon yoki email qoldiring — bog'lanib, korxonangiz uchun Biwork Loyiha mosligini birga aniqlaymiz.",
+      "placeholder": "Masalan: nechta loyiha yuritasiz va ularni hozir qanday nazorat qilasiz?"
+    }
+  }
+}

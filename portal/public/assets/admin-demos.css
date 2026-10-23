@@ -1,0 +1,20 @@
+/* Admin: «Demo versiyalari» bloki (views/_admin_demos.php) */
+.demo-adm .demo-now { padding-bottom: 4px; }
+.demo-adm .demo-now p { margin: 0 0 10px; }
+.demo-adm .demo-now .flash { margin: 0 0 10px; }
+.demo-adm .demo-now .flash form { margin-left: 6px; }
+.demo-url { word-break: break-all; }
+.demo-tbl td { vertical-align: top; }
+.demo-tbl tr.is-cur td { background: color-mix(in srgb, var(--ok-bg) 55%, transparent); }
+.demo-tbl .demo-notes { white-space: pre-line; min-width: 160px; max-width: 360px; }
+.demo-tbl form.inline + form.inline { margin-left: 4px; }
+.demo-form { border-top: 1px solid var(--border); }
+.demo-form h3 { margin: 0 0 12px; }
+.demo-form .f { display: block; font-weight: 600; font-size: 13px; margin: 0 0 5px; color: var(--text-2); }
+.demo-form .demo-kinds { display: grid; gap: 6px; align-content: start; grid-column: span 2; }
+/* tanlangan turga keraksiz maydon yashiriladi (eski brauzerda ikkalasi ko'rinadi — server baribir tekshiradi) */
+.demo-form:has(input[name="kind"][value="url"]:checked) .demo-f-pkg,
+.demo-form:has(input[name="kind"][value="package"]:checked) .demo-f-url { display: none; }
+@media (max-width: 600px) {
+  .demo-form .demo-kinds { grid-column: auto; }
+}

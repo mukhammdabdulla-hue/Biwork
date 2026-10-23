@@ -1,0 +1,255 @@
+{
+  "contract": 1,
+  "slug": "hr",
+  "code": "HRM",
+  "name": "Biwork HR",
+  "tagline": "Xodimlar, QR bilan ish vaqti, avtomatik tabel va hujjatlar bilan tanishuv",
+  "category": "Boshqaruv va hisob",
+  "icon": "users",
+  "status": "active",
+  "sort": 20,
+  "description": "Biwork HR — kadrlar va ish tartibini bitta panelda yuritish uchun dastur: xodimlar kartalari, ish vaqti (kelish-ketish), oylik tabel va ichki hujjatlar bilan tanishuv nazorati. Qog'oz jurnal va tarqoq Excel fayllar o'rniga bitta tizim.\n\nXodim ish joyidagi QR-kodni telefon kamerasi bilan skanerlaydi — tizim joylashuvini tekshiradi, selfi oladi va kelish yoki ketishni qayd etadi. Kechikkan va kelmaganlar kun, oy, chorak va yil bo'yicha ko'rinadi; tabel shu ma'lumotdan o'zi to'planadi va PDF yoki Excel'ga chiqariladi, chorak uchun intizom koeffitsienti hujjati ham tayyorlanadi.\n\nTartib qoidalari, yo'riqnomalar va buyruqlar PDF kutubxonasida turadi: kim tanishib chiqqani ko'rinadi, yangi versiya yuklansa xodimlar qayta tanishadi. Interfeys o'zbek tilida, ma'lumotlar o'z serveringizda saqlanadi.",
+  "highlights": [
+    "QR-kod, joylashuv va selfi bilan davomat — qog'oz jurnalsiz",
+    "Kechikkan va kelmaganlar: kun, oy, chorak va yil kesimida",
+    "Tabel davomatdan o'zi to'planadi, PDF va Excel'ga chiqadi",
+    "Xodimlar kartalari: bo'lim, lavozim, telefon, tug'ilgan kunlar",
+    "Hujjat versiyalari va xodimlar tanishib chiqqanini nazorat qilish"
+  ],
+  "web": {
+    "url": "",
+    "launch": "token"
+  },
+  "trial": {
+    "enabled": true,
+    "days": 14
+  },
+  "plans": [
+    {
+      "code": "standard",
+      "name": "Standart",
+      "type": "paid",
+      "seats": 1,
+      "days": 365,
+      "limits": {},
+      "features": [
+        "web_demo",
+        "app",
+        "download"
+      ]
+    },
+    {
+      "code": "business",
+      "name": "Korxona",
+      "type": "paid",
+      "seats": 3,
+      "days": 365,
+      "limits": {},
+      "features": [
+        "web_demo",
+        "app",
+        "download"
+      ]
+    }
+  ],
+  "package": {
+    "min_php": "8.1",
+    "extensions": [
+      "pdo_sqlite",
+      "mbstring",
+      "json",
+      "sodium"
+    ]
+  },
+  "marketing": {
+    "headline": "Ish vaqti, tabel va xodimlar hujjatlari — qog'oz jurnal va Excel'siz, bitta panelda",
+    "lead": "Biwork HR xodimlar kartalarini, QR-kod orqali ish vaqtini va oylik tabelni bir joyga yig'adi. Kim kechikkani va kelmagani kun, oy va chorak bo'yicha ko'rinadi, tabel davomatdan o'zi to'planadi va PDF yoki Excel'ga chiqariladi. Ichki qoidalar va buyruqlar PDF kutubxonasida turadi — kim tanishib chiqqani hisobda.",
+    "badges": [
+      "O'zbek tilida",
+      "QR + joylashuv + selfi bilan davomat",
+      "Tabel PDF va Excel'ga",
+      "Chorak intizom koeffitsienti",
+      "Hujjatlar bilan tanishuv nazorati",
+      "Ma'lumot korxonada qoladi"
+    ],
+    "problems": [
+      {
+        "title": "Davomat qog'ozda yoki «og'zaki»",
+        "text": "Kim qachon kelgani jurnalda yoki xotirada qoladi, oy oxirida tabelni qayta tiklashga soatlar ketadi."
+      },
+      {
+        "title": "Kechikish jamlanmaydi",
+        "text": "Kim necha marta kechikkani va jami necha daqiqa yo'qotilgani ko'rinmaydi — intizom haqidagi gap dalilsiz qoladi."
+      },
+      {
+        "title": "Tabel har oy qo'lda to'ldiriladi",
+        "text": "Ta'til, kasallik va xizmat safari belgilarini Excel'ga qayta kiritish vaqt oladi va xatoga olib keladi."
+      },
+      {
+        "title": "Hujjat bilan tanishganlik isbotlanmaydi",
+        "text": "Tartib qoidasi yoki buyruqni «tanishtirdik» deyish oson, lekin kim o'qib chiqqanini ko'rsatish qiyin."
+      }
+    ],
+    "features": [
+      {
+        "title": "Kim keldi, kim kechikdi — bir qarashda",
+        "text": "Ish vaqti sahifasida kun manzarasi: vaqtida kelganlar, kechikkanlar, kelmaganlar, sababli va sababsiz. Grafikdagi kunni bossangiz, o'sha kundagi xodimlar, kirish vaqti, joyi va selfisi ochiladi. Pastda har xodim kesimida jami kechikish va intizom ko'rsatkichlari turadi.",
+        "points": [
+          "Kun, oy, chorak va yil ko'rinishi",
+          "Kechikish yoki kelmaslik uchun sabab yozish",
+          "Xodim bo'yicha hisobotni PDF qilib olish"
+        ],
+        "shot": "ishvaqti.webp"
+      },
+      {
+        "title": "Telefon bilan QR orqali belgilash",
+        "text": "Ish joyiga QR-kod chop etib osasiz. Xodim uni telefon kamerasi bilan skanerlaydi, o'z telefon raqami va paroli bilan kiradi, tizim joylashuvi ish joyi radiusida ekanini tekshiradi va selfi oladi. Kelish va ketish alohida qayd etiladi; selfilar siz belgilagan kundan keyin avtomatik o'chiriladi.",
+        "points": [
+          "Bir nechta joy: ofis, sex, ombor — har birining QR-kodi va radiusi",
+          "Ish jadvali va kechikishga yo'l qo'yiladigan daqiqalar sozlanadi",
+          "Kamera va joylashuv uchun sayt HTTPS manzilda ochilishi shart"
+        ],
+        "shot": "qr.webp"
+      },
+      {
+        "title": "Tabel davomatdan o'zi to'planadi",
+        "text": "Oylik tabelda kelgan kunlar va soatlar, kechikishlar va kelinmagan kunlar bo'limlar bo'yicha jamlangan. Ta'til, kasallik, xizmat safari kabi kunlarni qo'lda belgilaysiz. Tayyor tabel PDF yoki Excel'ga chiqadi, chorak uchun intizom koeffitsienti hujjati ham shunday olinadi.",
+        "points": [
+          "Bo'limlar bo'yicha jami kunlar, soatlar va kechikishlar",
+          "Imzo egalari sozlanadi — hujjat tasdiqlash bloki bilan chiqadi"
+        ],
+        "shot": "tabel.webp"
+      },
+      {
+        "title": "Har xodim bo'yicha batafsil karta",
+        "text": "Xodimni bossangiz: kunma-kun davomat, kechikish dinamikasi, ishlagan soatlar va jamoa bilan solishtirma (intizom, jami kechikish va ishlagan vaqt bo'yicha o'rni) ochiladi. Rasmdagi raqamlar namuna ma'lumotga tegishli.",
+        "points": [],
+        "shot": "xodim.webp"
+      },
+      {
+        "title": "Xodimlar bazasi",
+        "text": "Har xodim kartasida F.I.Sh., bo'lim, lavozim, telefon, ichki raqam, tug'ilgan kun, ishga kirgan sana va oylik turadi. Bo'lim bo'yicha filtr, qidiruv va yaqin tug'ilgan kunlar ko'rinib turadi. Telefon raqami saqlanganda xodimga hisob ochiladi — login shu raqam, birinchi kirishda parol almashtiriladi.",
+        "points": [],
+        "shot": "xodimlar.webp"
+      },
+      {
+        "title": "Hujjatlar va tanishib chiqishni nazorat qilish",
+        "text": "Ichki qoidalar, yo'riqnomalar va buyruqlarni PDF qilib yuklaysiz va kimga mo'ljallanganini belgilaysiz. Xodim hujjatni o'qib «Tanishib chiqdim» tugmasini bosadi — kim tanishgani va kim hali yo'qligini ko'rasiz. Yangi versiya yuklansa, eski fayl tarixda qoladi va xodimlar qayta tanishadi.",
+        "points": [
+          "Majburiy hujjatlar uchun «tanishishingiz kerak» hisoblagichi",
+          "Har hujjat bo'yicha tanishganlar soni"
+        ],
+        "shot": "hujjatlar.webp"
+      }
+    ],
+    "shots": [
+      {
+        "file": "ishvaqti.webp",
+        "caption": "Ish vaqti: kun, oy va chorak bo'yicha vaqtida kelgan, kechikkan va kelmagan xodimlar",
+        "alt": "Biwork HR: ish vaqti sahifasi, kunlik davomat grafigi va xodimlar ro'yxati"
+      },
+      {
+        "file": "qr.webp",
+        "caption": "Joylar va QR: har ish joyi uchun koordinata, radius va chop etiladigan QR-kod",
+        "alt": "Biwork HR: ish vaqti sozlamalari, QR-kod va joylashuv radiusi"
+      },
+      {
+        "file": "tabel.webp",
+        "caption": "Oylik tabel bo'limlar bo'yicha: kunlar, soatlar, kechikishlar; PDF va Excel'ga chiqariladi",
+        "alt": "Biwork HR: oylik tabel jadvali"
+      },
+      {
+        "file": "xodim.webp",
+        "caption": "Xodim kartasi: kunma-kun davomat, kechikish dinamikasi va jamoa bilan solishtirma",
+        "alt": "Biwork HR: xodim bo'yicha batafsil davomat hisoboti"
+      },
+      {
+        "file": "xodimlar.webp",
+        "caption": "Xodimlar bazasi: bo'limlar, lavozim, telefon, tug'ilgan kunlar",
+        "alt": "Biwork HR: xodimlar ro'yxati"
+      },
+      {
+        "file": "hujjatlar.webp",
+        "caption": "Hujjatlar kutubxonasi: PDF, versiya va kim tanishib chiqqani",
+        "alt": "Biwork HR: hujjatlar va tanishuv nazorati"
+      }
+    ],
+    "audience": [
+      {
+        "title": "Kadrlar bo'limi va HR menejerlari",
+        "text": "Davomat, tabel va xodimlar hujjatlarini qo'lda yuritib, oy oxirida hisobot yig'ishga ko'p vaqt sarflayotganlar."
+      },
+      {
+        "title": "Ofis, sex va ombori bor korxonalar",
+        "text": "Xodimlari bir nechta joyda ishlaydigan, kelish-ketishni telefon orqali nazorat qilmoqchi bo'lgan rahbarlar."
+      },
+      {
+        "title": "Buxgalteriya (ish haqi)",
+        "text": "Ish haqi hisoblash uchun tayyor tabel va kechikishlar jamlanmasi kerak bo'lganlar."
+      },
+      {
+        "title": "Yuristlar va ichki nazorat",
+        "text": "Tartib qoidalari va buyruqlar bilan xodimlar tanishganini hujjat sifatida ko'rsata olishi kerak bo'lganlar."
+      }
+    ],
+    "faq": [
+      {
+        "q": "Sinab ko'rish uchun nima kerak?",
+        "a": "Ro'yxatdan o'ting (korxona nomi va email yetarli) — Biwork HR'ni brauzerda namuna ma'lumot bilan sinab ko'rasiz: xayoliy korxona, taxminan 35 xodim, bir necha oylik davomat va hujjatlar. Hech narsa o'rnatish shart emas."
+      },
+      {
+        "q": "Xodimlar davomatni qanday belgilaydi?",
+        "a": "Ish joyidagi QR-kodni telefon kamerasi bilan skanerlaydi, o'z telefon raqami va paroli bilan kiradi, joylashuvini yuboradi va selfi oladi. Hozircha belgilash shu usulda; turniket yoki barmoq izi terminallari bilan to'g'ridan-to'g'ri ulanish yo'q."
+      },
+      {
+        "q": "Telefon kamerasi va joylashuvi ishlashi uchun nima kerak?",
+        "a": "Brauzer kamera va joylashuvni faqat himoyalangan (https://) manzilda beradi. Shu sabab Biwork HR domen va SSL sertifikati bor serverda o'rnatilishi kerak, xodimlar tizimga shu manzil orqali (ofis Wi-Fi yoki mobil internet bilan) kiradi."
+      },
+      {
+        "q": "Xodimning joylashuvi va selfisi saqlanadimi?",
+        "a": "Faqat belgilash paytida olinadi: joylashuv xodim ish joyi radiusida ekanini tekshirish uchun, selfi — kim belgilaganini ko'rish uchun. Selfilar 3 kundan keyin avtomatik o'chiriladi. Hammasi sizning serveringizda turadi."
+      },
+      {
+        "q": "Tabel qanday chiqadi?",
+        "a": "Tabel davomat ma'lumotidan o'zi to'planadi; ta'til, kasallik, xizmat safari kabi kunlarni o'zingiz belgilaysiz. Tabel va chorak intizom koeffitsienti hujjati PDF yoki Excel'ga chiqariladi. Hujjat shakli hozircha bitta andoza asosida — boshqa shakl kerak bo'lsa, moslashtirish talab qilinishi mumkin."
+      },
+      {
+        "q": "Ish haqini hisoblaydimi?",
+        "a": "Yo'q. Oylik xodim kartasida ma'lumot sifatida turadi, ish haqi hisoblanmaydi. Buxgalteriya uchun tayyor tabel va kechikishlar jamlanmasi chiqadi; 1C yoki boshqa dasturga avtomatik uzatish hozircha yo'q."
+      },
+      {
+        "q": "Interfeys qaysi tilda?",
+        "a": "Asosiy til — o'zbekcha (lotin). Rus tiliga o'tish tugmasi bor, lekin tarjima hozircha qisman."
+      },
+      {
+        "q": "O'rnatish uchun nima kerak?",
+        "a": "Oddiy server yoki hosting: PHP 8.1 va undan yuqori (pdo_sqlite, mbstring, json, sodium kengaytmalari). Alohida ma'lumotlar bazasi serveri kerak emas — ma'lumot fayldagi bazada saqlanadi."
+      },
+      {
+        "q": "Ma'lumotlarim qayerda saqlanadi?",
+        "a": "Xodimlar, davomat va hujjatlar faqat sizning serveringizdagi bazada va papkada turadi. Biwork portali litsenziyani tekshiradi, xodimlar ma'lumotini olmaydi."
+      }
+    ],
+    "seo": {
+      "title": "Biwork HR — xodimlar, QR bilan ish vaqti va tabel dasturi",
+      "description": "Xodimlar bazasi, telefon QR-kodi bilan davomat (joylashuv va selfi), avtomatik tabel, intizom koeffitsienti va hujjatlar bilan tanishuv nazorati. O'zbek tilida.",
+      "keywords": [
+        "kadrlar dasturi",
+        "ish vaqti nazorati",
+        "davomat QR kod",
+        "tabel dasturi",
+        "xodimlar bazasi",
+        "intizom koeffitsienti",
+        "HR dasturi",
+        "Biwork HR"
+      ]
+    },
+    "cta": {
+      "trial": "Sinab ko'rish",
+      "lead": "So'rov qoldirish",
+      "lead_title": "Biwork HR haqida so'rov qoldiring",
+      "lead_text": "Telefon raqamingizni qoldiring — siz bilan bog'lanib, dastur korxonangizga mos kelishini birga aniqlaymiz.",
+      "placeholder": "Masalan: nechta xodim, nechta joyda ishlaydi, davomatni hozir qanday yuritasiz?"
+    }
+  }
+}

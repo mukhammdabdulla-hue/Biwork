@@ -1,0 +1,14 @@
+{
+  "slug": "loyiha",
+  "code": "LOY",
+  "name": "Biwork Loyiha",
+  "sub": "Loyihalar, g'oyalar va topshiriqlar",
+  "home": "#/bolim/pm",
+  "modules": [
+    "pm",
+    "topshiriq",
+    "kontakt.royxat:view",
+    "hisobot"
+  ],
+  "css": "#pmSubtabs .tab.kx-yashir[data-subtab=\"goya\"]{display:block!important}.pp-tiles>.pp-tile:nth-child(2){display:none!important}#mmBtn{display:none!important}"
+}

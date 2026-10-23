@@ -1,0 +1,11 @@
+{
+  "slug": "yuridik",
+  "code": "YUR",
+  "name": "Biwork Yuridik",
+  "sub": "Sud ishlari va majlislar kalendari",
+  "home": "#/bolim/yuridik",
+  "modules": [
+    "yuridik"
+  ],
+  "css": ".dsh-qt > .dsh-p{justify-content:flex-start}"
+}

@@ -1,0 +1,13 @@
+{
+  "slug": "hr",
+  "code": "HRM",
+  "name": "Biwork HR",
+  "sub": "Xodimlar, ish vaqti va tabel",
+  "home": "#/bolim/dashboard",
+  "modules": [
+    "kontakt",
+    "hujjat",
+    "hisobot"
+  ],
+  "css": "#ishlarimWrap{display:none!important}.qd-bosh{position:relative}#qdInput::placeholder{color:transparent}.qd-bosh:has(#qdInput:placeholder-shown)::after{content:\"Xodim, bo'lim yoki hujjat nomi…\";position:absolute;left:44px;top:50%;transform:translateY(-50%);font-size:var(--fs-lg);color:var(--ink-faint);pointer-events:none}.dsh-qt > .dsh-p{justify-content:flex-start}"
+}

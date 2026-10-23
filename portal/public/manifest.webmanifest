@@ -1,0 +1,16 @@
+{
+  "name": "Biwork",
+  "short_name": "Biwork",
+  "description": "Korxonalar uchun avtomatlashtirish vositalari",
+  "lang": "uz",
+  "start_url": "./app",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#041C31",
+  "theme_color": "#041C31",
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -1,0 +1,232 @@
+{
+  "contract": 1,
+  "slug": "reja",
+  "code": "REJ",
+  "name": "Biwork Reja",
+  "tagline": "Bosma va tigel sexlari uchun avtomatik ishlab chiqarish rejasi",
+  "category": "Ishlab chiqarish",
+  "icon": "plan",
+  "status": "active",
+  "sort": 10,
+  "description": "Bosma (pechat) va tigel sexlari buyurtmalarini uskunalar bo'yicha avtomatik rejalaydi: sozlash vaqtini kamaytiradi, kechikishlarni oldindan ko'rsatadi, uskuna buzilsa rejani qayta tuzadi.\n\nReja Gantt ko'rinishida chiziladi, qo'lda (FIFO) tuzilgan reja bilan taqqoslanadi va zavodning odatiy ustunlari bilan Excel'ga chiqariladi. Interfeys o'zbek tilida, kundalik ishlashi uchun internet talab qilmaydi.",
+  "highlights": [
+    "Smenalar va sozlash bloklari bilan Gantt ko'rinishidagi reja",
+    "Qo'lda (FIFO) reja bilan optimal rejani taqqoslash",
+    "Uskuna buzilsa — bir bosishda qayta rejalash",
+    "Excel'ga eksport: har uskuna uchun alohida varaq",
+    "Python'siz ham ishlaydi (server rejimi)",
+    "Biwork AI (ixtiyoriy): kiritilgan ma'lumotni tahlil qilib, tasdiqdan keyin bazaga joylaydi"
+  ],
+  "web": {
+    "url": "",
+    "launch": "token"
+  },
+  "trial": {
+    "enabled": true,
+    "days": 30
+  },
+  "plans": [
+    {
+      "code": "standard",
+      "name": "Standart",
+      "type": "paid",
+      "seats": 1,
+      "days": 365,
+      "limits": {
+        "users": 5
+      },
+      "features": [
+        "web_demo",
+        "app",
+        "download"
+      ]
+    },
+    {
+      "code": "business",
+      "name": "Korxona",
+      "type": "paid",
+      "seats": 5,
+      "days": 365,
+      "limits": {
+        "users": 25
+      },
+      "features": [
+        "web_demo",
+        "app",
+        "download"
+      ]
+    }
+  ],
+  "package": {
+    "min_php": "8.1",
+    "extensions": [
+      "pdo_sqlite",
+      "mbstring",
+      "json",
+      "sodium"
+    ]
+  },
+  "marketing": {
+    "headline": "Bosma va tigel sexi rejasini qo'lda emas — avtomatik tuzing",
+    "lead": "Biwork Reja buyurtmalar va uskunalaringiz bo'yicha rejani o'zi tuzadi: sozlash vaqtini kamaytiradi, kechikadigan buyurtmalarni oldindan ko'rsatadi, uskuna buzilsa rejani bir bosishda qayta tuzadi.",
+    "badges": [
+      "O'zbek tilida",
+      "Gantt ko'rinishida reja",
+      "Excel'ga eksport",
+      "Internetsiz ishlaydi",
+      "Ma'lumot sizda saqlanadi"
+    ],
+    "problems": [
+      {
+        "title": "Reja qo'lda tuziladi",
+        "text": "Buyurtmalarni uskunalarga taqsimlash soatlab vaqt oladi va rejalashtiruvchining tajribasiga bog'liq bo'lib qoladi."
+      },
+      {
+        "title": "Sozlash vaqti yo'qoladi",
+        "text": "Rang va format tez-tez almashsa, uskuna sozlashga ko'p vaqt ketadi. Mos buyurtmalarni ketma-ket qo'yish bu vaqtni qisqartiradi."
+      },
+      {
+        "title": "Kechikish oldindan ko'rinmaydi",
+        "text": "Qaysi buyurtma muddatga ulgurmasligini ish boshlanmasdan, rejadayoq ko'rasiz."
+      },
+      {
+        "title": "Uskuna buzilsa reja buziladi",
+        "text": "Buzilgan uskunani belgilang — ish boshqa uskunalarga ko'chirilib, reja qayta tuziladi."
+      }
+    ],
+    "features": [
+      {
+        "title": "Gantt ko'rinishidagi reja",
+        "text": "Har bir uskuna uchun smenalar, sozlash bloklari va buyurtmalar vaqt chizig'ida ko'rinadi. «Hozir» chizig'i va kechikadigan buyurtmalar belgilanadi.",
+        "points": [
+          "Smenalar va sozlash bloklari bilan",
+          "Operatsiyani bossangiz, buyurtmaning bosma → tigel zanjiri ajraladi",
+          "Tayyor reja har uskuna uchun alohida varaqli Excel faylga chiqariladi"
+        ],
+        "shot": "gantt.webp"
+      },
+      {
+        "title": "Qo'lda tuzilgan reja bilan taqqoslash",
+        "text": "Tizim tuzgan reja qo'lda (FIFO — kelish tartibida) tuzilgan reja bilan yonma-yon qo'yiladi: sozlash vaqti, kechikkan buyurtmalar, umumiy muddat va uskunalar yuklamasi farqi ko'rinadi. Rasmdagi raqamlar namuna ma'lumotga tegishli — sizning sexingizda natija buyurtmalaringizga bog'liq.",
+        "points": [],
+        "shot": "fifo.webp"
+      },
+      {
+        "title": "Uskuna buzilsa — bir bosishda qayta reja",
+        "text": "Uskunani «Buzildi» deb belgilang yoki to'xtash vaqtini kiriting. Reja eskirgani haqida xabar chiqadi, «Qayta tuzish» esa ishni boshqa uskunalarga ko'chiradi.",
+        "points": [
+          "Tezlik, sozlash vaqti va guruhlash har uskuna uchun o'zgartiriladi",
+          "Ta'mir va to'xtashlar rejada hisobga olinadi"
+        ],
+        "shot": "uskuna.webp"
+      },
+      {
+        "title": "Tor joylar va to'xtash sabablari",
+        "text": "Qaysi uskuna haddan tashqari band, tor joy qayerda va vaqt nima sababdan yo'qolayotganini grafiklarda ko'rasiz; tizim tavsiyalar ham beradi.",
+        "points": [
+          "Uskunalar yuklamasi",
+          "Tor joylar",
+          "To'xtash sabablari"
+        ],
+        "shot": "tahlil.webp"
+      },
+      {
+        "title": "Kun qayerdan boshlanishini ko'rsatadi",
+        "text": "Bosh sahifada navbatdagi va shoshilinch buyurtmalar, hamda «Keyingi qadamlar» kartalari turadi: rejani tuzish, muddatlarni tekshirish, tigel navbatini taqsimlash.",
+        "points": [],
+        "shot": "bosh.webp"
+      }
+    ],
+    "shots": [
+      {
+        "file": "gantt.webp",
+        "caption": "Gantt ko'rinishidagi ishlab chiqarish rejasi: bosma, laminatsiya, tigel va yelimlash uskunalari",
+        "alt": "Biwork Reja: uskunalar bo'yicha Gantt jadvali"
+      },
+      {
+        "file": "fifo.webp",
+        "caption": "Namuna ma'lumotda: kechikkan buyurtmalar 9 tadan 3 taga, umumiy muddat 96,6 dan 73,7 soatga tushdi",
+        "alt": "Biwork Reja: optimal reja va qo'lda (FIFO) reja taqqoslanishi"
+      },
+      {
+        "file": "uskuna.webp",
+        "caption": "Uskunalar: tezlik, sozlash vaqti, to'xtashlar va «Buzildi» tugmasi",
+        "alt": "Biwork Reja: uskunalar sahifasi"
+      },
+      {
+        "file": "tahlil.webp",
+        "caption": "Tahlil: uskunalar yuklamasi, tor joylar va to'xtash sabablari",
+        "alt": "Biwork Reja: tahlil sahifasi"
+      },
+      {
+        "file": "bosh.webp",
+        "caption": "Bosh sahifa: keyingi qadamlar, navbatdagi va shoshilinch buyurtmalar",
+        "alt": "Biwork Reja: bosh sahifa"
+      }
+    ],
+    "audience": [
+      {
+        "title": "Bosmaxona va qadoqlash korxonalari",
+        "text": "Bosma (pechat) va tigel sexlari bor, buyurtmalar ko'p va navbat tez-tez o'zgaradigan ishlab chiqarishlar."
+      },
+      {
+        "title": "Ishlab chiqarish rejalashtiruvchilari",
+        "text": "Rejani har kuni Excel yoki qog'ozda qo'lda tuzayotgan va kechikishni oldindan ko'rishni xohlaganlar."
+      },
+      {
+        "title": "Sex boshliqlari va rahbarlar",
+        "text": "Qaysi uskuna band, tor joy qayerda va nima uchun to'xtab qolganini bir joyda ko'rishni istaganlar."
+      }
+    ],
+    "faq": [
+      {
+        "q": "Sinab ko'rish uchun nima kerak?",
+        "a": "Ro'yxatdan o'ting (korxona nomi va email yetarli) — Biwork Rejani brauzerda namuna ma'lumot bilan sinab ko'rasiz. Hech narsa o'rnatish shart emas."
+      },
+      {
+        "q": "Buyurtmalarni qanday kiritaman?",
+        "a": "Panelda qo'lda kiritasiz yoki Excel (.xlsx) fayldan yuklaysiz. Hozirgi versiya ma'lum zavod fayl shakllariga sozlangan — boshqa shakldagi fayllar uchun moslashtirish kerak bo'lishi mumkin. ERP bilan to'g'ridan-to'g'ri avtomatik bog'lanish hozircha yo'q."
+      },
+      {
+        "q": "Biwork AI nima qiladi?",
+        "a": "Ixtiyoriy yordamchi: siz yozgan yoki jadval ko'rinishida joylagan buyurtma, to'xtash va uskuna ma'lumotini tahlil qiladi, bazaga nima yozilishini ko'rsatadi va faqat siz tasdiqlaganingizdan keyin joylaydi; xohlasangiz shundan so'ng reja ham tuziladi. Rejani baribir optimallashtirish algoritmi tuzadi. Sukut bo'yicha o'chiq: yoqish uchun o'z Anthropic API kalitingizni kiritasiz."
+      },
+      {
+        "q": "O'rnatish uchun nima kerak?",
+        "a": "Oddiy kompyuter yoki server: PHP 8 va, tavsiya etiladi, Python 3 (OR-Tools bilan) — u kuchliroq optimallashtirish beradi. Python bo'lmasa dastur PHP'ning o'zida tezkor soddaroq algoritm bilan ishlaydi."
+      },
+      {
+        "q": "Internet kerakmi?",
+        "a": "Kundalik ishlash uchun yo'q: interfeys tashqi saytlarsiz ishlaydi. Litsenziya vaqti-vaqti bilan Biwork portali orqali tekshiriladi, qisqa uzilishda dastur ishlashda davom etadi. Faqat ixtiyoriy Biwork AI internet talab qiladi: u tashqi sun'iy intellekt xizmatiga ulanadi."
+      },
+      {
+        "q": "Ma'lumotlarim qayerda saqlanadi?",
+        "a": "Buyurtma va reja ma'lumotlari sizning kompyuteringiz yoki serveringizdagi bazada saqlanadi va Biwork serverlariga yuborilmaydi: Biwork portali faqat litsenziya kaliti va qurilma belgisini oladi. Istisno — ixtiyoriy Biwork AI (sukut bo'yicha o'chiq). Uni yoqsangiz, savolingiz va javob uchun kerak bo'lgan buyurtma, uskuna va reja ma'lumotlari serveringizdan to'g'ridan-to'g'ri tashqi sun'iy intellekt provayderiga (Anthropic) yuboriladi; parollar, foydalanuvchilar ro'yxati va audit jurnali yuborilmaydi. AI bazaga o'zi yozmaydi: nima yozilishini ko'rsatadi va faqat siz tasdiqlaganingizdan keyin saqlaydi."
+      },
+      {
+        "q": "Fleksa bosma va boshqa uskunalar bormi?",
+        "a": "Hozirgi versiya bosma (ofset) va tigel sexlari uchun; fleksa bosma rejalashtirilmaydi (fleksa buyurtmalar tigelga yo'naltiriladi). Uskunalar tezligi va sozlash vaqtlarini o'zingiz kiritasiz."
+      }
+    ],
+    "seo": {
+      "title": "Biwork Reja — bosma va tigel sexlari uchun ishlab chiqarish rejasi",
+      "description": "Bosma va tigel sexlari uchun ishlab chiqarish rejasini avtomatik tuzadigan dastur: Gantt, sozlash vaqtini kamaytirish, uskuna buzilsa qayta rejalash, Excel. O'zbek tilida.",
+      "keywords": [
+        "ishlab chiqarish rejasi",
+        "bosmaxona dasturi",
+        "tigel",
+        "ishlab chiqarishni rejalashtirish",
+        "Gantt",
+        "avtomatik reja",
+        "Biwork Reja"
+      ]
+    },
+    "cta": {
+      "trial": "Sinab ko'rish",
+      "lead": "So'rov qoldirish",
+      "lead_title": "Biwork Reja haqida so'rov qoldiring",
+      "lead_text": "Telefon raqamingizni qoldiring — siz bilan bog'lanib, dastur sexingizga mos kelishini birga aniqlaymiz.",
+      "placeholder": "Masalan: sexda nechta uskuna bor, hozir rejani qanday tuzasiz?"
+    }
+  }
+}
