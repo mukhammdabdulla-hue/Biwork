@@ -14,7 +14,7 @@ from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
 from cryptography.fernet import Fernet
 
-from app.config import get_settings
+from app.config import get_settings, is_placeholder
 
 _hasher = PasswordHasher()  # argon2id with library-recommended parameters
 _JWT_ALG = "HS256"
@@ -76,10 +76,12 @@ def token_hash(token: str) -> str:
 
 
 def _fernet() -> Fernet:
-    key = get_settings().field_encryption_key
-    if not key:
-        # Development fallback derived from the JWT key; production config requires a real key.
-        key = base64.urlsafe_b64encode(hashlib.sha256(get_settings().jwt_signing_key.encode()).digest()).decode()
+    settings = get_settings()
+    key = settings.field_encryption_key
+    if not key or (settings.app_env in ("dev", "test") and is_placeholder(key)):
+        # Development fallback derived from the JWT key, also used for the "change-me" value a local trial
+        # keeps from .env.example; staging and production refuse to start without a real key.
+        key = base64.urlsafe_b64encode(hashlib.sha256(settings.jwt_signing_key.encode()).digest()).decode()
     return Fernet(key.encode() if isinstance(key, str) else key)
 
 

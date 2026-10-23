@@ -18,7 +18,7 @@ from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 _DEV_JWT_KEY = "dev-only-insecure-jwt-signing-key-change-me"
 
 
-def _is_placeholder(secret: str) -> bool:
+def is_placeholder(secret: str) -> bool:
     """The development key and the "change-me" values published in .env.example are known to everyone."""
     return secret == _DEV_JWT_KEY or "change-me" in secret.lower()
 
@@ -198,12 +198,15 @@ class Settings(BaseSettings):
     def _check_production_safety(self) -> Settings:
         if self.app_env in ("staging", "prod"):
             problems = []
-            if _is_placeholder(self.jwt_signing_key):
+            if is_placeholder(self.jwt_signing_key):
                 problems.append("JWT_SIGNING_KEY must be set to a strong secret (not the example or development value)")
             if not self.cookie_secure:
                 problems.append("COOKIE_SECURE must be true")
-            if not self.field_encryption_key or _is_placeholder(self.field_encryption_key) or not _is_fernet_key(self.field_encryption_key):
+            if not self.field_encryption_key or is_placeholder(self.field_encryption_key) or not _is_fernet_key(self.field_encryption_key):
                 problems.append("FIELD_ENCRYPTION_KEY must be set to a Fernet key (Fernet.generate_key())")
+            if is_placeholder(self.database_url) or is_placeholder(self.database_migration_url):
+                # docker-compose builds both URLs from POSTGRES_PASSWORD / APP_DB_PASSWORD.
+                problems.append("POSTGRES_PASSWORD and APP_DB_PASSWORD must be changed from the example values")
             if self.celery_always_eager:
                 problems.append("CELERY_ALWAYS_EAGER must be false")
             if self.ai_provider in ("auto",) and not self.configured_ai_providers():

@@ -216,6 +216,11 @@ def ai_models(provider: str | None) -> int:
         print("No AI provider credentials are configured: the Agent runs in labelled demo mode.")
         return 0
     status = 0
+    if s.ai_provider in ("demo", "mock"):
+        # The keys would check out, yet the Agent keeps using the demo rules: say so instead of a plain "ok".
+        print(f"AI_PROVIDER={s.ai_provider}: the Agent runs in labelled demo mode and does not use these keys; "
+              "set AI_PROVIDER=auto to use them.")
+        status = 1
     for name in names:
         try:
             available = set(router.get_provider(name).list_models())
@@ -227,12 +232,13 @@ def ai_models(provider: str | None) -> int:
         for tier in router.TIERS:
             model = router.model_for(name, tier)
             if model:
-                ok = model in available
+                # Gemini accepts "models/<id>" as well as "<id>"; the listing is without the prefix.
+                ok = model.removeprefix("models/") in available
                 status |= 0 if ok else 1
                 print(f"  {tier:<8} {model:<40} {'ok' if ok else 'NOT AVAILABLE to this API key'}")
         # The ids to choose from when setting <PROVIDER>_MODEL_* (or replacing one that is not available).
-        print(textwrap.fill(", ".join(sorted(available)), width=100, initial_indent="  available: ",
-                            subsequent_indent=" " * 13, break_on_hyphens=False))
+        print(textwrap.fill(", ".join(sorted(available)) or "(none)", width=100, initial_indent="  available: ",
+                            subsequent_indent=" " * 13, break_long_words=False, break_on_hyphens=False))
     return status
 
 

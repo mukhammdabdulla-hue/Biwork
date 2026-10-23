@@ -115,8 +115,10 @@ chmod 600 .env
 ```
 
 > `APP_ENV=prod` da dastur xavfsiz boʻlmagan sozlamalar bilan ishga tushmaydi: namunadagi
-> «change-me» qiymatlari, boʻsh shifrlash kaliti yoki HTTPS’siz cookie. Xato boʻlsa, u
-> `docker compose logs api` da aniq yoziladi.
+> «change-me» qiymatlari, boʻsh shifrlash kaliti yoki HTTPS’siz cookie. AI sozlamasi notoʻgʻri
+> boʻlsa ham shunday. Sozlamalar birinchi boʻlib `migrate` xizmatida tekshiriladi, shuning uchun xato
+> `docker compose logs migrate` da aniq yoziladi: «Unsafe configuration» yoki
+> «Invalid AI configuration». Bunday holatda `api` umuman ishga tushmaydi.
 
 ## 5. Ishga tushirish
 
@@ -125,10 +127,11 @@ docker compose up -d --build
 ```
 
 Birinchi yigʻish 5–15 daqiqa oladi. Keyin holatni tekshiring. Barcha xizmatlar `running` yoki
-`healthy`, `migrate` esa `exited (0)` boʻlishi kerak:
+`healthy`, `migrate` esa `exited (0)` boʻlishi kerak (tugagan xizmatlar faqat `-a` bilan
+koʻrinadi):
 
 ```bash
-docker compose ps
+docker compose ps -a
 ```
 
 Birinchi administratorni yarating. Email va parolni oʻzingiznikiga almashtiring; parol kamida
@@ -225,8 +228,8 @@ Ma’lumotlar bazasi migratsiyalari `migrate` xizmati orqali avtomatik bajarilad
 | Jurnallar | `docker compose logs -f api worker` (chiqish: `Ctrl+C`) |
 | Tizim holati | `curl https://biwork.korxona.uz/api/v1/health/ready`. Dasturda: «Ma’muriyat → Tizim holati» |
 | Sayt ochilmayapti, sertifikat xatosi | Domenning A yozuvi server IP’siga yoʻnalganini va 80/443 portlar ochiqligini tekshiring; `docker compose logs caddy` |
-| `api` qayta-qayta oʻchib yonmoqda | `docker compose logs api` da «Unsafe configuration» boʻlsa, `.env` dagi koʻrsatilgan qiymatni tuzating va `docker compose up -d` |
-| 502 Bad Gateway | API hali ishga tushmagan: `docker compose ps`, keyin `docker compose logs api` |
+| `migrate` `exited (1)`, `api` ishga tushmayapti | `docker compose logs migrate` da «Unsafe configuration» yoki «Invalid AI configuration» boʻlsa, `.env` dagi koʻrsatilgan qiymatni tuzating va `docker compose up -d` |
+| 502 Bad Gateway | API hali ishga tushmagan: `docker compose ps -a`, keyin `docker compose logs migrate api` |
 | AI xatolari | Kalit va limitlarni tekshiring. AI sarfi va xatolari «Tahlil → BIWORK Agent» va «Ma’muriyat → Tizim holati» da koʻrinadi |
 | Diskda joy qolmadi | `df -h`; eski zaxiralarni oʻchiring; `docker system prune` (ishlatilmayotgan obrazlarni oʻchiradi) |
 
