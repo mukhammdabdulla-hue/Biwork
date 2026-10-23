@@ -41,6 +41,27 @@ def test_production_accepts_real_secrets_and_development_stays_lenient():
     assert dev.jwt_signing_key.startswith("dev-only")
 
 
+def test_production_refuses_the_example_database_passwords():
+    keys = {"jwt_signing_key": secrets.token_urlsafe(48), "field_encryption_key": Fernet.generate_key().decode()}
+    for url in ("database_url", "database_migration_url"):
+        with pytest.raises(ValidationError, match="POSTGRES_PASSWORD and APP_DB_PASSWORD"):
+            _settings(**keys, **{url: "postgresql+psycopg://biwork:change-me-owner@postgres:5432/biwork"})
+
+
+def test_local_trial_with_the_example_encryption_key_can_encrypt(monkeypatch):
+    """A dev install keeps FIELD_ENCRYPTION_KEY=change-me from .env.example; MFA enrolment must still work."""
+    from app.config import get_settings
+    from app.core.security import decrypt_field, encrypt_field
+
+    monkeypatch.setenv("FIELD_ENCRYPTION_KEY", "change-me")
+    get_settings.cache_clear()
+    try:
+        assert decrypt_field(encrypt_field("JBSWY3DPEHPK3PXP")) == "JBSWY3DPEHPK3PXP"
+    finally:
+        monkeypatch.undo()
+        get_settings.cache_clear()
+
+
 def test_empty_provider_base_urls_fall_back_to_the_public_endpoints(ai_config):
     from app.ai.providers.anthropic import AnthropicProvider
     from app.ai.providers.openai import OpenAIProvider

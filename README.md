@@ -11,8 +11,10 @@ implemented). AI providers and data handling are described in [docs/ai-providers
 
 > **Mock AI by default.** Without an API key the agent uses a rule-based mock adapter. It is
 > labelled "Mock AI — not real analysis" everywhere it appears (banner, job pages, reports and
-> provenance). Set `OPENAI_API_KEY`, `GEMINI_API_KEY` or `ANTHROPIC_API_KEY` (with `AI_PROVIDER=auto`)
-> for real extraction; see [docs/ai-engine.md](docs/ai-engine.md).
+> provenance). Set `OPENAI_API_KEY`, `GEMINI_API_KEY` or `ANTHROPIC_API_KEY` with `AI_PROVIDER=auto`
+> and that provider's `*_MODEL_DEFAULT` (pre-filled for Anthropic only; the stack does not start without
+> it) for real extraction, then check the ids with `python -m app.cli ai-models`; see
+> [docs/ai-engine.md](docs/ai-engine.md).
 >
 > **Sample data is labelled.** `seed-demo` creates the company "BIWORK Demo Factory", flagged as
 > sample data; the dashboard says so on every page view.
@@ -67,7 +69,12 @@ and the workers; set `STORAGE_BACKEND=s3` and `S3_*` for object storage. Malware
 Install Docker Desktop (Linux containers, the default) and run the same commands in PowerShell from
 the cloned folder; `cp .env.example .env` works there as well, and `notepad .env` opens the file
 for editing. `.gitattributes` keeps LF line endings in the checkout, so the PostgreSQL init script
-runs. If `postgres` failed on an earlier attempt with `/bin/sh^M: bad interpreter`, that clone
+runs. To generate the secrets for a non-`dev` `.env` without a local Python or OpenSSL, build the
+images first (`docker compose build`) and use the API image:
+`docker compose run --rm --no-deps migrate python -c "import secrets; print(secrets.token_urlsafe(48))"`
+for `JWT_SIGNING_KEY` and the passwords, and
+`docker compose run --rm --no-deps migrate python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
+for `FIELD_ENCRYPTION_KEY`. If `postgres` failed on an earlier attempt with `/bin/sh^M: bad interpreter`, that clone
 predates the fix: clone the repository again into a new folder and remove the half-initialised
 database volume with `docker compose down -v` (this deletes the stack's data) before
 `docker compose up -d --build`.
@@ -209,7 +216,9 @@ GEMINI_API_KEY=...               # optional fallback
 ANTHROPIC_API_KEY=sk-ant-...     # optional fallback (models default to Claude Sonnet/Opus/Haiku 5.5)
 ```
 
-`python -m app.cli ai-check` validates the configuration and makes one small call per provider.
+`python -m app.cli ai-check` prints the effective routing without calling any provider;
+`python -m app.cli ai-models` checks the key and the configured model ids against the provider and
+lists the ids the key can use.
 Every adapter uses structured outputs, so responses are validated against the record type's schema
 before they reach validation. Read [docs/ai-engine.md](docs/ai-engine.md) and
 [docs/ai-providers.md](docs/ai-providers.md) before enabling an external provider for real company data.

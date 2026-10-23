@@ -94,14 +94,19 @@ AI sozlamasi. Quyidagi ikki variantdan birini tanlang:
 # 1-variant: haqiqiy AI (kalitlardan kamida bittasi)
 AI_PROVIDER=auto
 OPENAI_API_KEY=sk-...
+# Kalitingizga ochiq model nomi, masalan:
+OPENAI_MODEL_DEFAULT=gpt-5-mini
 # GEMINI_API_KEY=...
+# GEMINI_MODEL_DEFAULT=...
 # ANTHROPIC_API_KEY=...
 
 # 2-variant: AI kalitisiz, demo rejim (ekranda "Mock AI" deb koʻrsatiladi)
 # AI_PROVIDER=demo
 ```
 
-Modellarni tanlash va narxlar haqida: [ai-engine.md](ai-engine.md).
+Kalit yozilgan boʻlsa, oʻsha provayderning `..._MODEL_DEFAULT` qatori ham toʻldirilishi shart,
+aks holda dastur ishga tushmaydi. Model nomi toʻgʻriligini 5-boʻlimdagi `ai-models` buyrugʻi
+tekshiradi. Modellarni tanlash va narxlar haqida: [ai-engine.md](ai-engine.md).
 
 Faylni saqlang (`Ctrl+O`, `Enter`, `Ctrl+X`) va uni boshqalar oʻqiy olmaydigan qiling:
 
@@ -110,8 +115,10 @@ chmod 600 .env
 ```
 
 > `APP_ENV=prod` da dastur xavfsiz boʻlmagan sozlamalar bilan ishga tushmaydi: namunadagi
-> «change-me» qiymatlari, boʻsh shifrlash kaliti yoki HTTPS’siz cookie. Xato boʻlsa, u
-> `docker compose logs api` da aniq yoziladi.
+> «change-me» qiymatlari, boʻsh shifrlash kaliti yoki HTTPS’siz cookie. AI sozlamasi notoʻgʻri
+> boʻlsa ham shunday. Sozlamalar birinchi boʻlib `migrate` xizmatida tekshiriladi, shuning uchun xato
+> `docker compose logs migrate` da aniq yoziladi: «Unsafe configuration» yoki
+> «Invalid AI configuration». Bunday holatda `api` umuman ishga tushmaydi.
 
 ## 5. Ishga tushirish
 
@@ -120,10 +127,11 @@ docker compose up -d --build
 ```
 
 Birinchi yigʻish 5–15 daqiqa oladi. Keyin holatni tekshiring. Barcha xizmatlar `running` yoki
-`healthy`, `migrate` esa `exited (0)` boʻlishi kerak:
+`healthy`, `migrate` esa `exited (0)` boʻlishi kerak (tugagan xizmatlar faqat `-a` bilan
+koʻrinadi):
 
 ```bash
-docker compose ps
+docker compose ps -a
 ```
 
 Birinchi administratorni yarating. Email va parolni oʻzingiznikiga almashtiring; parol kamida
@@ -133,6 +141,15 @@ Birinchi administratorni yarating. Email va parolni oʻzingiznikiga almashtiring
 docker compose run --rm migrate python -m app.cli create-admin \
   --email admin@korxona.uz --password 'Kuchli-Parol-2026' --name "Administrator"
 ```
+
+AI kaliti yozilgan boʻlsa, model nomlarini tekshiring:
+
+```bash
+docker compose run --rm migrate python -m app.cli ai-models
+```
+
+Har bir model yonida `ok` chiqishi kerak. `NOT AVAILABLE` chiqsa, `available:` roʻyxatidan
+boshqa model nomini tanlab `.env` ga yozing, keyin `docker compose up -d` qiling.
 
 Brauzerda `https://biwork.korxona.uz` manzilini oching. HTTPS sertifikati birinchi marta
 bir daqiqagacha olinadi.
@@ -211,8 +228,8 @@ Ma’lumotlar bazasi migratsiyalari `migrate` xizmati orqali avtomatik bajarilad
 | Jurnallar | `docker compose logs -f api worker` (chiqish: `Ctrl+C`) |
 | Tizim holati | `curl https://biwork.korxona.uz/api/v1/health/ready`. Dasturda: «Ma’muriyat → Tizim holati» |
 | Sayt ochilmayapti, sertifikat xatosi | Domenning A yozuvi server IP’siga yoʻnalganini va 80/443 portlar ochiqligini tekshiring; `docker compose logs caddy` |
-| `api` qayta-qayta oʻchib yonmoqda | `docker compose logs api` da «Unsafe configuration» boʻlsa, `.env` dagi koʻrsatilgan qiymatni tuzating va `docker compose up -d` |
-| 502 Bad Gateway | API hali ishga tushmagan: `docker compose ps`, keyin `docker compose logs api` |
+| `migrate` `exited (1)`, `api` ishga tushmayapti | `docker compose logs migrate` da «Unsafe configuration» yoki «Invalid AI configuration» boʻlsa, `.env` dagi koʻrsatilgan qiymatni tuzating va `docker compose up -d` |
+| 502 Bad Gateway | API hali ishga tushmagan: `docker compose ps -a`, keyin `docker compose logs migrate api` |
 | AI xatolari | Kalit va limitlarni tekshiring. AI sarfi va xatolari «Tahlil → BIWORK Agent» va «Ma’muriyat → Tizim holati» da koʻrinadi |
 | Diskda joy qolmadi | `df -h`; eski zaxiralarni oʻchiring; `docker system prune` (ishlatilmayotgan obrazlarni oʻchiradi) |
 
@@ -223,6 +240,9 @@ Ma’lumotlar bazasi migratsiyalari `migrate` xizmati orqali avtomatik bajarilad
   `PasswordAuthentication no`).
 - Oyiga bir marta `apt update && apt upgrade -y` qiling va dasturni yangilang (8-boʻlim).
 - Barcha administratorlar uchun MFA’ni yoqing va har bir xodimga faqat kerakli rolni bering.
+- Kirish urinishlari har bir IP manzil uchun daqiqasiga cheklangan. Hisobni bloklash standart
+  holatda oʻchiq. Uni yoqish uchun `.env` ga `LOGIN_LOCKOUT_MINUTES=15` yozing: shunda 5 marta
+  notoʻgʻri paroldan keyin hisob 15 daqiqaga bloklanadi.
 - Zaxira nusxalarni boshqa joyda ham saqlang va tiklashni vaqti-vaqti bilan tekshiring.
 - Audit jurnali oʻzgartirib boʻlmaydigan qilib saqlanadi. Uning butunligini «Ma’muriyat →
   Audit jurnali → Yaxlitlikni tekshirish» tugmasi bilan tekshirish mumkin.

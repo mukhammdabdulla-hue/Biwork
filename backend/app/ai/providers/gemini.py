@@ -129,4 +129,4 @@ class GeminiProvider:
         )
 
     def list_models(self) -> list[str]:
-        return sorted((m.name or "").removeprefix("models/") for m in self.client.models.list())
+        return sorted(m.name.removeprefix("models/") for m in self.client.models.list() if m.name)

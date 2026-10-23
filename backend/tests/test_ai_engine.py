@@ -93,6 +93,36 @@ def test_startup_validation_of_ai_settings():
     assert s.provider_model("openai", "economy") == "m1" and s.provider_model("openai", "complex") is None
 
 
+def test_ai_models_checks_configured_ids_and_lists_the_available_ones(ai_config, monkeypatch, capsys):
+    from app import cli
+
+    ai_config(**LIVE)
+
+    class Listing:
+        def list_models(self):
+            return ["oa-default", "oa-economy", "gpt-z-mini", "gpt-a"]
+
+    monkeypatch.setattr(router, "get_provider", lambda name: Listing())
+    assert cli.ai_models("openai") == 1  # oa-complex is not served to this key
+    out = capsys.readouterr().out
+
+    def tier_line(tier: str) -> str:
+        return next(line for line in out.splitlines() if line.split()[:1] == [tier])
+
+    assert "oa-default" in tier_line("default") and tier_line("default").endswith(" ok")
+    assert "oa-complex" in tier_line("complex") and tier_line("complex").endswith("NOT AVAILABLE to this API key")
+    assert "available: gpt-a, gpt-z-mini, oa-default, oa-economy" in out
+
+    # Gemini ids may be configured with the "models/" prefix the listing does not carry.
+    ai_config(AI_PROVIDER="auto", GEMINI_API_KEY="g", GEMINI_MODEL_DEFAULT="models/gm-1")
+    monkeypatch.setattr(router, "get_provider", lambda name: type("L", (), {"list_models": lambda self: ["gm-1"]})())
+    assert cli.ai_models("gemini") == 0
+    # With AI_PROVIDER=demo the keys are not used, so a clean check would mislead.
+    ai_config(AI_PROVIDER="demo")
+    assert cli.ai_models("gemini") == 1
+    assert "AI_PROVIDER=demo" in capsys.readouterr().out
+
+
 def test_no_credentials_means_labelled_demo_mode(ai_config):
     ai_config(AI_PROVIDER="auto")
     assert router.demo_mode() and router.provider_order() == ["demo"]
