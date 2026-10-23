@@ -1,0 +1,17 @@
+# Keep LF line endings in every checkout, including Windows. Git for Windows converts text files
+# to CRLF by default; shell scripts mounted into Linux containers then fail
+# ("/bin/sh^M: bad interpreter" in deploy/postgres/10-app-role.sh) and PostgreSQL never starts.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
+*.xlsx binary
+*.xls binary
+*.docx binary

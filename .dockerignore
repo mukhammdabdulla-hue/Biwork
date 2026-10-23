@@ -1,0 +1,19 @@
+# Keep the build context small and platform-independent. In particular, a node_modules folder
+# installed on Windows or macOS must not replace the Linux one that `npm ci` installs in the image.
+.git
+**/node_modules
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+**/.mypy_cache
+frontend/dist
+frontend/test-results
+frontend/playwright-report
+**/*.tsbuildinfo
+backups
+
+# Secrets stay out of images.
+.env
+.env.*
+!.env.example
