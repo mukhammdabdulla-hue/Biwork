@@ -62,6 +62,16 @@ and the workers; set `STORAGE_BACKEND=s3` and `S3_*` for object storage. Malware
 `COOKIE_SECURE=true` (required outside `dev`) needs HTTPS in front of the web container, except on
 `localhost`, which browsers treat as secure.
 
+### Windows
+
+Install Docker Desktop (Linux containers, the default) and run the same commands in PowerShell from
+the cloned folder; `cp .env.example .env` works there as well, and `notepad .env` opens the file
+for editing. `.gitattributes` keeps LF line endings in the checkout, so the PostgreSQL init script
+runs. If `postgres` failed on an earlier attempt with `/bin/sh^M: bad interpreter`, that clone
+predates the fix: clone the repository again into a new folder and remove the half-initialised
+database volume with `docker compose down -v` (this deletes the stack's data) before
+`docker compose up -d --build`.
+
 ### Production server
 
 [docs/deploy-server.md](docs/deploy-server.md) is a step-by-step guide (in Uzbek) for a VPS:
